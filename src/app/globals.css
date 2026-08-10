@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --background: #eef2f7;
+  --foreground: #1a1a1a;
+  --color-brand: #0b5394;
+  --color-brand-dark: #073763;
+  --color-brand-light: #eaf1fb;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: var(--color-brand);
+  --color-brand-dark: var(--color-brand-dark);
+  --color-brand-light: var(--color-brand-light);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none;
+  }
+  .btn-primary {
+    @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-blue-300;
+  }
+  .btn-soft {
+    @apply rounded-lg bg-brand-light px-4 py-2 text-sm font-semibold text-brand hover:bg-blue-100;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

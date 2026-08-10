@@ -1,0 +1,275 @@
+// Bliss Rooms System — Prisma schema
+// Ported 1:1 from the original Google Sheets column structure (see Config.gs HEADERS).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  BOSS
+  ADMIN
+  AGENT
+  TENANT
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum RoomStatus {
+  VACANT
+  OCCUPIED
+  RESERVED
+  MAINTENANCE
+}
+
+enum ContractStatus {
+  DRAFT
+  PENDING_APPROVE
+  PENDING_SIGN
+  ACTIVE
+  EXPIRING
+  EXPIRED
+  TERMINATED
+  MOVED_OUT
+}
+
+enum PaymentType {
+  DEPOSIT
+  UTILITIES
+  RENTAL
+  ADMIN_FEE
+  ACCESS_CARD
+  AC
+  LATE_FEE
+  OTHER
+}
+
+enum MoveType {
+  MOVE_IN
+  MOVE_OUT
+}
+
+model Counter {
+  prefix String @id
+  seq    Int    @default(0)
+}
+
+model User {
+  id           String     @id @default(cuid())
+  userCode     String     @unique
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         Role
+  phone        String?
+  ic           String?
+  commRate     Decimal?   @db.Decimal(6, 4)
+  status       UserStatus @default(ACTIVE)
+  verified     Boolean    @default(false)
+  verifyToken  String?
+  resetToken   String?
+  resetExpiry  DateTime?
+  createdAt    DateTime   @default(now())
+
+  contractsAsTenant Contract[]        @relation("ContractTenant")
+  contractsAsAgent  Contract[]        @relation("ContractAgent")
+  currentRooms      Room[]            @relation("RoomCurrentTenant")
+  commissions       Commission[]
+  moveInOutForms    MoveInOutForm[]
+
+  @@index([role])
+}
+
+model Property {
+  id           String   @id @default(cuid())
+  propertyCode String   @unique
+  name         String
+  address      String?
+  region       String?
+  landlord     String?
+  status       String?  @default("Active")
+  notes        String?
+  rooms        Room[]
+
+  createdAt DateTime @default(now())
+}
+
+model Room {
+  id             String     @id @default(cuid())
+  roomCode       String     @unique
+  propertyId     String?
+  property       Property?  @relation(fields: [propertyId], references: [id])
+  propertyName   String
+  roomType       String?
+  roomRental     Decimal    @db.Decimal(10, 2)
+  carparkRental  Decimal    @default(0) @db.Decimal(10, 2)
+  status         RoomStatus @default(VACANT)
+  currentTenantId String?
+  currentTenant   User?      @relation("RoomCurrentTenant", fields: [currentTenantId], references: [id])
+  currentContractId String?
+  notes          String?
+
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+}
+
+model Contract {
+  id               String         @id @default(cuid())
+  contractCode     String         @unique
+  roomId           String
+  room             Room           @relation(fields: [roomId], references: [id])
+  propertyAddress  String?
+
+  tenantId   String?
+  tenant     User?   @relation("ContractTenant", fields: [tenantId], references: [id])
+  tenantName String
+  tenantIc   String?
+
+  agentId   String
+  agent     User    @relation("ContractAgent", fields: [agentId], references: [id])
+  agentName String
+
+  moveInDate        DateTime?
+  commencementDate   DateTime?
+  expiredDate        DateTime?
+  tenureMonths        Int?
+
+  roomRental        Decimal @db.Decimal(10, 2)
+  carparkRental     Decimal @default(0) @db.Decimal(10, 2)
+  securityDeposit   Decimal @default(0) @db.Decimal(10, 2)
+  utilitiesDeposit  Decimal @default(0) @db.Decimal(10, 2)
+  earnestDeposit    Decimal @default(0) @db.Decimal(10, 2)
+  accessCardDeposit Decimal @default(0) @db.Decimal(10, 2)
+  adminFee          Decimal @default(0) @db.Decimal(10, 2)
+  totalOutstanding  Decimal @default(0) @db.Decimal(10, 2)
+
+  status ContractStatus @default(DRAFT)
+
+  agentSignature  String?
+  agentSignDate   DateTime?
+  tenantSignature String?
+  tenantSignDate  DateTime?
+
+  commAmount Decimal? @db.Decimal(10, 2)
+  commStatus String?  @default("Pending")
+
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  approvedBy  String?
+  approvedAt  DateTime?
+  autoDeleteAt DateTime?
+  pdfLink     String?
+  remarks     String?
+
+  nationality   String?
+  contactNumber String?
+  email         String?
+  occupation    String?
+  company       String?
+  carPlate      String?
+
+  emergencyName         String?
+  emergencyContact      String?
+  emergencyRelationship String?
+
+  utilDryer    Boolean @default(false)
+  utilAircond  Boolean @default(false)
+  utilElectric Boolean @default(false)
+
+  icFront String?
+  icBack  String?
+
+  payments    Payment[]
+  commissions Commission[]
+  moveForms   MoveInOutForm[]
+
+  @@index([status])
+  @@index([agentId])
+  @@index([tenantId])
+  @@index([roomId])
+}
+
+model Payment {
+  id          String      @id @default(cuid())
+  paymentCode String      @unique
+  contractId  String
+  contract    Contract    @relation(fields: [contractId], references: [id])
+  roomCode    String
+  tenantId    String?
+  tenantName  String?
+  periodMonth String?
+  type        PaymentType
+  amountDue   Decimal     @default(0) @db.Decimal(10, 2)
+  amountPaid  Decimal     @default(0) @db.Decimal(10, 2)
+  dueDate     DateTime?
+  paidDate    DateTime?
+  status      String      @default("Paid")
+  method      String?
+  receiptLink String?
+  recordedBy  String
+  notes       String?
+
+  @@index([contractId])
+}
+
+model Commission {
+  id         String   @id @default(cuid())
+  commCode   String   @unique
+  agentId    String
+  agent      User     @relation(fields: [agentId], references: [id])
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id])
+  roomCode   String
+  saleAmount Decimal  @db.Decimal(10, 2)
+  commRate   Decimal  @db.Decimal(6, 4)
+  commAmount Decimal  @db.Decimal(10, 2)
+  status     String   @default("Pending")
+  approvedBy String?
+  paidDate   DateTime?
+  notes      String?
+
+  @@index([agentId])
+  @@index([contractId])
+}
+
+model MoveInOutForm {
+  id          String   @id @default(cuid())
+  formCode    String   @unique
+  type        MoveType
+  contractId  String
+  contract    Contract @relation(fields: [contractId], references: [id])
+  tenantId    String?
+  tenant      User?    @relation(fields: [tenantId], references: [id])
+  roomCode    String
+  moveInDate  DateTime?
+  formDate    DateTime?
+  photos      Json     @default("{}")
+  conditions  Json     @default("{}")
+  remarks     Json     @default("{}")
+  notes       String?
+  submittedAt DateTime?
+
+  @@index([contractId, type])
+}
+
+model Log {
+  id          String   @id @default(cuid())
+  logCode     String   @unique
+  timestamp   DateTime @default(now())
+  type        String
+  toEmail     String?
+  subject     String?
+  status      String?
+  relatedId   String?
+  triggeredBy String?
+}
