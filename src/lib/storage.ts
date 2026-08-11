@@ -24,6 +24,13 @@ export async function uploadDataUrl(dataUrl: string, filename: string): Promise<
     return blob.url;
   }
 
+  if (process.env.VERCEL) {
+    throw new Error(
+      "还没配置 Vercel Blob（文件存储）：去 Vercel 项目的 Storage 标签页建一个 Blob store，" +
+        "把生成的 BLOB_READ_WRITE_TOKEN 加到环境变量后重新部署"
+    );
+  }
+
   const dir = path.join(process.cwd(), "public", "uploads");
   await mkdir(dir, { recursive: true });
   const unique = `${Date.now()}_${safeName}`;

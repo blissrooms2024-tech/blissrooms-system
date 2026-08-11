@@ -55,9 +55,10 @@ const DOC_STYLE = `
 .contractDoc td,.contractDoc th{border:1px solid #999;padding:7px 10px;font-size:12px;vertical-align:top;}
 .contractDoc td.lbl{background:#eef4fa;font-weight:600;width:180px;}
 .contractDoc p{margin:9px 0;text-align:justify;}
-.contractDoc ol{padding-left:22px;margin:8px 0;}
-.contractDoc ol>li{margin-bottom:9px;text-align:justify;}
-.contractDoc ul{margin:6px 0;padding-left:20px;}
+.contractDoc ol{list-style-type:decimal;list-style-position:outside;padding-left:26px;margin:10px 0;}
+.contractDoc ol>li{display:list-item;margin-bottom:10px;text-align:justify;padding-left:4px;}
+.contractDoc ul{list-style-type:disc;list-style-position:outside;margin:8px 0;padding-left:24px;}
+.contractDoc ul>li{display:list-item;margin-bottom:6px;text-align:justify;padding-left:4px;}
 .contractDoc .sigrow{display:flex;gap:60px;margin-top:34px;margin-bottom:10px;}
 .contractDoc .sigrow>div{flex:1;}
 .contractDoc .sigbox table td{border:none;padding:2px 4px;font-size:12px;}
