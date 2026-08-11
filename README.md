@@ -82,14 +82,12 @@ Bliss Rooms Enterprise 出租管理系统 — 4 个角色（boss / admin / agent
 
 ## 关于合同 Appendix 图片（logo + 10 张 House Rules 图）
 
-原系统这些图片存在 Google Drive。链接搬过来后会失效，需要你把图片重新发给我（或自己上传到 Vercel Blob / 任意图床），拿到网址后配置这两个环境变量：
+已经从原来的 Google Drive 资料夹拉下来，存成静态文件放在 `public/contract-images/`，跟着代码一起提交，不依赖 Drive 链接是否还有效。以后要换图，直接替换 `public/contract-images/` 里对应文件名的图片再重新部署即可；如果想不改代码临时换图，也可以配置这两个环境变量覆盖默认值：
 
 ```
 NEXT_PUBLIC_CONTRACT_LOGO_URL="https://.../logo.png"
 NEXT_PUBLIC_CONTRACT_NOTICE_URLS="https://.../n1.png,https://.../n2.png,...(共10张，按合同 Appendix 顺序用逗号隔开)"
 ```
-
-不配置也完全能用，只是打印出来的合同 Appendix 部分不带配图。
 
 ## 项目结构速览
 

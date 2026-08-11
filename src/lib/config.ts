@@ -62,11 +62,26 @@ export const CONTRACT_STATUS_LABELS: Record<string, string> = {
   MOVED_OUT: "已搬出",
 };
 
-/** Optional Appendix images (logo + 10 house-rule notice photos). Configure via env once
- * you have real image URLs (e.g. uploaded to Vercel Blob); left blank they're simply omitted. */
+/** Appendix images (logo + 10 house-rule notice photos), bundled as static assets in
+ * public/contract-images/. Override via env if you ever want to swap them out without a redeploy. */
+const DEFAULT_NOTICE_URLS = [
+  "/contract-images/notice-01-general-house-rules.jpg",
+  "/contract-images/notice-02-common-area-cleanliness.jpg",
+  "/contract-images/notice-03-entrance-cleanliness.jpg",
+  "/contract-images/notice-04-kitchen-area-cleanliness.jpg",
+  "/contract-images/notice-05-toilet-rules.jpg",
+  "/contract-images/notice-06-laundry-house-rules.jpg",
+  "/contract-images/notice-07-router-troubleshooting.jpg",
+  "/contract-images/notice-08-electrical-power-trip.jpg",
+  "/contract-images/notice-09-appliances-aircond-furniture.jpg",
+  "/contract-images/notice-10-lost-key-smart-door.jpg",
+];
+
 export const CONTRACT_IMAGES = {
-  logo: process.env.NEXT_PUBLIC_CONTRACT_LOGO_URL || "",
-  notices: (process.env.NEXT_PUBLIC_CONTRACT_NOTICE_URLS || "").split(",").map((s) => s.trim()).filter(Boolean),
+  logo: process.env.NEXT_PUBLIC_CONTRACT_LOGO_URL || "/contract-images/logo.png",
+  notices: process.env.NEXT_PUBLIC_CONTRACT_NOTICE_URLS
+    ? process.env.NEXT_PUBLIC_CONTRACT_NOTICE_URLS.split(",").map((s) => s.trim())
+    : DEFAULT_NOTICE_URLS,
 };
 
 export const PAYMENT_TYPE_LABELS: Record<string, string> = {
