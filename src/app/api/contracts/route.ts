@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { serialize } from "@/lib/serialize";
-import { ensureTenantAccount } from "@/lib/tenantAccount";
 import { contractFormSchema } from "@/lib/schemas/contract";
 import { RULES } from "@/lib/config";
 
@@ -56,6 +55,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const tenant = await prisma.user.findUnique({ where: { userCode: d.tenantCode } });
+  if (!tenant || tenant.role !== "TENANT") {
+    return NextResponse.json({ success: false, message: "找不到这个租客资料，请先建租客资料再选" }, { status: 404 });
+  }
+
   let agentId = user.sub;
   let agentName = user.name;
   if (user.role === "ADMIN" && d.agentId) {
@@ -72,16 +76,14 @@ export async function POST(req: NextRequest) {
   const now = new Date();
   const autoDeleteAt = new Date(now.getTime() + RULES.DRAFT_AUTO_DELETE_DAYS * 24 * 60 * 60 * 1000);
 
-  const tenantId = d.email ? await ensureTenantAccount(d) : null;
-
   const contract = await prisma.contract.create({
     data: {
       contractCode: await newId("CT"),
       roomId: room.id,
       propertyAddress: room.propertyName,
-      tenantId,
-      tenantName: d.tenantName,
-      tenantIc: d.tenantIc,
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      tenantIc: tenant.ic,
       agentId,
       agentName,
       moveInDate: d.moveInDate,
@@ -123,11 +125,10 @@ export async function POST(req: NextRequest) {
 
   const utils = [d.utilElectric && "Electric", d.utilAircond && "Aircond", d.utilDryer && "Dryer"].filter(Boolean);
   const utilMsg = utils.length ? ` | 水电: ${utils.join(", ")}` : " | 水电: 无勾选";
-  const tenantMsg = tenantId && d.email ? ` | 租客账号: ${d.email}` : "";
 
   return NextResponse.json({
     success: true,
-    message: `✅ 合同已建: ${contract.contractCode} (草稿)${utilMsg}${tenantMsg}`,
+    message: `✅ 合同已建: ${contract.contractCode} (草稿) | 租客账号: ${tenant.email}${utilMsg}`,
     id: contract.contractCode,
   });
 }

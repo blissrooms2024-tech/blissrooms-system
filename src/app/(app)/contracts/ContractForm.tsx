@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { monthsBetween, endDateFromTenure } from "@/lib/tenure";
+import TenantPicker, { TenantOption } from "./TenantPicker";
 
 interface VacantRoom {
   roomCode: string;
@@ -15,8 +16,6 @@ interface Agent {
 const initialForm = {
   roomCode: "",
   agentId: "",
-  tenantName: "",
-  tenantIc: "",
   moveInDate: "",
   commencementDate: "",
   expiredDate: "",
@@ -51,9 +50,21 @@ export default function ContractForm({
   onCreated: () => void;
 }) {
   const [form, setForm] = useState(initialForm);
+  const [tenant, setTenant] = useState<TenantOption | null>(null);
   const [utils, setUtils] = useState({ electric: false, aircond: false, dryer: false });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function selectTenant(t: TenantOption | null) {
+    setTenant(t);
+    if (t) {
+      setForm((f) => ({
+        ...f,
+        email: f.email || t.email,
+        contactNumber: f.contactNumber || t.phone || "",
+      }));
+    }
+  }
 
   function set<K extends keyof typeof initialForm>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -72,8 +83,8 @@ export default function ContractForm({
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!form.roomCode || !form.tenantName) {
-      setMessage("房间和租客姓名一定要填");
+    if (!form.roomCode || !tenant) {
+      setMessage("房间和租客一定要选");
       return;
     }
     setLoading(true);
@@ -83,6 +94,7 @@ export default function ContractForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          tenantCode: tenant.userCode,
           utilElectric: utils.electric,
           utilAircond: utils.aircond,
           utilDryer: utils.dryer,
@@ -92,6 +104,7 @@ export default function ContractForm({
       setMessage(data.message);
       if (data.success) {
         setForm(initialForm);
+        setTenant(null);
         setUtils({ electric: false, aircond: false, dryer: false });
         onCreated();
       }
@@ -129,11 +142,8 @@ export default function ContractForm({
               </select>
             </Field>
           )}
-          <Field label="租客姓名">
-            <input className="input" value={form.tenantName} onChange={(e) => set("tenantName", e.target.value)} />
-          </Field>
-          <Field label="租客 IC">
-            <input className="input" value={form.tenantIc} onChange={(e) => set("tenantIc", e.target.value)} />
+          <Field label="租客" wide>
+            <TenantPicker value={tenant} onChange={selectTenant} />
           </Field>
         </Row>
 

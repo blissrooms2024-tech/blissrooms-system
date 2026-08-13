@@ -9,8 +9,7 @@ const optDate = z
 export const contractFormSchema = z.object({
   roomCode: z.string().trim().min(1),
   agentId: z.string().trim().optional(), // userCode, admin-only override
-  tenantName: z.string().trim().min(1),
-  tenantIc: z.string().trim().optional().default(""),
+  tenantCode: z.string().trim().min(1), // userCode of a pre-created tenant profile
   moveInDate: optDate,
   commencementDate: optDate,
   expiredDate: optDate,
@@ -37,3 +36,12 @@ export const contractFormSchema = z.object({
 });
 
 export type ContractFormInput = z.infer<typeof contractFormSchema>;
+
+/** Editing a contract corrects its printed details but never re-links the tenant account
+ * (tenantId is set once at creation via tenantCode) — so this takes free-text name/IC instead. */
+export const contractEditSchema = contractFormSchema
+  .omit({ roomCode: true, agentId: true, tenantCode: true })
+  .extend({
+    tenantName: z.string().trim().min(1),
+    tenantIc: z.string().trim().optional().default(""),
+  });

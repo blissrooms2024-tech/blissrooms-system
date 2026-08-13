@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, type SessionPayload } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
-import { contractFormSchema } from "@/lib/schemas/contract";
+import { contractEditSchema } from "@/lib/schemas/contract";
 
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
@@ -49,9 +49,7 @@ export async function PATCH(
     return NextResponse.json({ success: false, message: "这合同已经批准/生效, 不能再改了" }, { status: 409 });
   }
 
-  const parsed = contractFormSchema
-    .omit({ roomCode: true, agentId: true })
-    .safeParse(await req.json().catch(() => null));
+  const parsed = contractEditSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ success: false, message: "资料格式不对" }, { status: 400 });
   }
