@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
+import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { MOVE_ITEMS, MoveItem } from "@/lib/moveItems";
 
@@ -37,6 +38,7 @@ export default function MoveFormModal({
   const [remarks, setRemarks] = useState<Record<string, string>>({});
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/contracts/${contractCode}/move?type=${type}`)
@@ -169,7 +171,9 @@ export default function MoveFormModal({
               <div className="my-2 flex flex-wrap gap-1.5">
                 {(photos[it.key] || []).map((u, i) => (
                   <div key={i} className="relative">
-                    <img src={u} alt="" className="h-[60px] rounded border border-gray-300" />
+                    <button type="button" onClick={() => setZoomUrl(u)} className="cursor-zoom-in">
+                      <img src={u} alt="" className="h-[60px] rounded border border-gray-300 hover:opacity-90" />
+                    </button>
                     <button
                       onClick={() => removePhoto(it.key, i)}
                       className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red-600 text-xs text-white"
@@ -184,7 +188,7 @@ export default function MoveFormModal({
                 accept="image/*"
                 disabled={uploadingKey === it.key}
                 onChange={(e) => e.target.files?.[0] && uploadPhoto(it, e.target.files[0])}
-                className="text-sm"
+                className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
               />
               <span className="ml-1.5 text-xs text-gray-400">最多{it.max}张</span>
               <input
@@ -206,6 +210,7 @@ export default function MoveFormModal({
           </button>
         </div>
       )}
+      {zoomUrl && <Lightbox src={zoomUrl} alt="" onClose={() => setZoomUrl(null)} />}
     </Modal>
   );
 }
