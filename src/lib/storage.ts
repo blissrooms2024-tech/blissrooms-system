@@ -3,9 +3,10 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 /**
- * Uploads a base64 data-URL image and returns its public URL.
- * Uses Vercel Blob when BLOB_READ_WRITE_TOKEN is configured; otherwise falls back to
- * writing into public/uploads so local dev works without any cloud credentials.
+ * Uploads a base64 data-URL image and returns a URL the browser can load it from.
+ * Uses Vercel Blob (private access) when BLOB_READ_WRITE_TOKEN is configured — reads go
+ * through /api/blob so only logged-in users can view IC photos/signatures; otherwise falls
+ * back to writing into public/uploads so local dev works without any cloud credentials.
  */
 export async function uploadDataUrl(dataUrl: string, filename: string): Promise<string> {
   const match = String(dataUrl).match(/^data:(.+?);base64,(.*)$/);
@@ -16,12 +17,12 @@ export async function uploadDataUrl(dataUrl: string, filename: string): Promise<
 
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     const blob = await put(safeName, buffer, {
-      access: "public",
+      access: "private",
       contentType: mime,
       token: process.env.BLOB_READ_WRITE_TOKEN,
       addRandomSuffix: true,
     });
-    return blob.url;
+    return `/api/blob?u=${encodeURIComponent(blob.url)}`;
   }
 
   if (process.env.VERCEL) {
