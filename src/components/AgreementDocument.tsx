@@ -59,11 +59,15 @@ const DOC_STYLE = `
 .contractDoc ol>li{display:list-item;margin-bottom:10px;text-align:justify;padding-left:4px;}
 .contractDoc ul{list-style-type:disc;list-style-position:outside;margin:8px 0;padding-left:24px;}
 .contractDoc ul>li{display:list-item;margin-bottom:6px;text-align:justify;padding-left:4px;}
-.contractDoc .sigrow{display:flex;gap:60px;margin-top:34px;margin-bottom:10px;}
+.contractDoc .sigrow{display:flex;gap:60px;margin-top:34px;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;}
 .contractDoc .sigrow>div{flex:1;}
+.contractDoc .sigbox{page-break-inside:avoid;break-inside:avoid;}
 .contractDoc .sigbox table td{border:none;padding:2px 4px;font-size:12px;}
 .contractDoc .small{font-size:10.5px;color:#444;}
-.contractDoc .appx-item{border:1px solid #bbb;border-radius:5px;padding:12px 14px;margin-top:14px;background:#fafbfc;}
+.contractDoc .appx-item{border:1px solid #bbb;border-radius:5px;padding:12px 14px;margin-top:14px;background:#fafbfc;page-break-inside:avoid;break-inside:avoid;}
+.contractDoc ol>li,.contractDoc ul>li{page-break-inside:avoid;break-inside:avoid;}
+.contractDoc table tr{page-break-inside:avoid;break-inside:avoid;}
+.contractDoc p{orphans:3;widows:3;}
 .contractDoc .np{text-align:center;color:#b0b0b0;font-size:10px;letter-spacing:2px;border-top:2px dashed #d0d7e2;margin:34px 0 0;padding-top:6px;}
 @media print{.contractDoc .np{display:none;}}
 `;
