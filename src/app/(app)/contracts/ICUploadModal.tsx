@@ -15,10 +15,12 @@ function readAsDataURL(file: File): Promise<string> {
 
 export default function ICUploadModal({
   contractCode,
+  readOnly,
   onClose,
   onUploaded,
 }: {
   contractCode: string;
+  readOnly?: boolean;
   onClose: () => void;
   onUploaded: () => void;
 }) {
@@ -69,10 +71,12 @@ export default function ICUploadModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="text-lg font-bold text-brand">🪪 上传 IC / 护照 — {contractCode}</h3>
-      <p className="mt-1 text-sm text-gray-500">正反面都要上传。上传后才可以签名。</p>
-      <Slot label="正面 Front" side="front" url={front} loading={loadingSide === "front"} onPick={(f) => upload("front", f)} />
-      <Slot label="背面 Back" side="back" url={back} loading={loadingSide === "back"} onPick={(f) => upload("back", f)} />
+      <h3 className="text-lg font-bold text-brand">🪪 {readOnly ? "查看" : "上传"} IC / 护照 — {contractCode}</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        {readOnly ? "只有租客本人可以上传/更换 IC，这里只能查看。" : "正反面都要上传。上传后才可以签名。"}
+      </p>
+      <Slot label="正面 Front" side="front" url={front} loading={loadingSide === "front"} readOnly={readOnly} onPick={(f) => upload("front", f)} />
+      <Slot label="背面 Back" side="back" url={back} loading={loadingSide === "back"} readOnly={readOnly} onPick={(f) => upload("back", f)} />
     </Modal>
   );
 }
@@ -81,12 +85,14 @@ function Slot({
   label,
   url,
   loading,
+  readOnly,
   onPick,
 }: {
   label: string;
   side: "front" | "back";
   url: string | null;
   loading: boolean;
+  readOnly?: boolean;
   onPick: (file: File) => void;
 }) {
   return (
@@ -99,14 +105,18 @@ function Slot({
           <span className="text-sm text-gray-400">还没上传</span>
         )}
       </div>
-      <input
-        type="file"
-        accept="image/*"
-        disabled={loading}
-        onChange={(e) => e.target.files?.[0] && onPick(e.target.files[0])}
-        className="text-sm"
-      />
-      {loading && <span className="ml-2 text-sm text-gray-500">上传中...</span>}
+      {!readOnly && (
+        <>
+          <input
+            type="file"
+            accept="image/*"
+            disabled={loading}
+            onChange={(e) => e.target.files?.[0] && onPick(e.target.files[0])}
+            className="text-sm"
+          />
+          {loading && <span className="ml-2 text-sm text-gray-500">上传中...</span>}
+        </>
+      )}
     </div>
   );
 }

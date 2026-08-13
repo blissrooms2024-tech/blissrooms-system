@@ -5,7 +5,6 @@ import Link from "next/link";
 import { CONTRACT_STATUS_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import ContractForm from "./ContractForm";
 import EditContractModal from "./EditContractModal";
 import SignatureModal from "./SignatureModal";
 import ICUploadModal from "./ICUploadModal";
@@ -34,8 +33,6 @@ function fmt(v: number) {
 export default function ContractsClient({ role }: { role: string }) {
   const toast = useToast();
   const [contracts, setContracts] = useState<Contract[] | null>(null);
-  const [vacant, setVacant] = useState<{ roomCode: string; propertyName: string }[]>([]);
-  const [agents, setAgents] = useState<{ userCode: string; name: string }[]>([]);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [signing, setSigning] = useState<string | null>(null);
@@ -54,8 +51,6 @@ export default function ContractsClient({ role }: { role: string }) {
         return;
       }
       setContracts(data.contracts);
-      setVacant(data.vacant);
-      setAgents(data.agents);
     } catch {
       setError("出错，请稍后再试");
     }
@@ -90,10 +85,15 @@ export default function ContractsClient({ role }: { role: string }) {
 
   return (
     <div className="space-y-4">
-      {canCreate && <ContractForm role={role} vacantRooms={vacant} agents={agents} onCreated={load} />}
-
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">合同清单</h3>
+        <div className="mb-3.5 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-brand">合同清单</h3>
+          {canCreate && (
+            <Link href="/contracts/new" className="btn-primary text-sm">
+              📝 开新合同
+            </Link>
+          )}
+        </div>
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!contracts && !error && <div className="text-sm text-gray-500">载入中...</div>}
         {contracts && (
@@ -146,48 +146,48 @@ export default function ContractsClient({ role }: { role: string }) {
                       <div className="flex flex-wrap gap-1.5">
                         <Link
                           href={`/agreement/${c.contractCode}`}
-                          className="rounded-md bg-gray-500 px-2.5 py-1 text-xs font-semibold text-white"
+                          className="flex items-center gap-1 rounded-md bg-gray-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-600"
                         >
-                          📄
+                          📄 合同
                         </Link>
                         {role === "ADMIN" && (
-                          <ActionBtn color="bg-purple-600" onClick={() => setIcUploading(c.contractCode)}>
-                            🪪IC
+                          <ActionBtn color="bg-violet-600" onClick={() => setIcUploading(c.contractCode)}>
+                            🪪 查看IC
                           </ActionBtn>
                         )}
                         {role === "AGENT" && !c.agentSignature && (c.status === "PENDING_SIGN" || c.status === "ACTIVE") && (
                           <ActionBtn color="bg-pink-600" onClick={() => setSigning(c.contractCode)}>
-                            ✍️签名
+                            ✍️ 签名
                           </ActionBtn>
                         )}
                         {role === "ADMIN" && c.status === "ACTIVE" && (
                           <ActionBtn color="bg-cyan-600" onClick={() => setMoveForm(c.contractCode)}>
-                            📋Move-in
+                            📋 Move-in
                           </ActionBtn>
                         )}
                         {role === "ADMIN" && (
-                          <ActionBtn color="bg-yellow-600" onClick={() => setPaying(c)}>
-                            💰
+                          <ActionBtn color="bg-amber-500" onClick={() => setPaying(c)}>
+                            💰 收款
                           </ActionBtn>
                         )}
                         {(role === "AGENT" || role === "ADMIN") && c.status === "DRAFT" && (
                           <ActionBtn color="bg-brand" onClick={() => doAction("submit", c.contractCode)}>
-                            提交
+                            📤 提交
                           </ActionBtn>
                         )}
                         {role === "ADMIN" && c.status === "PENDING_APPROVE" && (
                           <ActionBtn color="bg-green-700" onClick={() => doAction("approve", c.contractCode)}>
-                            批
+                            ✅ 批准
                           </ActionBtn>
                         )}
                         {role === "ADMIN" && (c.status === "DRAFT" || c.status === "PENDING_APPROVE") && (
                           <ActionBtn color="bg-brand" onClick={() => setEditing(c.contractCode)}>
-                            ✏️
+                            ✏️ 编辑
                           </ActionBtn>
                         )}
                         {role === "ADMIN" && (
                           <ActionBtn color="bg-red-600" onClick={() => setDeleting(c.contractCode)}>
-                            删
+                            🗑️ 删除
                           </ActionBtn>
                         )}
                       </div>
@@ -207,7 +207,7 @@ export default function ContractsClient({ role }: { role: string }) {
         <SignatureModal contractCode={signing} who="agent" onClose={() => setSigning(null)} onSigned={load} />
       )}
       {icUploading && (
-        <ICUploadModal contractCode={icUploading} onClose={() => setIcUploading(null)} onUploaded={load} />
+        <ICUploadModal contractCode={icUploading} readOnly onClose={() => setIcUploading(null)} onUploaded={load} />
       )}
       {moveForm && (
         <MoveFormModal

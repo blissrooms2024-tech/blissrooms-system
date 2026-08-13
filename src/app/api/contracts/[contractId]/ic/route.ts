@@ -21,8 +21,8 @@ export async function POST(
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
 
   const isTenant = contract.tenantId === user.sub;
-  if (user.role !== "ADMIN" && !isTenant) {
-    return NextResponse.json({ success: false, message: "你没有权限上传这张合同的 IC" }, { status: 403 });
+  if (!isTenant) {
+    return NextResponse.json({ success: false, message: "只有这张合同的租客本人可以上传 IC" }, { status: 403 });
   }
 
   const parsed = schema.safeParse(await req.json().catch(() => null));
