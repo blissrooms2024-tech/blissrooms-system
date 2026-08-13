@@ -98,6 +98,16 @@ NEXT_PUBLIC_CONTRACT_NOTICE_URLS="https://.../n1.png,https://.../n2.png,...(共1
 - `src/app/agreement/[contractId]` — 完整双语租约文件预览 + 打印
 - `src/proxy.ts` — 路由守卫（Next.js 16 把 `middleware.ts` 改名成了 `proxy.ts`）
 
+## 楼盘 (Unit) 管理与月报
+
+`Property` 表代表一个"楼盘/Unit"（一栋房子），底下挂多个 `Room`。Admin 在 **楼盘** 页面建 Unit（可以填 Landlord + 管理费 %，留空 Landlord 就代表是自己名下的房产），加房间时要选 Unit 而不是自己打字。每个 Unit 详情页（`/units/[propertyCode]`）能按月生成收入报表：每个房间收了多少、按项目（房租/水电/押金…）拆分明细，如果这个 Unit 有填 Landlord，还会自动算管理费和应付给 Landlord 的净额，可以直接打印/存 PDF 给 Landlord。
+
+**部署这个功能后，第一次要跑一次性的数据迁移**：老数据里房间只有 `propertyName` 这个自由文本字段，没有真正连到 Property 表。跑一次下面这个命令，它会把现有房间按 `propertyName` 分组，自动建对应的 Unit 并把房间连上去（可以重复跑，已经连上的房间会跳过）：
+
+```bash
+DATABASE_URL="<Neon 连接串>" npm run backfill-properties
+```
+
 ## 常用命令
 
 ```bash
@@ -107,4 +117,5 @@ npm run lint             # ESLint 检查
 npx prisma studio        # 图形化查看/编辑数据库
 npx prisma migrate dev   # 本地改了 schema.prisma 后建迁移
 npm run seed              # 灌种子数据
+npm run backfill-properties  # 一次性：把老房间按 propertyName 分组建 Unit 并连上
 ```
