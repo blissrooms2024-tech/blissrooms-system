@@ -22,6 +22,7 @@ export async function GET() {
       roomType: r.roomType,
       roomRental: Number(r.roomRental),
       carparkRental: Number(r.carparkRental),
+      hasAircon: r.hasAircon,
       status: r.status,
       currentTenantId: r.currentTenantId,
       currentContractId: r.currentContractId,
@@ -36,6 +37,7 @@ const addSchema = z.object({
   roomType: z.string().trim().default(""),
   roomRental: z.coerce.number().min(0).default(0),
   carparkRental: z.coerce.number().min(0).default(0),
+  hasAircon: z.boolean().default(false),
 });
 
 export async function POST(req: NextRequest) {
@@ -67,6 +69,7 @@ export async function POST(req: NextRequest) {
       roomType: d.roomType,
       roomRental: d.roomRental,
       carparkRental: d.carparkRental,
+      hasAircon: d.hasAircon,
       status: "VACANT",
     },
   });

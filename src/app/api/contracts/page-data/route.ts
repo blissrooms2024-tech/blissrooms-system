@@ -18,7 +18,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: { room: { select: { roomCode: true } } },
     }),
-    prisma.payment.groupBy({ by: ["contractId"], _sum: { amountPaid: true } }),
+    prisma.payment.groupBy({ by: ["contractId"], where: { status: "Paid" }, _sum: { amountPaid: true } }),
     prisma.room.findMany({ where: { status: "VACANT" }, select: { roomCode: true, propertyName: true } }),
     user.role === "ADMIN"
       ? prisma.user.findMany({

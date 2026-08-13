@@ -10,6 +10,7 @@ import SignatureModal from "./SignatureModal";
 import ICUploadModal from "./ICUploadModal";
 import MoveFormModal from "./MoveFormModal";
 import PaymentModal from "./PaymentModal";
+import WarningLetterModal from "./WarningLetterModal";
 
 interface Contract {
   contractCode: string;
@@ -40,6 +41,7 @@ export default function ContractsClient({ role }: { role: string }) {
   const [moveForm, setMoveForm] = useState<string | null>(null);
   const [paying, setPaying] = useState<Contract | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [warningFor, setWarningFor] = useState<Contract | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -186,6 +188,11 @@ export default function ContractsClient({ role }: { role: string }) {
                           </ActionBtn>
                         )}
                         {role === "ADMIN" && (
+                          <ActionBtn color="bg-orange-600" onClick={() => setWarningFor(c)}>
+                            ⚠️ 警告信
+                          </ActionBtn>
+                        )}
+                        {role === "ADMIN" && (
                           <ActionBtn color="bg-red-600" onClick={() => setDeleting(c.contractCode)}>
                             🗑️ 删除
                           </ActionBtn>
@@ -223,6 +230,13 @@ export default function ContractsClient({ role }: { role: string }) {
           tenantName={paying.tenantName}
           onClose={() => setPaying(null)}
           onChanged={load}
+        />
+      )}
+      {warningFor && (
+        <WarningLetterModal
+          contractCode={warningFor.contractCode}
+          tenantName={warningFor.tenantName}
+          onClose={() => setWarningFor(null)}
         />
       )}
       <ConfirmDialog

@@ -20,7 +20,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: { room: { select: { roomCode: true } } },
     }),
-    prisma.payment.groupBy({ by: ["contractId"], _sum: { amountPaid: true } }),
+    prisma.payment.groupBy({ by: ["contractId"], where: { status: "Paid" }, _sum: { amountPaid: true } }),
   ]);
 
   const paidMap = new Map(paidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));

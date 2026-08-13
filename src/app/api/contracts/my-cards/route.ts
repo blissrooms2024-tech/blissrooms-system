@@ -15,20 +15,26 @@ export async function GET() {
     include: { room: { select: { roomCode: true } } },
   });
 
-  const [paidGroups, moveForms] = await Promise.all([
+  const [paidGroups, moveForms, unpaidBills] = await Promise.all([
     prisma.payment.groupBy({
       by: ["contractId"],
-      where: { contractId: { in: contracts.map((c) => c.id) } },
+      where: { contractId: { in: contracts.map((c) => c.id) }, status: "Paid" },
       _sum: { amountPaid: true },
     }),
     prisma.moveInOutForm.findMany({
       where: { contractId: { in: contracts.map((c) => c.id) } },
       select: { contractId: true, type: true },
     }),
+    prisma.payment.findMany({
+      where: { contractId: { in: contracts.map((c) => c.id) }, status: { in: ["PENDING", "REJECTED"] } },
+      select: { contractId: true },
+    }),
   ]);
 
   const paidMap = new Map(paidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));
   const moveSet = new Set(moveForms.map((m) => `${m.contractId}_${m.type}`));
+  const unpaidBillCount = new Map<string, number>();
+  for (const b of unpaidBills) unpaidBillCount.set(b.contractId, (unpaidBillCount.get(b.contractId) ?? 0) + 1);
 
   const cards = contracts.map((c) => {
     const paid = paidMap.get(c.id) ?? 0;
@@ -49,6 +55,7 @@ export async function GET() {
       hasICBack: !!c.icBack,
       moveInDone: moveSet.has(`${c.id}_MOVE_IN`),
       moveOutDone: moveSet.has(`${c.id}_MOVE_OUT`),
+      unpaidBillCount: unpaidBillCount.get(c.id) ?? 0,
       daysToExpiry,
     };
   });

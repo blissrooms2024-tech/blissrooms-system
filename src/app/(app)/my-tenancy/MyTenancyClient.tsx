@@ -6,6 +6,7 @@ import { CONTRACT_STATUS_LABELS } from "@/lib/config";
 import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import MoveFormModal from "../contracts/MoveFormModal";
+import BillsModal from "../contracts/BillsModal";
 
 interface Card {
   contractCode: string;
@@ -20,6 +21,7 @@ interface Card {
   hasICBack: boolean;
   moveInDone: boolean;
   moveOutDone: boolean;
+  unpaidBillCount: number;
   daysToExpiry: number | null;
 }
 
@@ -39,6 +41,7 @@ export default function MyTenancyClient() {
   const [signing, setSigning] = useState<string | null>(null);
   const [icUploading, setIcUploading] = useState<string | null>(null);
   const [moveForm, setMoveForm] = useState<{ code: string; type: "MoveIn" | "MoveOut" } | null>(null);
+  const [billsFor, setBillsFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -200,15 +203,22 @@ export default function MyTenancyClient() {
               })()}
 
               <Row
-                icon="💰"
-                name="租金 Outstanding"
+                icon="💳"
+                name="我的账单 Bills"
                 desc={`总款 RM${c.totalOutstanding.toLocaleString()} · 已收 RM${c.paid.toLocaleString()}`}
                 status={
-                  c.outstanding > 0 ? (
+                  c.unpaidBillCount > 0 ? (
+                    <Pill tone="due">{c.unpaidBillCount} 个账单待处理</Pill>
+                  ) : c.outstanding > 0 ? (
                     <Pill tone="due">RM{c.outstanding.toLocaleString()} 未清</Pill>
                   ) : (
                     <Pill tone="done">✅ 已清</Pill>
                   )
+                }
+                action={
+                  <button onClick={() => setBillsFor(c.contractCode)} className="btn-soft px-3.5 py-1.5 text-xs">
+                    查看账单
+                  </button>
                 }
               />
             </div>
@@ -230,6 +240,7 @@ export default function MyTenancyClient() {
           onSubmitted={load}
         />
       )}
+      {billsFor && <BillsModal contractCode={billsFor} onClose={() => setBillsFor(null)} onChanged={load} />}
     </div>
   );
 }

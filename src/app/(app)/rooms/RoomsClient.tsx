@@ -12,6 +12,7 @@ interface Room {
   roomType: string | null;
   roomRental: number;
   carparkRental: number;
+  hasAircon: boolean;
   status: "VACANT" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";
   currentTenantId: string | null;
   currentContractId: string | null;
@@ -34,7 +35,7 @@ export default function RoomsClient({ role }: { role: string }) {
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ roomCode: "", propertyCode: "", roomType: "", roomRental: "" });
+  const [form, setForm] = useState({ roomCode: "", propertyCode: "", roomType: "", roomRental: "", hasAircon: false });
 
   async function loadRooms() {
     setError("");
@@ -78,7 +79,7 @@ export default function RoomsClient({ role }: { role: string }) {
     const data = await res.json();
     if (data.success) {
       toast.success(data.message);
-      setForm({ roomCode: "", propertyCode: "", roomType: "", roomRental: "" });
+      setForm({ roomCode: "", propertyCode: "", roomType: "", roomRental: "", hasAircon: false });
       loadRooms();
     } else {
       toast.danger(data.message);
@@ -142,6 +143,14 @@ export default function RoomsClient({ role }: { role: string }) {
                 className="input"
               />
             </Field>
+            <label className="mb-1.5 flex cursor-pointer items-center gap-1.5 self-end pb-2.5 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={form.hasAircon}
+                onChange={(e) => setForm({ ...form, hasAircon: e.target.checked })}
+              />
+              ❄️ 有冷气
+            </label>
             <button type="submit" className="btn-primary">
               加入
             </button>
@@ -171,6 +180,7 @@ export default function RoomsClient({ role }: { role: string }) {
                   <Th>楼盘 Unit</Th>
                   <Th>类型</Th>
                   <Th>房租</Th>
+                  <Th>冷气</Th>
                   <Th>状态</Th>
                   {canEdit && <Th>改状态</Th>}
                 </tr>
@@ -178,7 +188,7 @@ export default function RoomsClient({ role }: { role: string }) {
               <tbody>
                 {rooms.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-gray-400">
+                    <td colSpan={canEdit ? 7 : 6} className="py-6 text-center text-gray-400">
                       暂时没有房间
                     </td>
                   </tr>
@@ -199,6 +209,7 @@ export default function RoomsClient({ role }: { role: string }) {
                     </Td>
                     <Td>{r.roomType}</Td>
                     <Td>RM{r.roomRental}</Td>
+                    <Td>{r.hasAircon ? "❄️" : "-"}</Td>
                     <Td>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status]}`}>
                         {ROOM_STATUS_LABELS[r.status]}

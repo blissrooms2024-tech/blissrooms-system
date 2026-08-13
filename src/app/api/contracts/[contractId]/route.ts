@@ -21,16 +21,17 @@ export async function GET(
   const { contractId } = await params;
   const contract = await prisma.contract.findUnique({
     where: { contractCode: contractId },
-    include: { room: true, agent: true },
+    include: { room: true, agent: { select: { ic: true } } },
   });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (!canView(user, contract)) {
     return NextResponse.json({ success: false, message: "没有权限查看这张合同" }, { status: 403 });
   }
 
+  const { agent, ...rest } = contract;
   return NextResponse.json({
     success: true,
-    contract: serialize({ ...contract, agentIc: contract.agent.ic }),
+    contract: serialize({ ...rest, agentIc: agent.ic }),
   });
 }
 

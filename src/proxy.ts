@@ -5,13 +5,16 @@ import { ROLE_HOME } from "@/lib/roleHome";
 
 // Next.js 16 renamed `middleware.ts` -> `proxy.ts` and `middleware()` -> `proxy()`.
 
-// Always allowed, regardless of session state (auth API endpoints).
+// Always allowed, regardless of session state (auth API endpoints, plus Vercel Cron —
+// those requests carry an `Authorization: Bearer CRON_SECRET` header, never a session
+// cookie, and each cron route verifies that header itself).
 const PUBLIC_API_PATHS = [
   "/api/auth/login",
   "/api/auth/logout",
   "/api/auth/verify",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
+  "/api/cron",
 ];
 
 // Allowed without a session, but redirected away from if a valid session exists.

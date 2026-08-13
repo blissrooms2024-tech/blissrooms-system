@@ -37,6 +37,7 @@ export async function GET(
         where: {
           roomCode: { in: roomCodes },
           paidDate: { gte: rangeStart, lt: rangeEnd },
+          status: "Paid",
         },
         orderBy: [{ roomCode: "asc" }, { paidDate: "asc" }],
       })

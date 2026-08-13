@@ -24,7 +24,7 @@ export async function GET(
   const { contractId } = await params;
   const c = await prisma.contract.findUnique({
     where: { contractCode: contractId },
-    include: { agent: true },
+    include: { agent: { select: { ic: true } }, room: { select: { hasAircon: true } } },
   });
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (!canView(user, c)) {
@@ -45,6 +45,7 @@ export async function GET(
   };
   const paidByType: Record<string, number> = {};
   for (const p of payments) {
+    if (p.status !== "Paid") continue;
     paidByType[p.type] = (paidByType[p.type] || 0) + Number(p.amountPaid);
   }
 
@@ -55,11 +56,12 @@ export async function GET(
   });
 
   const totalDue = Number(c.totalOutstanding);
-  const totalPaid = payments.reduce((s, p) => s + Number(p.amountPaid), 0);
+  const totalPaid = payments.filter((p) => p.status === "Paid").reduce((s, p) => s + Number(p.amountPaid), 0);
 
+  const { agent, ...contractRest } = c;
   return NextResponse.json({
     success: true,
-    contract: serialize({ ...c, agentIc: c.agent.ic }),
+    contract: serialize({ ...contractRest, agentIc: agent.ic }),
     payments: serialize(payments),
     breakdown,
     totalDue,
