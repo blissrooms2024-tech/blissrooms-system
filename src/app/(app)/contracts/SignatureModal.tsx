@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
+import { useToast } from "@/components/Toast";
 
 export default function SignatureModal({
   contractCode,
@@ -14,10 +15,9 @@ export default function SignatureModal({
   onClose: () => void;
   onSigned: () => void;
 }) {
+  const toast = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dirtyRef = useRef(false);
-  const [message, setMessage] = useState("");
-  const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function SignatureModal({
 
   async function submit() {
     if (!dirtyRef.current) {
-      setMessage("请先签名");
+      toast.warning("请先签名");
       return;
     }
     const dataUrl = canvasRef.current!.toDataURL("image/png");
@@ -96,16 +96,17 @@ export default function SignatureModal({
         body: JSON.stringify({ who, dataUrl }),
       });
       const data = await res.json();
-      setOk(!!data.success);
-      setMessage(data.message);
       if (data.success) {
+        toast.success(data.message);
         setTimeout(() => {
           onSigned();
           onClose();
         }, 1200);
+      } else {
+        toast.danger(data.message);
       }
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setLoading(false);
     }
@@ -133,7 +134,6 @@ export default function SignatureModal({
           确定签名
         </button>
       </div>
-      {message && <div className={`mt-2.5 text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{message}</div>}
     </Modal>
   );
 }

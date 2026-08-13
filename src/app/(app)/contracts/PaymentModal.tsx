@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Modal from "@/components/Modal";
+import { useToast } from "@/components/Toast";
 import { PAYMENT_TYPE_LABELS } from "@/lib/config";
 
 interface Breakdown {
@@ -38,24 +39,24 @@ export default function PaymentModal({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const toast = useToast();
   const [breakdown, setBreakdown] = useState<Breakdown[] | null>(null);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [totals, setTotals] = useState({ due: 0, paid: 0, outstanding: 0 });
   const [form, setForm] = useState({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer" });
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
     const data = await res.json();
     if (!data.success) {
-      setMessage(data.message);
+      toast.danger(data.message);
       return;
     }
     setBreakdown(data.breakdown);
     setPayments(data.payments);
     setTotals({ due: data.totalDue, paid: data.totalPaid, outstanding: data.totalOutstanding });
-  }, [contractCode]);
+  }, [contractCode, toast]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -65,7 +66,7 @@ export default function PaymentModal({
 
   async function submitPay() {
     if (!form.amountPaid) {
-      setMessage("请填金额");
+      toast.warning("请填金额");
       return;
     }
     setLoading(true);
@@ -79,14 +80,16 @@ export default function PaymentModal({
         }),
       });
       const data = await res.json();
-      setMessage(data.message);
       if (data.success) {
+        toast.success(data.message);
         setForm({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer" });
         load();
         onChanged();
+      } else {
+        toast.danger(data.message);
       }
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setLoading(false);
     }
@@ -178,7 +181,6 @@ export default function PaymentModal({
             记录
           </button>
         </div>
-        {message && <div className="mt-2 text-sm text-gray-600">{message}</div>}
       </div>
 
       <b className="mt-3.5 block text-sm">📜 收款历史</b>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
+import { useToast } from "@/components/Toast";
 import { monthsBetween, endDateFromTenure } from "@/lib/tenure";
 
 function dv(v: unknown) {
@@ -17,10 +18,10 @@ export default function EditContractModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const toast = useToast();
   const [form, setForm] = useState<Record<string, string> | null>(null);
   const [utils, setUtils] = useState({ electric: false, aircond: false, dryer: false });
   const [message, setMessage] = useState("");
-  const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -91,16 +92,17 @@ export default function EditContractModal({
         }),
       });
       const data = await res.json();
-      setOk(!!data.success);
-      setMessage(data.message);
       if (data.success) {
+        toast.success(data.message);
         setTimeout(() => {
           onSaved();
           onClose();
         }, 800);
+      } else {
+        toast.danger(data.message);
       }
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setLoading(false);
     }
@@ -230,7 +232,6 @@ export default function EditContractModal({
           <button onClick={save} disabled={loading} className="btn-primary">
             保存修改
           </button>
-          {message && <div className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{message}</div>}
         </div>
       )}
     </Modal>

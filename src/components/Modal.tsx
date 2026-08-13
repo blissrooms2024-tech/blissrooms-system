@@ -29,7 +29,7 @@ export default function Modal({
         <div className="mt-4 text-right">
           <button
             onClick={onClose}
-            className="rounded-lg bg-brand-light px-4 py-2 text-sm font-semibold text-brand hover:bg-blue-100"
+            className="rounded-lg bg-brand-light px-4 py-2 text-sm font-semibold text-brand hover:bg-violet-100"
           >
             关闭
           </button>

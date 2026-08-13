@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import Modal from "@/components/Modal";
+import { useToast } from "@/components/Toast";
 
 export default function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
+  const toast = useToast();
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function submit() {
     if (!email) {
-      setMessage("请填 Email");
+      toast.warning("请填 Email");
       return;
     }
     setLoading(true);
@@ -21,9 +22,9 @@ export default function ForgotPasswordModal({ onClose }: { onClose: () => void }
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      setMessage(data.message || "如果这个 Email 有账号, 重设邮件已寄出。");
+      toast.info(data.message || "如果这个 Email 有账号, 重设邮件已寄出。");
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setLoading(false);
     }
@@ -43,11 +44,10 @@ export default function ForgotPasswordModal({ onClose }: { onClose: () => void }
       <button
         onClick={submit}
         disabled={loading}
-        className="mt-4 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-blue-300"
+        className="mt-4 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-violet-300"
       >
         {loading ? "寄出中..." : "寄出重设链接"}
       </button>
-      {message && <div className="mt-2.5 text-sm text-gray-600">{message}</div>}
     </Modal>
   );
 }

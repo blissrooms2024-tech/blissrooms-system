@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import ContractForm from "./ContractForm";
 import EditContractModal from "./EditContractModal";
 import SignatureModal from "./SignatureModal";
@@ -30,16 +32,17 @@ function fmt(v: number) {
 }
 
 export default function ContractsClient({ role }: { role: string }) {
+  const toast = useToast();
   const [contracts, setContracts] = useState<Contract[] | null>(null);
   const [vacant, setVacant] = useState<{ roomCode: string; propertyName: string }[]>([]);
   const [agents, setAgents] = useState<{ userCode: string; name: string }[]>([]);
   const [error, setError] = useState("");
-  const [actionMsg, setActionMsg] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [signing, setSigning] = useState<string | null>(null);
   const [icUploading, setIcUploading] = useState<string | null>(null);
   const [moveForm, setMoveForm] = useState<string | null>(null);
   const [paying, setPaying] = useState<Contract | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -64,13 +67,22 @@ export default function ContractsClient({ role }: { role: string }) {
     load();
   }, [load]);
 
-  async function doAction(fn: "submit" | "approve" | "delete", contractCode: string) {
-    if (fn === "delete" && !confirm("确定删除这个合同？房间会放回空房。")) return;
-    const method = fn === "delete" ? "DELETE" : "POST";
-    const url = fn === "delete" ? `/api/contracts/${contractCode}` : `/api/contracts/${contractCode}/${fn}`;
-    const res = await fetch(url, { method });
+  async function doAction(fn: "submit" | "approve", contractCode: string) {
+    const res = await fetch(`/api/contracts/${contractCode}/${fn}`, { method: "POST" });
     const data = await res.json();
-    setActionMsg(data.message);
+    if (data.success) toast.success(data.message);
+    else toast.danger(data.message);
+    load();
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    const contractCode = deleting;
+    setDeleting(null);
+    const res = await fetch(`/api/contracts/${contractCode}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) toast.success(data.message);
+    else toast.danger(data.message);
     load();
   }
 
@@ -83,7 +95,6 @@ export default function ContractsClient({ role }: { role: string }) {
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <h3 className="mb-3.5 text-base font-semibold text-brand">合同清单</h3>
         {error && <div className="text-sm text-red-600">{error}</div>}
-        {actionMsg && <div className="mb-2 text-sm text-gray-600">{actionMsg}</div>}
         {!contracts && !error && <div className="text-sm text-gray-500">载入中...</div>}
         {contracts && (
           <div className="overflow-x-auto">
@@ -175,7 +186,7 @@ export default function ContractsClient({ role }: { role: string }) {
                           </ActionBtn>
                         )}
                         {role === "ADMIN" && (
-                          <ActionBtn color="bg-red-600" onClick={() => doAction("delete", c.contractCode)}>
+                          <ActionBtn color="bg-red-600" onClick={() => setDeleting(c.contractCode)}>
                             删
                           </ActionBtn>
                         )}
@@ -214,6 +225,14 @@ export default function ContractsClient({ role }: { role: string }) {
           onChanged={load}
         />
       )}
+      <ConfirmDialog
+        open={!!deleting}
+        danger
+        message={`确定删除合同 ${deleting}？房间会放回空房，这个操作不能撤销。`}
+        confirmLabel="确定删除"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

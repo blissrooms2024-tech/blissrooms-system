@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/Modal";
+import { useToast } from "@/components/Toast";
 import { ROLE_LABELS } from "@/lib/config";
 
 export interface EditableUser {
@@ -24,6 +25,7 @@ export default function EditUserModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const toast = useToast();
   const [form, setForm] = useState({
     name: user.name,
     email: user.email,
@@ -33,8 +35,6 @@ export default function EditUserModal({
     status: user.status,
     commRate: user.commRate ?? "",
   });
-  const [message, setMessage] = useState("");
-  const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function save() {
@@ -46,16 +46,17 @@ export default function EditUserModal({
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      setOk(!!data.success);
-      setMessage(data.message);
       if (data.success) {
+        toast.success(data.message);
         setTimeout(() => {
           onSaved();
           onClose();
         }, 800);
+      } else {
+        toast.danger(data.message);
       }
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setLoading(false);
     }
@@ -109,7 +110,6 @@ export default function EditUserModal({
       <button onClick={save} disabled={loading} className="btn-primary mt-4">
         保存修改
       </button>
-      {message && <div className={`mt-2.5 text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{message}</div>}
     </Modal>
   );
 }

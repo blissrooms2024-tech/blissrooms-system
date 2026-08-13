@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { monthsBetween, endDateFromTenure } from "@/lib/tenure";
+import { useToast } from "@/components/Toast";
 import TenantPicker, { TenantOption } from "./TenantPicker";
 
 interface VacantRoom {
@@ -49,10 +50,10 @@ export default function ContractForm({
   agents: Agent[];
   onCreated: () => void;
 }) {
+  const toast = useToast();
   const [form, setForm] = useState(initialForm);
   const [tenant, setTenant] = useState<TenantOption | null>(null);
   const [utils, setUtils] = useState({ electric: false, aircond: false, dryer: false });
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   function selectTenant(t: TenantOption | null) {
@@ -84,7 +85,7 @@ export default function ContractForm({
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!form.roomCode || !tenant) {
-      setMessage("房间和租客一定要选");
+      toast.warning("房间和租客一定要选");
       return;
     }
     setLoading(true);
@@ -101,15 +102,17 @@ export default function ContractForm({
         }),
       });
       const data = await res.json();
-      setMessage(data.message);
       if (data.success) {
+        toast.success(data.message);
         setForm(initialForm);
         setTenant(null);
         setUtils({ electric: false, aircond: false, dryer: false });
         onCreated();
+      } else {
+        toast.danger(data.message);
       }
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setLoading(false);
     }
@@ -276,7 +279,6 @@ export default function ContractForm({
             {loading ? "建立中..." : "建立合同"}
           </button>
         </div>
-        {message && <div className="text-sm text-gray-600">{message}</div>}
       </form>
     </div>
   );

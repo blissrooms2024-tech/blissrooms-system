@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState, use } from "react";
 import AgreementDocument, { AgreementContract } from "@/components/AgreementDocument";
+import { useToast } from "@/components/Toast";
 
 export default function AgreementPage({ params }: { params: Promise<{ contractId: string }> }) {
   const { contractId } = use(params);
+  const toast = useToast();
   const [contract, setContract] = useState<AgreementContract | null>(null);
   const [error, setError] = useState("");
   const printAreaRef = useRef<HTMLDivElement>(null);
@@ -26,7 +28,10 @@ export default function AgreementPage({ params }: { params: Promise<{ contractId
     if (!printAreaRef.current) return;
     const html = printAreaRef.current.innerHTML;
     const w = window.open("", "_blank");
-    if (!w) return;
+    if (!w) {
+      toast.warning("浏览器拦截了弹出式窗口，请允许弹窗后再试一次");
+      return;
+    }
     w.document.write(
       `<html><head><title>Tenancy Agreement - Bliss Rooms</title><meta charset="utf-8">` +
         `<style>body{margin:0;padding:34px;max-width:820px;margin:auto;}@media print{@page{margin:14mm;}}</style>` +

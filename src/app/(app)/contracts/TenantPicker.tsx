@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/Toast";
 
 export interface TenantOption {
   userCode: string;
@@ -17,12 +18,12 @@ export default function TenantPicker({
   value: TenantOption | null;
   onChange: (tenant: TenantOption | null) => void;
 }) {
+  const toast = useToast();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<TenantOption[]>([]);
   const [searching, setSearching] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newTenant, setNewTenant] = useState({ name: "", ic: "", email: "", phone: "" });
-  const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -42,11 +43,10 @@ export default function TenantPicker({
 
   async function submitNewTenant() {
     if (!newTenant.name.trim() || !newTenant.ic.trim() || !newTenant.email.trim()) {
-      setMessage("姓名/IC/Email 一定要填");
+      toast.warning("姓名/IC/Email 一定要填");
       return;
     }
     setSaving(true);
-    setMessage("");
     try {
       const res = await fetch("/api/tenants", {
         method: "POST",
@@ -55,16 +55,17 @@ export default function TenantPicker({
       });
       const data = await res.json();
       if (!data.success) {
-        setMessage(data.message);
+        toast.danger(data.message);
         return;
       }
+      toast.success(data.message);
       onChange(data.tenant);
       setCreating(false);
       setNewTenant({ name: "", ic: "", email: "", phone: "" });
       setQ("");
       setResults([]);
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setSaving(false);
     }
@@ -168,7 +169,6 @@ export default function TenantPicker({
               {saving ? "建立中..." : "建立租客资料并选用"}
             </button>
           </div>
-          {message && <div className="text-xs text-red-600">{message}</div>}
         </div>
       )}
     </div>

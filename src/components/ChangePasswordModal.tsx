@@ -2,22 +2,22 @@
 
 import { useState } from "react";
 import Modal from "./Modal";
+import { useToast } from "./Toast";
 
 export default function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const toast = useToast();
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [newPw2, setNewPw2] = useState("");
-  const [message, setMessage] = useState("");
-  const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function submit() {
     if (newPw.length < 4) {
-      setMessage("新密码至少4位");
+      toast.warning("新密码至少4位");
       return;
     }
     if (newPw !== newPw2) {
-      setMessage("两次新密码不一样");
+      toast.warning("两次新密码不一样");
       return;
     }
     setLoading(true);
@@ -28,11 +28,14 @@ export default function ChangePasswordModal({ onClose }: { onClose: () => void }
         body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }),
       });
       const data = await res.json();
-      setOk(!!data.success);
-      setMessage(data.message);
-      if (data.success) setTimeout(onClose, 1200);
+      if (data.success) {
+        toast.success(data.message);
+        setTimeout(onClose, 1200);
+      } else {
+        toast.danger(data.message);
+      }
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setLoading(false);
     }
@@ -65,13 +68,10 @@ export default function ChangePasswordModal({ onClose }: { onClose: () => void }
       <button
         onClick={submit}
         disabled={loading}
-        className="mt-4 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-blue-300"
+        className="mt-4 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-violet-300"
       >
         确定
       </button>
-      {message && (
-        <div className={`mt-2.5 text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{message}</div>
-      )}
     </Modal>
   );
 }

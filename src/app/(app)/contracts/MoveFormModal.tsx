@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
+import { useToast } from "@/components/Toast";
 import { MOVE_ITEMS, MoveItem } from "@/lib/moveItems";
 
 function readAsDataURL(file: File): Promise<string> {
@@ -26,6 +27,7 @@ export default function MoveFormModal({
   onClose: () => void;
   onSubmitted: () => void;
 }) {
+  const toast = useToast();
   const [loadingState, setLoadingState] = useState<"loading" | "ready" | "blocked">("loading");
   const [reason, setReason] = useState("");
   const [moveInDate, setMoveInDate] = useState("");
@@ -34,8 +36,6 @@ export default function MoveFormModal({
   const [conditions, setConditions] = useState<Record<string, string>>({});
   const [remarks, setRemarks] = useState<Record<string, string>>({});
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
-  const [ok, setOk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function MoveFormModal({
       .then((r) => r.json())
       .then((data) => {
         if (!data.success) {
-          setMessage(data.message);
+          setReason(data.message);
           setLoadingState("blocked");
           return;
         }
@@ -65,12 +65,12 @@ export default function MoveFormModal({
 
   async function uploadPhoto(item: MoveItem, file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      setMessage("图片太大(超过3MB)，请压缩");
+      toast.warning("图片太大(超过3MB)，请压缩");
       return;
     }
     const arr = photos[item.key] || [];
     if (arr.length >= item.max) {
-      setMessage(`这项最多${item.max}张`);
+      toast.warning(`这项最多${item.max}张`);
       return;
     }
     setUploadingKey(item.key);
@@ -84,12 +84,11 @@ export default function MoveFormModal({
       const data = await res.json();
       if (data.success) {
         setPhotos((p) => ({ ...p, [item.key]: [...(p[item.key] || []), data.url] }));
-        setMessage("✅ 已加一张");
       } else {
-        setMessage(data.message);
+        toast.danger(data.message);
       }
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setUploadingKey(null);
     }
@@ -108,16 +107,17 @@ export default function MoveFormModal({
         body: JSON.stringify({ type, moveInDate, notes, photos, conditions, remarks }),
       });
       const data = await res.json();
-      setOk(!!data.success);
-      setMessage(data.message);
       if (data.success) {
+        toast.success(data.message);
         setTimeout(() => {
           onSubmitted();
           onClose();
         }, 1000);
+      } else {
+        toast.danger(data.message);
       }
     } catch {
-      setMessage("系统出错，请稍后再试");
+      toast.danger("系统出错，请稍后再试");
     } finally {
       setSubmitting(false);
     }
@@ -131,7 +131,7 @@ export default function MoveFormModal({
 
       {loadingState === "loading" && <div className="mt-3 text-sm text-gray-500">载入中...</div>}
       {loadingState === "blocked" && (
-        <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{reason || message}</div>
+        <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{reason}</div>
       )}
 
       {loadingState === "ready" && (
@@ -205,10 +205,6 @@ export default function MoveFormModal({
             提交表单
           </button>
         </div>
-      )}
-
-      {message && loadingState === "ready" && (
-        <div className={`mt-2.5 text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{message}</div>
       )}
     </Modal>
   );

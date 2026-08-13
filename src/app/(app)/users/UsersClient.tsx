@@ -2,6 +2,7 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import { ROLE_LABELS } from "@/lib/config";
+import { useToast } from "@/components/Toast";
 import EditUserModal, { EditableUser } from "./EditUserModal";
 
 interface UserRow {
@@ -17,12 +18,11 @@ interface UserRow {
 const emptyForm = { name: "", email: "", role: "AGENT", phone: "", ic: "", password: "1234", commRate: "0.5" };
 
 export default function UsersClient() {
+  const toast = useToast();
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [error, setError] = useState("");
   const [form, setForm] = useState(emptyForm);
-  const [addMsg, setAddMsg] = useState("");
   const [editing, setEditing] = useState<EditableUser | null>(null);
-  const [verifyMsg, setVerifyMsg] = useState<Record<string, string>>({});
 
   async function load() {
     setError("");
@@ -45,7 +45,7 @@ export default function UsersClient() {
   async function addUser(e: FormEvent) {
     e.preventDefault();
     if (!form.name || !form.email) {
-      setAddMsg("姓名和 Email 一定要填");
+      toast.warning("姓名和 Email 一定要填");
       return;
     }
     const res = await fetch("/api/users", {
@@ -54,18 +54,24 @@ export default function UsersClient() {
       body: JSON.stringify(form),
     });
     const data = await res.json();
-    setAddMsg(data.message);
     if (data.success) {
+      toast.success(data.message);
       setForm(emptyForm);
       load();
+    } else {
+      toast.danger(data.message);
     }
   }
 
   async function sendVerify(userCode: string) {
     const res = await fetch(`/api/users/${userCode}/send-verify`, { method: "POST" });
     const data = await res.json();
-    setVerifyMsg({ ...verifyMsg, [userCode]: data.message });
-    if (data.success) load();
+    if (data.success) {
+      toast.success(data.message);
+      load();
+    } else {
+      toast.danger(data.message);
+    }
   }
 
   async function openEdit(userCode: string) {
@@ -121,7 +127,6 @@ export default function UsersClient() {
             建立
           </button>
         </form>
-        {addMsg && <div className="mt-2.5 text-sm text-gray-600">{addMsg}</div>}
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
@@ -172,9 +177,6 @@ export default function UsersClient() {
                           ✏️编辑
                         </button>
                       </div>
-                      {verifyMsg[u.userCode] && (
-                        <div className="mt-1 text-xs text-gray-500">{verifyMsg[u.userCode]}</div>
-                      )}
                     </Td>
                   </tr>
                 ))}

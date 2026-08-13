@@ -72,7 +72,7 @@ export default function MyTenancyClient() {
 
         return (
           <div key={c.contractCode} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-br from-brand to-blue-600 px-5 py-4 text-white">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-br from-brand to-fuchsia-600 px-5 py-4 text-white">
               <div>
                 <div className="text-lg font-bold">{c.contractCode}</div>
                 <div className="text-sm opacity-90">🏠 {c.roomCode}</div>

@@ -2,9 +2,11 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useToast } from "@/components/Toast";
 
 function ResetPasswordForm() {
   const params = useSearchParams();
+  const toast = useToast();
   const token = params.get("token") || "";
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -14,11 +16,11 @@ function ResetPasswordForm() {
 
   async function submit() {
     if (pw.length < 4) {
-      setMessage("密码至少4位");
+      toast.warning("密码至少4位");
       return;
     }
     if (pw !== pw2) {
-      setMessage("两次密码不一样");
+      toast.warning("两次密码不一样");
       return;
     }
     setLoading(true);
@@ -39,7 +41,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand p-5">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand via-brand to-fuchsia-700 p-5">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl">
         <div className="text-center text-xl font-bold text-brand">🏠 Bliss Rooms</div>
         <div className="mb-5 text-center text-sm text-gray-400">重设密码 Reset Password</div>

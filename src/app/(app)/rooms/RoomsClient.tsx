@@ -2,6 +2,7 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import { ROOM_STATUS_LABELS } from "@/lib/config";
+import { useToast } from "@/components/Toast";
 
 interface Room {
   roomCode: string;
@@ -23,9 +24,9 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default function RoomsClient({ role }: { role: string }) {
+  const toast = useToast();
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [error, setError] = useState("");
-  const [addMsg, setAddMsg] = useState("");
   const [form, setForm] = useState({ roomCode: "", propertyName: "", roomType: "", roomRental: "" });
 
   async function loadRooms() {
@@ -52,7 +53,7 @@ export default function RoomsClient({ role }: { role: string }) {
   async function addRoom(e: FormEvent) {
     e.preventDefault();
     if (!form.roomCode) {
-      setAddMsg("Room Code 不能空");
+      toast.warning("Room Code 不能空");
       return;
     }
     const res = await fetch("/api/rooms", {
@@ -61,19 +62,23 @@ export default function RoomsClient({ role }: { role: string }) {
       body: JSON.stringify(form),
     });
     const data = await res.json();
-    setAddMsg(data.message);
     if (data.success) {
+      toast.success(data.message);
       setForm({ roomCode: "", propertyName: "", roomType: "", roomRental: "" });
       loadRooms();
+    } else {
+      toast.danger(data.message);
     }
   }
 
   async function changeStatus(roomCode: string, status: string) {
-    await fetch(`/api/rooms/${roomCode}`, {
+    const res = await fetch(`/api/rooms/${roomCode}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    const data = await res.json();
+    if (!data.success) toast.danger(data.message);
     loadRooms();
   }
 
@@ -120,7 +125,6 @@ export default function RoomsClient({ role }: { role: string }) {
               加入
             </button>
           </form>
-          {addMsg && <div className="mt-2.5 text-sm text-gray-600">{addMsg}</div>}
         </div>
       )}
 
