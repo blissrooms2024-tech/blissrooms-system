@@ -10,12 +10,14 @@ export async function GET() {
   const rooms = await prisma.room.findMany({
     where: user.role === "AGENT" ? { status: "VACANT" } : undefined,
     orderBy: { roomCode: "asc" },
+    include: { property: { select: { propertyCode: true } } },
   });
 
   return NextResponse.json({
     success: true,
     rooms: rooms.map((r) => ({
       roomCode: r.roomCode,
+      propertyCode: r.property?.propertyCode ?? null,
       propertyName: r.propertyName,
       roomType: r.roomType,
       roomRental: Number(r.roomRental),
@@ -30,7 +32,7 @@ export async function GET() {
 
 const addSchema = z.object({
   roomCode: z.string().trim().min(1),
-  propertyName: z.string().trim().default(""),
+  propertyCode: z.string().trim().min(1),
   roomType: z.string().trim().default(""),
   roomRental: z.coerce.number().min(0).default(0),
   carparkRental: z.coerce.number().min(0).default(0),
@@ -43,9 +45,14 @@ export async function POST(req: NextRequest) {
   }
   const parsed = addSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ success: false, message: "Room Code 不能空" }, { status: 400 });
+    return NextResponse.json({ success: false, message: "Room Code 和楼盘一定要填" }, { status: 400 });
   }
   const d = parsed.data;
+
+  const property = await prisma.property.findUnique({ where: { propertyCode: d.propertyCode } });
+  if (!property) {
+    return NextResponse.json({ success: false, message: "找不到这个楼盘，请先建楼盘" }, { status: 404 });
+  }
 
   const existing = await prisma.room.findUnique({ where: { roomCode: d.roomCode } });
   if (existing) {
@@ -55,7 +62,8 @@ export async function POST(req: NextRequest) {
   await prisma.room.create({
     data: {
       roomCode: d.roomCode,
-      propertyName: d.propertyName,
+      propertyId: property.id,
+      propertyName: property.name,
       roomType: d.roomType,
       roomRental: d.roomRental,
       carparkRental: d.carparkRental,

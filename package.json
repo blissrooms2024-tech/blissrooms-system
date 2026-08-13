@@ -8,7 +8,8 @@
     "build": "prisma migrate deploy && (npm run seed || true) && next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "npx tsx prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts",
+    "backfill-properties": "npx tsx prisma/backfill-properties.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",

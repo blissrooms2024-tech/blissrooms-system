@@ -94,6 +94,9 @@ model Property {
   address      String?
   region       String?
   landlord     String?
+  /// % of monthly collections Bliss Rooms keeps as management fee when landlord is set
+  /// (e.g. 0.10 = 10%). Irrelevant for units Bliss Rooms owns outright (landlord blank).
+  managementFeeRate Decimal? @db.Decimal(6, 4)
   status       String?  @default("Active")
   notes        String?
   rooms        Room[]

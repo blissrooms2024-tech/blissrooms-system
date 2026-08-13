@@ -43,21 +43,35 @@ async function main() {
   }
   console.log("✅ 4 个测试账号建好了, 密码都是 1234");
 
-  const properties = ["Pixel KL", "Nikka Penang", "Majestic Maxim"];
-  const codes = ["PXC", "NCS", "MMB"];
+  const properties = [
+    { name: "Pixel KL", code: "PXC", landlord: null as string | null, managementFeeRate: null as number | null },
+    { name: "Nikka Penang", code: "NCS", landlord: "Mr. Ong (Landlord)", managementFeeRate: 0.1 },
+    { name: "Majestic Maxim", code: "MMB", landlord: "Mdm. Tan (Landlord)", managementFeeRate: 0.15 },
+  ];
   const statuses: Array<"VACANT" | "OCCUPIED" | "MAINTENANCE"> = ["VACANT", "OCCUPIED", "VACANT", "MAINTENANCE"];
 
   let n = 0;
   for (let pi = 0; pi < properties.length; pi++) {
-    const propertyName = properties[pi];
+    const p = properties[pi];
+    const property = await prisma.property.upsert({
+      where: { propertyCode: p.code },
+      create: {
+        propertyCode: p.code,
+        name: p.name,
+        landlord: p.landlord,
+        managementFeeRate: p.managementFeeRate,
+      },
+      update: {},
+    });
     for (let i = 1; i <= 4; i++) {
-      const roomCode = `${codes[pi]}-${String(i).padStart(2, "0")}`;
+      const roomCode = `${p.code}-${String(i).padStart(2, "0")}`;
       const existing = await prisma.room.findUnique({ where: { roomCode } });
       if (existing) continue;
       await prisma.room.create({
         data: {
           roomCode,
-          propertyName,
+          propertyId: property.id,
+          propertyName: p.name,
           roomType: i % 2 ? "Master Room" : "Single Room",
           roomRental: 500 + i * 50,
           carparkRental: i === 1 ? 80 : 0,

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
+import Link from "next/link";
 import { ROOM_STATUS_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
 
 interface Room {
   roomCode: string;
+  propertyCode: string | null;
   propertyName: string;
   roomType: string | null;
   roomRental: number;
@@ -14,6 +16,10 @@ interface Room {
   currentTenantId: string | null;
   currentContractId: string | null;
   notes: string | null;
+}
+interface PropertyOption {
+  propertyCode: string;
+  name: string;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -26,8 +32,9 @@ const STATUS_BADGE: Record<string, string> = {
 export default function RoomsClient({ role }: { role: string }) {
   const toast = useToast();
   const [rooms, setRooms] = useState<Room[] | null>(null);
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ roomCode: "", propertyName: "", roomType: "", roomRental: "" });
+  const [form, setForm] = useState({ roomCode: "", propertyCode: "", roomType: "", roomRental: "" });
 
   async function loadRooms() {
     setError("");
@@ -44,16 +51,23 @@ export default function RoomsClient({ role }: { role: string }) {
     }
   }
 
+  async function loadProperties() {
+    const res = await fetch("/api/properties");
+    const data = await res.json();
+    if (data.success) setProperties(data.properties);
+  }
+
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRooms();
+    loadProperties();
   }, []);
 
   async function addRoom(e: FormEvent) {
     e.preventDefault();
-    if (!form.roomCode) {
-      toast.warning("Room Code 不能空");
+    if (!form.roomCode || !form.propertyCode) {
+      toast.warning("Room Code 和楼盘一定要选");
       return;
     }
     const res = await fetch("/api/rooms", {
@@ -64,7 +78,7 @@ export default function RoomsClient({ role }: { role: string }) {
     const data = await res.json();
     if (data.success) {
       toast.success(data.message);
-      setForm({ roomCode: "", propertyName: "", roomType: "", roomRental: "" });
+      setForm({ roomCode: "", propertyCode: "", roomType: "", roomRental: "" });
       loadRooms();
     } else {
       toast.danger(data.message);
@@ -98,12 +112,19 @@ export default function RoomsClient({ role }: { role: string }) {
                 className="input"
               />
             </Field>
-            <Field label="物业">
-              <input
-                value={form.propertyName}
-                onChange={(e) => setForm({ ...form, propertyName: e.target.value })}
+            <Field label="楼盘 Unit">
+              <select
+                value={form.propertyCode}
+                onChange={(e) => setForm({ ...form, propertyCode: e.target.value })}
                 className="input"
-              />
+              >
+                <option value="">-- 选楼盘 --</option>
+                {properties.map((p) => (
+                  <option key={p.propertyCode} value={p.propertyCode}>
+                    {p.propertyCode} ({p.name})
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="类型">
               <input
@@ -125,6 +146,15 @@ export default function RoomsClient({ role }: { role: string }) {
               加入
             </button>
           </form>
+          {properties.length === 0 && (
+            <div className="mt-2.5 text-sm text-gray-500">
+              还没有楼盘, 先去{" "}
+              <Link href="/units" className="text-brand underline">
+                楼盘管理
+              </Link>{" "}
+              建一个
+            </div>
+          )}
         </div>
       )}
 
@@ -138,7 +168,7 @@ export default function RoomsClient({ role }: { role: string }) {
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
                   <Th>Room Code</Th>
-                  <Th>物业</Th>
+                  <Th>楼盘 Unit</Th>
                   <Th>类型</Th>
                   <Th>房租</Th>
                   <Th>状态</Th>
@@ -158,7 +188,15 @@ export default function RoomsClient({ role }: { role: string }) {
                     <Td>
                       <b>{r.roomCode}</b>
                     </Td>
-                    <Td>{r.propertyName}</Td>
+                    <Td>
+                      {r.propertyCode ? (
+                        <Link href={`/units/${r.propertyCode}`} className="text-brand hover:underline">
+                          {r.propertyName}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">{r.propertyName || "未分配"}</span>
+                      )}
+                    </Td>
                     <Td>{r.roomType}</Td>
                     <Td>RM{r.roomRental}</Td>
                     <Td>
