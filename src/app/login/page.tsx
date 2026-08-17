@@ -42,9 +42,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-brand via-brand to-fuchsia-700 p-5">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-50 to-violet-100 p-5">
       <RoomsBackdrop />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl">
+      <div className="relative w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-black/5">
         <div className="text-center text-2xl font-bold text-brand">🏠 Bliss Rooms</div>
         <div className="mb-6 text-center text-sm text-gray-400">租房管理系统</div>
 
@@ -90,66 +90,82 @@ export default function LoginPage() {
 }
 
 function RoomsBackdrop() {
+  const windowPositions: Array<[number, number]> = [
+    [120, 500], [170, 500], [220, 500], [270, 500],
+    [120, 550], [170, 550], [220, 550], [270, 550],
+    [120, 600], [170, 600], [220, 600], [270, 600],
+    [370, 460], [420, 460], [470, 460], [520, 460],
+    [370, 510], [420, 510], [470, 510], [520, 510],
+    [370, 560], [420, 560], [470, 560], [520, 560],
+    [600, 530], [650, 530], [700, 530], [750, 530],
+    [600, 580], [650, 580], [700, 580], [750, 580],
+    [860, 470], [910, 470], [960, 470], [1010, 470],
+    [860, 520], [910, 520], [960, 520], [1010, 520],
+    [1100, 510], [1150, 510], [1200, 510], [1250, 510],
+    [1100, 560], [1150, 560], [1200, 560], [1250, 560],
+  ];
+  const windowColors = ["#bae6fd", "#fde68a", "#bbf7d0"];
+
   return (
     <svg
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-60"
+      className="pointer-events-none absolute inset-0 h-full w-full opacity-90"
       viewBox="0 0 1366 768"
       preserveAspectRatio="xMidYMax slice"
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id="skyline" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.05" />
-        </linearGradient>
-        <linearGradient id="skylineFront" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.24" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.08" />
-        </linearGradient>
-      </defs>
-
-      {/* far row of rooms */}
-      <g fill="url(#skyline)">
-        <rect x="40" y="360" width="170" height="408" rx="10" />
-        <rect x="230" y="300" width="150" height="468" rx="10" />
-        <rect x="400" y="400" width="130" height="368" rx="10" />
-        <rect x="960" y="330" width="160" height="438" rx="10" />
-        <rect x="1140" y="380" width="150" height="388" rx="10" />
+      {/* soft sun + clouds for a bright daytime feel */}
+      <circle cx="1230" cy="120" r="70" fill="#fef9c3" opacity="0.8" />
+      <g fill="#ffffff" opacity="0.7">
+        <ellipse cx="180" cy="110" rx="70" ry="26" />
+        <ellipse cx="230" cy="95" rx="50" ry="22" />
+        <ellipse cx="560" cy="150" rx="55" ry="20" />
       </g>
 
-      {/* near row of rooms, slightly bigger + brighter, with lit windows */}
-      <g fill="url(#skylineFront)">
-        <rect x="90" y="470" width="220" height="298" rx="12" />
-        <rect x="340" y="430" width="200" height="338" rx="12" />
-        <rect x="570" y="500" width="230" height="268" rx="12" />
-        <rect x="830" y="440" width="210" height="328" rx="12" />
-        <rect x="1070" y="480" width="230" height="288" rx="12" />
+      {/* far row of room blocks, pale lavender */}
+      <g fill="#ede9fe">
+        <rect x="40" y="360" width="170" height="408" rx="14" />
+        <rect x="230" y="300" width="150" height="468" rx="14" />
+        <rect x="400" y="400" width="130" height="368" rx="14" />
+        <rect x="960" y="330" width="160" height="438" rx="14" />
+        <rect x="1140" y="380" width="150" height="388" rx="14" />
       </g>
 
-      {/* window grid on the near buildings, lit like a rented room at night */}
-      <g fill="#fef3c7" opacity="0.85">
-        {[
-          [120, 500], [170, 500], [220, 500], [270, 500],
-          [120, 550], [170, 550], [220, 550], [270, 550],
-          [120, 600], [170, 600], [220, 600], [270, 600],
-          [370, 460], [420, 460], [470, 460], [520, 460],
-          [370, 510], [420, 510], [470, 510], [520, 510],
-          [370, 560], [420, 560], [470, 560], [520, 560],
-          [600, 530], [650, 530], [700, 530], [750, 530],
-          [600, 580], [650, 580], [700, 580], [750, 580],
-          [860, 470], [910, 470], [960, 470], [1010, 470],
-          [860, 520], [910, 520], [960, 520], [1010, 520],
-          [1100, 510], [1150, 510], [1200, 510], [1250, 510],
-          [1100, 560], [1150, 560], [1200, 560], [1250, 560],
-        ].map(([x, y], i) => (
-          <rect key={i} x={x} y={y} width="22" height="26" rx="3" opacity={0.35 + ((i * 37) % 50) / 100} />
+      {/* near row of rooms: clean white cards with a soft violet outline */}
+      <g fill="#ffffff" stroke="#ddd6fe" strokeWidth="3">
+        <rect x="90" y="470" width="220" height="298" rx="16" />
+        <rect x="340" y="430" width="200" height="338" rx="16" />
+        <rect x="570" y="500" width="230" height="268" rx="16" />
+        <rect x="830" y="440" width="210" height="328" rx="16" />
+        <rect x="1070" y="480" width="230" height="288" rx="16" />
+      </g>
+
+      {/* pitched-roof house accents for variety */}
+      <g fill="#ffffff" stroke="#ddd6fe" strokeWidth="3">
+        <path d="M60 470 L145 400 L230 470 Z" />
+        <path d="M1200 480 L1270 420 L1340 480 Z" />
+      </g>
+
+      {/* bright daytime windows */}
+      <g>
+        {windowPositions.map(([x, y], i) => (
+          <rect
+            key={i}
+            x={x}
+            y={y}
+            width="22"
+            height="26"
+            rx="4"
+            fill={windowColors[i % windowColors.length]}
+            opacity={0.75}
+          />
         ))}
       </g>
 
-      {/* rooftop roomline / a couple of pitched-roof houses for variety */}
-      <g fill="url(#skylineFront)">
-        <path d="M60 470 L145 400 L230 470 Z" />
-        <path d="M1200 480 L1270 420 L1340 480 Z" />
+      {/* little balcony plants for a cozy touch */}
+      <g fill="#86efac">
+        <circle cx="150" cy="490" r="9" />
+        <circle cx="470" cy="450" r="9" />
+        <circle cx="1010" cy="460" r="9" />
       </g>
     </svg>
   );
