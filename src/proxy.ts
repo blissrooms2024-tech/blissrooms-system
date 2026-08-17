@@ -47,7 +47,8 @@ export async function proxy(req: NextRequest) {
   if (
     PUBLIC_API_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/login-bg/")
   ) {
     return NextResponse.next();
   }
