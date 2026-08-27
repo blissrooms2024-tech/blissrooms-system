@@ -16,6 +16,7 @@ interface Card {
   totalOutstanding: number;
   paid: number;
   outstanding: number;
+  depositOutstanding: number;
   agentSigned: boolean;
   tenantSigned: boolean;
   hasICFront: boolean;
@@ -70,8 +71,15 @@ export default function MyTenancyClient() {
     return <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">你还没有租约</div>;
   }
 
+  const needsDeposit = cards.some((c) => c.status === "ACTIVE" && c.depositOutstanding > 0);
+
   return (
     <div className="space-y-5">
+      {needsDeposit && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          ⚠️ 请先缴清押金 (Deposit)，才能填写 Move-in 表单，请尽快联系 Admin 缴费。
+        </div>
+      )}
       {cards.map((c) => {
         const icDone = c.hasICFront && c.hasICBack;
         const canSign = c.agentSigned && icDone && !c.tenantSigned;
@@ -153,12 +161,15 @@ export default function MyTenancyClient() {
                     <Pill tone="lock">🔒 合同生效后开放</Pill>
                   ) : c.moveInDone ? (
                     <Pill tone="done">✅ 已填</Pill>
+                  ) : c.depositOutstanding > 0 ? (
+                    <Pill tone="lock">🔒 请先缴押金</Pill>
                   ) : (
                     <Pill tone="wait">⚠️ 未填</Pill>
                   )
                 }
                 action={
-                  c.status === "ACTIVE" && (
+                  c.status === "ACTIVE" &&
+                  (c.moveInDone || c.depositOutstanding <= 0) && (
                     <button
                       onClick={() => setMoveForm({ code: c.contractCode, type: "MoveIn" })}
                       className={c.moveInDone ? "btn-soft px-3.5 py-1.5 text-xs" : "btn-primary px-3.5 py-1.5 text-xs"}

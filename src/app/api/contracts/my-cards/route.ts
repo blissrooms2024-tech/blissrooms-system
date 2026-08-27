@@ -15,10 +15,15 @@ export async function GET() {
     include: { room: { select: { roomCode: true } } },
   });
 
-  const [paidGroups, moveForms, unpaidBills, openMaintenance] = await Promise.all([
+  const [paidGroups, depositPaidGroups, moveForms, unpaidBills, openMaintenance] = await Promise.all([
     prisma.payment.groupBy({
       by: ["contractId"],
       where: { contractId: { in: contracts.map((c) => c.id) }, status: "Paid" },
+      _sum: { amountPaid: true },
+    }),
+    prisma.payment.groupBy({
+      by: ["contractId"],
+      where: { contractId: { in: contracts.map((c) => c.id) }, status: "Paid", type: "DEPOSIT" },
       _sum: { amountPaid: true },
     }),
     prisma.moveInOutForm.findMany({
@@ -39,6 +44,7 @@ export async function GET() {
   ]);
 
   const paidMap = new Map(paidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));
+  const depositPaidMap = new Map(depositPaidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));
   const moveSet = new Set(moveForms.map((m) => `${m.contractId}_${m.type}`));
   const unpaidBillCount = new Map<string, number>();
   for (const b of unpaidBills) unpaidBillCount.set(b.contractId, (unpaidBillCount.get(b.contractId) ?? 0) + 1);
@@ -48,6 +54,10 @@ export async function GET() {
   const cards = contracts.map((c) => {
     const paid = paidMap.get(c.id) ?? 0;
     const outstanding = Math.max(Number(c.totalOutstanding) - paid, 0);
+    const depositOutstanding = Math.max(
+      Number(c.securityDeposit) - (depositPaidMap.get(c.id) ?? 0),
+      0
+    );
     const daysToExpiry = c.expiredDate
       ? Math.ceil((new Date(c.expiredDate).getTime() - Date.now()) / (24 * 3600 * 1000))
       : null;
@@ -58,6 +68,7 @@ export async function GET() {
       totalOutstanding: Number(c.totalOutstanding),
       paid,
       outstanding,
+      depositOutstanding,
       agentSigned: !!c.agentSignature,
       tenantSigned: !!c.tenantSignature,
       hasICFront: !!c.icFront,

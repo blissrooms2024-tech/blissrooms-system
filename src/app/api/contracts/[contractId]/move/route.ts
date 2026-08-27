@@ -11,6 +11,16 @@ function typeToEnum(t: string | null): MoveType {
   return t === "MoveOut" ? "MOVE_OUT" : "MOVE_IN";
 }
 
+/** Deposit must be paid in full before the tenant can fill Move-in — Admin can still fill/edit
+ * on the tenant's behalf regardless (see call sites: gate is skipped for non-tenant users). */
+async function depositOutstanding(contractId: string, securityDeposit: unknown): Promise<number> {
+  const paid = await prisma.payment.aggregate({
+    where: { contractId, type: "DEPOSIT", status: "Paid" },
+    _sum: { amountPaid: true },
+  });
+  return Math.max(Number(securityDeposit) - Number(paid._sum.amountPaid ?? 0), 0);
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
@@ -28,11 +38,21 @@ export async function GET(
   const isTenant = c.tenantId === user.sub;
   const isAdmin = user.role === "ADMIN";
 
+  const forms = await prisma.moveInOutForm.findMany({
+    where: { contractId: c.id, type },
+    orderBy: { id: "asc" },
+  });
+  const form = forms.length ? forms[forms.length - 1] : null;
+  const locked = !!form?.locked;
+
   let canFill = false;
   let reason = "";
   if (type === "MOVE_IN") {
     if (c.status !== "ACTIVE") reason = "合同签好生效后才能填 Move-in";
     else if (!isTenant && !isAdmin) reason = "只有租客本人或 Admin 可填";
+    else if (isTenant && locked) reason = "表单已提交并锁定, 如需修改请联系 Admin 重新开放";
+    else if (isTenant && (await depositOutstanding(c.id, c.securityDeposit)) > 0)
+      reason = "请先缴清押金 (Deposit) 才能填写 Move-in Form";
     else canFill = true;
   } else {
     const days = c.expiredDate
@@ -41,19 +61,16 @@ export async function GET(
     if (c.status !== "ACTIVE") reason = "合同要生效中才能填 Move-out";
     else if (days > RULES.MOVE_OUT_WINDOW_DAYS) reason = `到期前2星期才开放 (还有 ${days} 天到期)`;
     else if (!isTenant && !isAdmin) reason = "只有租客本人或 Admin 可填";
+    else if (isTenant && locked) reason = "表单已提交并锁定, 如需修改请联系 Admin 重新开放";
     else canFill = true;
   }
-
-  const forms = await prisma.moveInOutForm.findMany({
-    where: { contractId: c.id, type },
-    orderBy: { id: "asc" },
-  });
-  const form = forms.length ? forms[forms.length - 1] : null;
 
   return NextResponse.json({
     success: true,
     canFill,
     reason,
+    isAdmin,
+    locked,
     contract: serialize({
       contractCode: c.contractCode,
       tenantName: c.tenantName,
@@ -72,6 +89,7 @@ export async function GET(
           conditions: form.conditions,
           remarks: form.remarks,
           submittedAt: form.submittedAt,
+          locked: form.locked,
         })
       : null,
     items: MOVE_ITEMS,
@@ -106,6 +124,12 @@ export async function POST(
   if (!isTenant && user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "没有权限" }, { status: 403 });
   }
+  if (type === "MOVE_IN" && user.role === "TENANT" && (await depositOutstanding(c.id, c.securityDeposit)) > 0) {
+    return NextResponse.json(
+      { success: false, message: "请先缴清押金 (Deposit) 才能填写 Move-in Form" },
+      { status: 403 }
+    );
+  }
 
   const photos = body.photos || {};
   const conditions = body.conditions || {};
@@ -127,6 +151,14 @@ export async function POST(
     where: { contractId: c.id, type },
     orderBy: { id: "asc" },
   });
+  const latest = existing.length ? existing[existing.length - 1] : null;
+  if (user.role === "TENANT" && latest?.locked) {
+    return NextResponse.json(
+      { success: false, message: "表单已提交并锁定, 如需修改请联系 Admin 重新开放" },
+      { status: 403 }
+    );
+  }
+
   const now = new Date();
   const payload = {
     type,
@@ -140,6 +172,10 @@ export async function POST(
     remarks: body.remarks || {},
     notes: body.notes || "",
     submittedAt: now,
+    // Tenant submissions lock the form until Admin reopens it; Admin's own edits leave the
+    // lock state untouched (so Admin editing on the tenant's behalf doesn't accidentally
+    // relock/unlock anything).
+    ...(user.role === "TENANT" ? { locked: true } : {}),
   };
 
   if (existing.length) {

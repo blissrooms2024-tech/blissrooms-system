@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
@@ -39,9 +39,12 @@ export default function MoveFormModal({
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
 
-  useEffect(() => {
-    fetch(`/api/contracts/${contractCode}/move?type=${type}`)
+  const load = useCallback(() => {
+    return fetch(`/api/contracts/${contractCode}/move?type=${type}`)
       .then((r) => r.json())
       .then((data) => {
         if (!data.success) {
@@ -49,7 +52,12 @@ export default function MoveFormModal({
           setLoadingState("blocked");
           return;
         }
-        if (!data.canFill) {
+        setIsAdmin(!!data.isAdmin);
+        setLocked(!!data.locked);
+        // Tenant viewing their own locked submission: still show it, read-only, instead of
+        // just an error — every other reason (contract not active, no permission, move-out
+        // window closed) has no form data worth showing, so those stay a plain blocked message.
+        if (!data.canFill && !(data.locked && !data.isAdmin)) {
           setReason(data.reason);
           setLoadingState("blocked");
           return;
@@ -64,6 +72,34 @@ export default function MoveFormModal({
         setLoadingState("ready");
       });
   }, [contractCode, type]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const readOnly = locked && !isAdmin;
+
+  async function unlock() {
+    setUnlocking(true);
+    try {
+      const res = await fetch(`/api/contracts/${contractCode}/move/unlock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger("系统出错，请稍后再试");
+    } finally {
+      setUnlocking(false);
+    }
+  }
 
   async function uploadPhoto(item: MoveItem, file: File) {
     if (file.size > 3 * 1024 * 1024) {
@@ -138,9 +174,33 @@ export default function MoveFormModal({
 
       {loadingState === "ready" && (
         <div className="mt-3.5 space-y-3">
+          {readOnly && (
+            <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+              ✅ 表单已提交并锁定，不能再修改。如需修改请联系 Admin 重新开放。
+            </div>
+          )}
+          {isAdmin && locked && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+              <span>🔒 这张表单已锁定，租客现在不能自己修改。</span>
+              <button
+                onClick={unlock}
+                disabled={unlocking}
+                className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              >
+                {unlocking ? "处理中..." : "🔓 允许租客修改"}
+              </button>
+            </div>
+          )}
+
           <div>
             <label className="mb-1.5 block text-sm text-gray-600">Move-in Date</label>
-            <input type="date" className="input max-w-xs" value={moveInDate} onChange={(e) => setMoveInDate(e.target.value)} />
+            <input
+              type="date"
+              disabled={readOnly}
+              className="input max-w-xs disabled:bg-gray-50 disabled:text-gray-500"
+              value={moveInDate}
+              onChange={(e) => setMoveInDate(e.target.value)}
+            />
           </div>
 
           {MOVE_ITEMS.map((it) => (
@@ -151,8 +211,9 @@ export default function MoveFormModal({
               <div className="my-1.5 flex gap-1.5">
                 <button
                   type="button"
+                  disabled={readOnly}
                   onClick={() => setConditions((c) => ({ ...c, [it.key]: "Good" }))}
-                  className={`rounded-md px-3 py-1 text-xs ${
+                  className={`rounded-md px-3 py-1 text-xs disabled:cursor-not-allowed ${
                     conditions[it.key] === "Good" ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600"
                   }`}
                 >
@@ -160,8 +221,9 @@ export default function MoveFormModal({
                 </button>
                 <button
                   type="button"
+                  disabled={readOnly}
                   onClick={() => setConditions((c) => ({ ...c, [it.key]: "Broken" }))}
-                  className={`rounded-md px-3 py-1 text-xs ${
+                  className={`rounded-md px-3 py-1 text-xs disabled:cursor-not-allowed ${
                     conditions[it.key] === "Broken" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-600"
                   }`}
                 >
@@ -174,40 +236,49 @@ export default function MoveFormModal({
                     <button type="button" onClick={() => setZoomUrl(u)} className="cursor-zoom-in">
                       <img src={u} alt="" className="h-[60px] rounded border border-gray-300 hover:opacity-90" />
                     </button>
-                    <button
-                      onClick={() => removePhoto(it.key, i)}
-                      className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red-600 text-xs text-white"
-                    >
-                      ×
-                    </button>
+                    {!readOnly && (
+                      <button
+                        onClick={() => removePhoto(it.key, i)}
+                        className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red-600 text-xs text-white"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
-              <input
-                type="file"
-                accept="image/*"
-                disabled={uploadingKey === it.key}
-                onChange={(e) => e.target.files?.[0] && uploadPhoto(it, e.target.files[0])}
-                className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
-              />
-              <span className="ml-1.5 text-xs text-gray-400">最多{it.max}张</span>
+              {!readOnly && (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingKey === it.key}
+                    onChange={(e) => e.target.files?.[0] && uploadPhoto(it, e.target.files[0])}
+                    className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
+                  />
+                  <span className="ml-1.5 text-xs text-gray-400">最多{it.max}张</span>
+                </>
+              )}
               <input
                 placeholder="备注 Remarks (选填)"
+                readOnly={readOnly}
                 value={remarks[it.key] || ""}
                 onChange={(e) => setRemarks((r) => ({ ...r, [it.key]: e.target.value }))}
-                className="input mt-1.5"
+                className="input mt-1.5 disabled:bg-gray-50"
               />
             </div>
           ))}
 
           <div>
             <label className="mb-1.5 block text-sm text-gray-600">其他备注 Notes</label>
-            <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <input className="input" readOnly={readOnly} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
-          <button onClick={submit} disabled={submitting} className="btn-primary">
-            提交表单
-          </button>
+          {!readOnly && (
+            <button onClick={submit} disabled={submitting} className="btn-primary">
+              提交表单
+            </button>
+          )}
         </div>
       )}
       {zoomUrl && <Lightbox src={zoomUrl} alt="" onClose={() => setZoomUrl(null)} />}

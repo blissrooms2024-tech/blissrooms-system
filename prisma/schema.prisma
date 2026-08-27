@@ -288,6 +288,7 @@ model MoveInOutForm {
   remarks     Json     @default("{}")
   notes       String?
   submittedAt DateTime?
+  locked      Boolean   @default(false)
 
   @@index([contractId, type])
 }
