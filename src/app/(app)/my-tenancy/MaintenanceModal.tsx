@@ -34,11 +34,18 @@ function buildSteps(r: MaintenanceRow): TimelineStep[] {
     ];
   }
   const currentIndex = FLOW.indexOf(r.status);
-  return FLOW.map((s, i) => ({
-    label: FLOW_LABELS[s],
-    sublabel: i === 0 ? r.createdAt.slice(0, 10) : i === currentIndex && s === "COMPLETED" ? (r.resolvedAt?.slice(0, 10) ?? undefined) : undefined,
-    state: i < currentIndex || (i === currentIndex && s === "COMPLETED") ? "done" : i === currentIndex ? "active" : "pending",
-  }));
+  return FLOW.map((s, i) => {
+    let sublabel: string | undefined;
+    if (i === 0) sublabel = r.createdAt.slice(0, 10);
+    else if (i === currentIndex && s === "COMPLETED") sublabel = r.resolvedAt?.slice(0, 10) ?? undefined;
+    else if (s === "ACKNOWLEDGED" && i > currentIndex) sublabel = "预计3天内受理";
+    else if (s === "IN_PROGRESS" && i === currentIndex) sublabel = "处理中需要时间，请耐心等待";
+    return {
+      label: FLOW_LABELS[s],
+      sublabel,
+      state: i < currentIndex || (i === currentIndex && s === "COMPLETED") ? "done" : i === currentIndex ? "active" : "pending",
+    };
+  });
 }
 
 function readAsDataURL(file: File): Promise<string> {
