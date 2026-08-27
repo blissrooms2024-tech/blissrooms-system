@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
-import { PAYMENT_TYPE_LABELS, paymentTypeLabel, COMPANY } from "@/lib/config";
+import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
 
 interface BreakdownRow {
   item: string;
@@ -46,7 +46,6 @@ function readAsDataURL(file: File): Promise<string> {
 const BILL_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
 
 function buildBillSteps(b: PaymentRow): TimelineStep[] {
-  const doneLabel = b.type === "AC" ? "已充值" : "已批准";
   if (b.status === "REJECTED") {
     return [
       { label: "账单已开", state: "done" },
@@ -62,12 +61,7 @@ function buildBillSteps(b: PaymentRow): TimelineStep[] {
       sublabel: b.paidDate ? b.paidDate.slice(0, 10) : undefined,
       state: 1 < currentIndex ? "done" : currentIndex === 1 ? "active" : "pending",
     },
-    {
-      label: doneLabel,
-      sublabel:
-        b.type === "AC" && currentIndex === 1 ? "Admin 会在12小时内(工作日)更新到 Smart Meter" : undefined,
-      state: currentIndex === 2 ? "done" : "pending",
-    },
+    { label: "已批准", state: currentIndex === 2 ? "done" : "pending" },
   ];
 }
 
@@ -78,9 +72,6 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   const [totals, setTotals] = useState({ due: 0, paid: 0, outstanding: 0 });
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
-  const [hasAircon, setHasAircon] = useState(false);
-  const [topupAmount, setTopupAmount] = useState("");
-  const [topupSubmitting, setTopupSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -89,10 +80,10 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
       toast.danger(data.message);
       return;
     }
-    setPayments(data.payments);
+    // AC top-ups live on their own 冷气充值 page now, not here.
+    setPayments((data.payments as PaymentRow[]).filter((p) => p.type !== "AC"));
     setBreakdown(data.breakdown ?? []);
     setTotals({ due: data.totalDue, paid: data.totalPaid, outstanding: data.totalOutstanding });
-    setHasAircon(!!data.contract?.room?.hasAircon);
   }, [contractCode, toast]);
 
   useEffect(() => {
@@ -125,39 +116,6 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
       toast.danger("系统出错，请稍后再试");
     } finally {
       setUploadingId(null);
-    }
-  }
-
-  async function submitTopup(file: File) {
-    const amount = Number(topupAmount);
-    if (!amount || amount <= 0) {
-      toast.warning("请填正确的充值金额");
-      return;
-    }
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning("图片太大(超过3MB)，请压缩");
-      return;
-    }
-    setTopupSubmitting(true);
-    try {
-      const dataUrl = await readAsDataURL(file);
-      const res = await fetch(`/api/contracts/${contractCode}/ac-topup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, dataUrl }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message);
-        setTopupAmount("");
-        load();
-      } else {
-        toast.danger(data.message);
-      }
-    } catch {
-      toast.danger("系统出错，请稍后再试");
-    } finally {
-      setTopupSubmitting(false);
     }
   }
 
@@ -204,35 +162,6 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
             </tbody>
           </table>
         </>
-      )}
-
-      {hasAircon && (
-        <div className="mb-3.5 rounded-lg border border-gray-200 p-3">
-          <b className="mb-1.5 block text-sm">❄️ 冷气 Top-up 充值</b>
-          <p className="mb-2 text-xs text-gray-500">
-            请先把充值金额转入公司户口 ({COMPANY.BANK} Acc No: {COMPANY.ACC_NO})，然后在下面填写金额并上传转账证明。Admin
-            会在收到后12小时内(工作日)更新到 Smart Meter。
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="number"
-              min="1"
-              step="0.01"
-              placeholder="金额 RM"
-              value={topupAmount}
-              onChange={(e) => setTopupAmount(e.target.value)}
-              className="input w-[120px]"
-            />
-            <input
-              type="file"
-              accept="image/*"
-              disabled={topupSubmitting}
-              onChange={(e) => e.target.files?.[0] && submitTopup(e.target.files[0])}
-              className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
-            />
-            {topupSubmitting && <span className="text-sm text-gray-500">提交中...</span>}
-          </div>
-        </div>
       )}
 
       {actionable.length > 0 && (

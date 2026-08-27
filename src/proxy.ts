@@ -27,6 +27,7 @@ const ROLE_GUARDS: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/users", roles: ["ADMIN"] },
   { prefix: "/my-tenancy", roles: ["TENANT"] },
   { prefix: "/my-bills", roles: ["TENANT"] },
+  { prefix: "/my-aircon", roles: ["TENANT"] },
   { prefix: "/my-maintenance", roles: ["TENANT"] },
   { prefix: "/my-movein", roles: ["TENANT"] },
   { prefix: "/my-moveout", roles: ["TENANT"] },

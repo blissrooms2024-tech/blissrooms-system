@@ -29,6 +29,7 @@ export const MENUS: Record<string, MenuItem[]> = {
   TENANT: [
     { href: "/my-tenancy", label: "📄 我的租约" },
     { href: "/my-bills", label: "💳 我的账单" },
+    { href: "/my-aircon", label: "❄️ 冷气充值" },
     { href: "/my-movein", label: "📋 Move-in" },
     { href: "/my-moveout", label: "📦 Move-out" },
     { href: "/my-maintenance", label: "🔧 报修" },
