@@ -57,6 +57,14 @@ enum MoveType {
   MOVE_OUT
 }
 
+enum MaintenanceStatus {
+  SUBMITTED
+  ACKNOWLEDGED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model Counter {
   prefix String @id
   seq    Int    @default(0)
@@ -194,9 +202,10 @@ model Contract {
   icFront String?
   icBack  String?
 
-  payments    Payment[]
-  commissions Commission[]
-  moveForms   MoveInOutForm[]
+  payments            Payment[]
+  commissions         Commission[]
+  moveForms           MoveInOutForm[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@index([status])
   @@index([agentId])
@@ -274,6 +283,28 @@ model MoveInOutForm {
   submittedAt DateTime?
 
   @@index([contractId, type])
+}
+
+model MaintenanceRequest {
+  id          String            @id @default(cuid())
+  requestCode String            @unique
+  contractId  String
+  contract    Contract          @relation(fields: [contractId], references: [id])
+  roomCode    String
+  tenantId    String?
+  tenantName  String?
+  title       String
+  description String?
+  photos      Json              @default("[]")
+  status      MaintenanceStatus @default(SUBMITTED)
+  assignedTo  String?
+  adminNote   String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  resolvedAt  DateTime?
+
+  @@index([contractId])
+  @@index([status])
 }
 
 model Log {

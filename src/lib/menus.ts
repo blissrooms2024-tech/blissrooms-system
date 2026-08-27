@@ -10,6 +10,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/rooms", label: "🏠 房间" },
     { href: "/contracts", label: "📄 合同" },
     { href: "/payments/review", label: "🧾 水单审核" },
+    { href: "/maintenance", label: "🔧 报修" },
   ],
   ADMIN: [
     { href: "/dashboard", label: "📊 总览" },
@@ -17,6 +18,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/rooms", label: "🏠 房间" },
     { href: "/contracts", label: "📄 合同" },
     { href: "/payments/review", label: "🧾 水单审核" },
+    { href: "/maintenance", label: "🔧 报修" },
     { href: "/users", label: "👥 用户" },
   ],
   AGENT: [

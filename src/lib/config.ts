@@ -95,3 +95,11 @@ export const PAYMENT_TYPE_LABELS: Record<string, string> = {
   LATE_FEE: "迟交罚款",
   OTHER: "其他",
 };
+
+export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
+  SUBMITTED: "已提交",
+  ACKNOWLEDGED: "已受理",
+  IN_PROGRESS: "处理中",
+  COMPLETED: "已完成",
+  CANCELLED: "已取消",
+};

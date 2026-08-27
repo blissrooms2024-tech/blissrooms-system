@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
+import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { PAYMENT_TYPE_LABELS } from "@/lib/config";
 
@@ -35,11 +36,28 @@ function readAsDataURL(file: File): Promise<string> {
   });
 }
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: "待上传水单", cls: "bg-yellow-50 text-yellow-800" },
-  PENDING_REVIEW: { label: "等 Admin 审核", cls: "bg-blue-50 text-blue-700" },
-  REJECTED: { label: "被拒绝, 请重新上传", cls: "bg-red-50 text-red-700" },
-};
+const BILL_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
+
+function buildBillSteps(b: PaymentRow): TimelineStep[] {
+  const doneLabel = b.type === "AC" ? "已充值" : "已批准";
+  if (b.status === "REJECTED") {
+    return [
+      { label: "账单已开", state: "done" },
+      { label: "已上传水单", state: "done" },
+      { label: "已拒绝", sublabel: b.reviewNote ?? undefined, state: "rejected" },
+    ];
+  }
+  const currentIndex = BILL_FLOW.indexOf(b.status);
+  return [
+    { label: "账单已开", state: 0 < currentIndex ? "done" : currentIndex === 0 ? "active" : "pending" },
+    {
+      label: "已上传水单",
+      sublabel: b.paidDate ? b.paidDate.slice(0, 10) : undefined,
+      state: 1 < currentIndex ? "done" : currentIndex === 1 ? "active" : "pending",
+    },
+    { label: doneLabel, state: currentIndex === 2 ? "done" : "pending" },
+  ];
+}
 
 export default function BillsModal({
   contractCode,
@@ -119,23 +137,19 @@ export default function BillsModal({
           <b className="mb-1.5 block text-sm">📋 待处理账单</b>
           <div className="space-y-2.5">
             {actionable.map((b) => {
-              const badge = STATUS_BADGE[b.status] ?? { label: b.status, cls: "bg-gray-100 text-gray-600" };
               return (
                 <div key={b.id} className="rounded-lg border border-gray-200 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-[160px] flex-1">
                       <b className="text-sm">{PAYMENT_TYPE_LABELS[b.type] ?? b.type}</b>{" "}
                       <span className="text-sm text-gray-600">{fmt(b.amountDue)}</span>
                       {b.periodMonth && <span className="ml-1.5 text-xs text-gray-400">({b.periodMonth})</span>}
                       <div className="text-xs text-gray-500">到期日: {fmtDate(b.dueDate)}</div>
                     </div>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.cls}`}>
-                      {badge.label}
-                    </span>
+                    <div className="w-full sm:w-auto sm:min-w-[150px]">
+                      <StepTimeline steps={buildBillSteps(b)} />
+                    </div>
                   </div>
-                  {b.status === "REJECTED" && b.reviewNote && (
-                    <div className="mt-1.5 rounded bg-red-50 p-2 text-xs text-red-600">拒绝原因: {b.reviewNote}</div>
-                  )}
                   {b.status === "PENDING_REVIEW" && b.receiptLink && (
                     <button
                       type="button"

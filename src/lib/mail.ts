@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
-import { PAYMENT_TYPE_LABELS } from "@/lib/config";
+import { PAYMENT_TYPE_LABELS, MAINTENANCE_STATUS_LABELS } from "@/lib/config";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = process.env.EMAIL_FROM || "Bliss Rooms <onboarding@resend.dev>";
@@ -152,4 +152,43 @@ export async function sendWarningLetter(
      <p>如有疑问请联系 Admin。</p>`
   );
   return send(tenant.email, `Bliss Rooms — 警告信 Warning Letter (${contractCode})`, html, "WarningLetter", contractCode, triggeredBy);
+}
+
+interface MaintenanceInfo {
+  requestCode: string;
+  contractCode: string;
+  roomCode: string;
+  title: string;
+  status: string;
+}
+
+/** Tenant submits a repair/maintenance request — every ACTIVE Admin gets pinged to review it. */
+export async function notifyAdminsMaintenanceSubmitted(req: MaintenanceInfo, tenantName: string, triggeredBy: string) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
+  const link = `${APP_URL}/maintenance`;
+  const html = wrap(
+    "有新报修待处理 New Maintenance Request",
+    `<p>${tenantName} 提交了一个报修：</p>
+     <p>房间: <b>${req.roomCode}</b> (${req.contractCode})<br/>标题: <b>${req.title}</b></p>
+     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">去处理</a></p>`
+  );
+  return Promise.all(
+    admins.map((a) => send(a.email, `Bliss Rooms — 新报修: ${req.title}`, html, "MaintenanceSubmitted", req.requestCode, triggeredBy))
+  );
+}
+
+/** Admin updates a maintenance request's status — tenant gets told. */
+export async function notifyTenantMaintenanceUpdated(
+  tenant: { name: string; email: string },
+  req: MaintenanceInfo,
+  triggeredBy: string
+) {
+  const label = MAINTENANCE_STATUS_LABELS[req.status] ?? req.status;
+  const html = wrap(
+    "报修进度更新 Maintenance Update",
+    `<p>你好 ${tenant.name},</p>
+     <p>你的报修 <b>${req.title}</b>（${req.roomCode}）状态更新为: <b>${label}</b></p>
+     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">查看详情</a></p>`
+  );
+  return send(tenant.email, `Bliss Rooms — 报修进度更新: ${label}`, html, "MaintenanceUpdated", req.requestCode, triggeredBy);
 }

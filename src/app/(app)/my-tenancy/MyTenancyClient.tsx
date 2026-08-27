@@ -7,6 +7,7 @@ import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import MoveFormModal from "../contracts/MoveFormModal";
 import BillsModal from "../contracts/BillsModal";
+import MaintenanceModal from "./MaintenanceModal";
 
 interface Card {
   contractCode: string;
@@ -22,6 +23,7 @@ interface Card {
   moveInDone: boolean;
   moveOutDone: boolean;
   unpaidBillCount: number;
+  openMaintenanceCount: number;
   daysToExpiry: number | null;
 }
 
@@ -42,6 +44,7 @@ export default function MyTenancyClient() {
   const [icUploading, setIcUploading] = useState<string | null>(null);
   const [moveForm, setMoveForm] = useState<{ code: string; type: "MoveIn" | "MoveOut" } | null>(null);
   const [billsFor, setBillsFor] = useState<string | null>(null);
+  const [maintenanceFor, setMaintenanceFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -221,6 +224,29 @@ export default function MyTenancyClient() {
                   </button>
                 }
               />
+
+              {c.status === "ACTIVE" && (
+                <Row
+                  icon="🔧"
+                  name="报修 Maintenance"
+                  desc="东西坏了？跟 Admin 报修"
+                  status={
+                    c.openMaintenanceCount > 0 ? (
+                      <Pill tone="wait">{c.openMaintenanceCount} 个处理中</Pill>
+                    ) : (
+                      <Pill tone="done">✅ 没有待处理</Pill>
+                    )
+                  }
+                  action={
+                    <button
+                      onClick={() => setMaintenanceFor(c.contractCode)}
+                      className="btn-soft px-3.5 py-1.5 text-xs"
+                    >
+                      报修
+                    </button>
+                  }
+                />
+              )}
             </div>
           </div>
         );
@@ -241,6 +267,15 @@ export default function MyTenancyClient() {
         />
       )}
       {billsFor && <BillsModal contractCode={billsFor} onClose={() => setBillsFor(null)} onChanged={load} />}
+      {maintenanceFor && (
+        <MaintenanceModal
+          contractCode={maintenanceFor}
+          onClose={() => {
+            setMaintenanceFor(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
