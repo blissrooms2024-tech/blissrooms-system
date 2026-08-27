@@ -71,7 +71,7 @@ export async function GET(
 }
 
 const addSchema = z.object({
-  type: z.enum(["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "AC", "LATE_FEE", "OTHER"]),
+  type: z.enum(["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"]),
   amountPaid: z.coerce.number(),
   amountDue: z.coerce.number().optional().default(0),
   periodMonth: z.string().trim().optional().default(""),

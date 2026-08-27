@@ -100,6 +100,7 @@ export const PAYMENT_TYPE_LABELS: Record<string, string> = {
   ACCESS_CARD: "门卡押",
   AC: "冷气",
   DRYER: "烘干机",
+  ELECTRIC: "电费",
   LATE_FEE: "迟交罚款",
   OTHER: "其他",
 };

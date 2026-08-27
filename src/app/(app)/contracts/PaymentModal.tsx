@@ -34,8 +34,8 @@ function fmtDate(v: string | null) {
   return v ? v.slice(0, 10) : "-";
 }
 
-const PAY_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "AC", "DRYER", "LATE_FEE", "OTHER"];
-const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "AC", "DRYER", "OTHER"];
+const PAY_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"];
+const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "AC", "DRYER", "ELECTRIC", "OTHER"];
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   PENDING: { label: "待上传水单", cls: "bg-gray-100 text-gray-600" },
