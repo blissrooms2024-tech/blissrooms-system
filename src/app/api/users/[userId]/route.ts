@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { hashPassword } from "@/lib/auth/password";
 
 async function requireAdmin() {
   const user = await getCurrentUser();
@@ -43,6 +44,7 @@ const editSchema = z.object({
   role: z.enum(["BOSS", "ADMIN", "AGENT", "TENANT", "WORKER"]).optional(),
   status: z.enum(["ACTIVE", "DISABLED"]).optional(),
   commRate: z.coerce.number().optional(),
+  newPassword: z.string().trim().min(4).optional().or(z.literal("")),
 });
 
 export async function PATCH(
@@ -70,6 +72,7 @@ export async function PATCH(
     status: d.status ?? u.status,
   };
   if (d.commRate !== undefined) data.commRate = d.commRate;
+  if (d.newPassword) data.passwordHash = await hashPassword(d.newPassword);
 
   if (d.email && d.email !== u.email) {
     const dup = await prisma.user.findUnique({ where: { email: d.email } });

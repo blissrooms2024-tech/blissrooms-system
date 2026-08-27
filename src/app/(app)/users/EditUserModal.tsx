@@ -34,10 +34,15 @@ export default function EditUserModal({
     role: user.role,
     status: user.status,
     commRate: user.commRate ?? "",
+    newPassword: "",
   });
   const [loading, setLoading] = useState(false);
 
   async function save() {
+    if (form.newPassword && form.newPassword.length < 4) {
+      toast.warning("新密码至少要4位");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/users/${user.userCode}`, {
@@ -104,6 +109,17 @@ export default function EditUserModal({
             className="input"
             value={form.commRate}
             onChange={(e) => setForm({ ...form, commRate: e.target.value === "" ? "" : Number(e.target.value) })}
+          />
+        </Field>
+      </div>
+      <div className="mt-2.5 flex flex-wrap gap-2.5">
+        <Field label="重设密码 (留空不改)">
+          <input
+            type="text"
+            placeholder="新密码，至少4位"
+            className="input"
+            value={form.newPassword}
+            onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
           />
         </Field>
       </div>
