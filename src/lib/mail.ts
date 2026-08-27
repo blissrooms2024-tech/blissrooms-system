@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
 import { PAYMENT_TYPE_LABELS, MAINTENANCE_STATUS_LABELS } from "@/lib/config";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+// Falls back to Vercel's own auto-provided deployment URL when NEXT_PUBLIC_APP_URL isn't
+// set, so email links never silently point at localhost in production.
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 // Gmail SMTP is preferred when configured: unlike Resend's default onboarding@resend.dev
 // sender, a real Gmail account can actually deliver to any recipient without needing a
