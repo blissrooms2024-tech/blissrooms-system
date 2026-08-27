@@ -138,8 +138,8 @@ export default function UsersClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th>ID</Th>
-                  <Th>姓名</Th>
+                  <Th className="hidden sm:table-cell">ID</Th>
+                  <Th className="sticky left-0 z-[1] bg-gray-50">姓名</Th>
                   <Th>Email</Th>
                   <Th>角色</Th>
                   <Th>电话</Th>
@@ -150,8 +150,8 @@ export default function UsersClient() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.userCode} className="border-b border-gray-100">
-                    <Td>{u.userCode}</Td>
-                    <Td>{u.name}</Td>
+                    <Td className="hidden sm:table-cell">{u.userCode}</Td>
+                    <Td className="sticky left-0 z-[1] bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">{u.name}</Td>
                     <Td>{u.email}</Td>
                     <Td>{ROLE_LABELS[u.role] ?? u.role}</Td>
                     <Td>{u.phone || "-"}</Td>
@@ -199,9 +199,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-2.5 py-2 font-semibold">{children}</th>;
+function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <th className={`whitespace-nowrap px-2.5 py-2 font-semibold ${className}`}>{children}</th>;
 }
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="whitespace-nowrap px-2.5 py-2.5">{children}</td>;
+function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <td className={`whitespace-nowrap px-2.5 py-2.5 ${className}`}>{children}</td>;
 }
