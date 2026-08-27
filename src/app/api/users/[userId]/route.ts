@@ -84,3 +84,38 @@ export async function PATCH(
 
   return NextResponse.json({ success: true, message: `✅ 用户已更新: ${updated.name}` });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ userId: string }> }
+) {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return NextResponse.json({ success: false, message: "只有 Admin 可以删除" }, { status: 403 });
+  }
+  const { userId } = await params;
+  const u = await prisma.user.findUnique({ where: { userCode: userId } });
+  if (!u) return NextResponse.json({ success: false, message: "找不到用户" }, { status: 404 });
+
+  if (u.id === admin.sub) {
+    return NextResponse.json({ success: false, message: "不能删除自己的账号" }, { status: 400 });
+  }
+
+  const [contractCount, roomCount, moveFormCount, commissionCount, maintenanceCount] = await Promise.all([
+    prisma.contract.count({ where: { OR: [{ tenantId: u.id }, { agentId: u.id }] } }),
+    prisma.room.count({ where: { currentTenantId: u.id } }),
+    prisma.moveInOutForm.count({ where: { tenantId: u.id } }),
+    prisma.commission.count({ where: { agentId: u.id } }),
+    prisma.maintenanceRequest.count({ where: { OR: [{ tenantId: u.id }, { assignedWorkerId: u.id }] } }),
+  ]);
+  if (contractCount + roomCount + moveFormCount + commissionCount + maintenanceCount > 0) {
+    return NextResponse.json(
+      { success: false, message: "这个用户有关联的合同/房间/记录，不能删除，请改用「停用」" },
+      { status: 409 }
+    );
+  }
+
+  await prisma.user.delete({ where: { userCode: userId } });
+
+  return NextResponse.json({ success: true, message: `✅ 用户已删除: ${u.name}` });
+}

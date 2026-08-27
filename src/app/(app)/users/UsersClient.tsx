@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent } from "react";
 import { ROLE_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import EditUserModal, { EditableUser } from "./EditUserModal";
 
 interface UserRow {
@@ -23,6 +24,7 @@ export default function UsersClient() {
   const [error, setError] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState<EditableUser | null>(null);
+  const [deleting, setDeleting] = useState<UserRow | null>(null);
 
   async function load() {
     setError("");
@@ -78,6 +80,19 @@ export default function UsersClient() {
     const res = await fetch(`/api/users/${userCode}`);
     const data = await res.json();
     if (data.success) setEditing(data.user);
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    const res = await fetch(`/api/users/${deleting.userCode}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) {
+      toast.success(data.message);
+      load();
+    } else {
+      toast.danger(data.message);
+    }
+    setDeleting(null);
   }
 
   return (
@@ -176,6 +191,12 @@ export default function UsersClient() {
                         <button onClick={() => openEdit(u.userCode)} className="btn-primary px-2.5 py-1 text-xs">
                           ✏️编辑
                         </button>
+                        <button
+                          onClick={() => setDeleting(u)}
+                          className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                        >
+                          🗑️删除
+                        </button>
                       </div>
                     </Td>
                   </tr>
@@ -187,6 +208,16 @@ export default function UsersClient() {
       </div>
 
       {editing && <EditUserModal user={editing} onClose={() => setEditing(null)} onSaved={load} />}
+
+      <ConfirmDialog
+        open={!!deleting}
+        danger
+        title="⚠️ 删除用户"
+        message={`确定要删除 ${deleting?.name}（${deleting?.email}）吗？此操作不能撤销。`}
+        confirmLabel="确定删除"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }
