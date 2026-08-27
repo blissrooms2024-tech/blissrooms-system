@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
           prisma.contract.findUnique({ where: { id: bill.contractId } }),
         ]);
         if (tenant && contract) {
-          const message = `你的房租 RM${Number(bill.amountDue)}（${bill.periodMonth ?? ""}）已经逾期 ${daysOverdue} 天没有缴交，并且每天累计 RM${FEES.LATE_PER_DAY} 迟交罚款。请尽快上传水单缴清房租和罚款，否则我们会依合同条款进一步处理，包括终止合同。`;
+          const message = `Your rent of RM${Number(bill.amountDue)} (${bill.periodMonth ?? ""}) is now ${daysOverdue} days overdue, and a late payment penalty of RM${FEES.LATE_PER_DAY}/day is accruing. Please upload payment slips for the rent and penalty as soon as possible, or we will proceed further under the terms of the contract, including termination.`;
           await sendWarningLetter(tenant, contract.contractCode, message, "system");
           await prisma.warningLetter.create({
             data: {

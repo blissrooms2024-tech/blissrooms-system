@@ -6,9 +6,18 @@ import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 const TEMPLATES = [
-  { label: "迟交房租", text: "你已多次逾期缴交房租，请注意每月25号前完成付款，否则将影响你的租约状态。" },
-  { label: "违反 House Rules", text: "根据现场检查/其他住户反馈，你的行为已违反 House Rules 相关条款，请立即改善，否则合同可能被终止。" },
-  { label: "长期未上传水单", text: "你有账单长期未上传付款水单，请在3天内补交，否则将产生迟交罚款。" },
+  {
+    label: "迟交房租",
+    text: "You have repeatedly paid rent late. Please make sure payment is completed by the 25th of each month, or your tenancy status may be affected.",
+  },
+  {
+    label: "违反 House Rules",
+    text: "Based on an on-site inspection / feedback from other residents, your conduct has violated the House Rules. Please correct this immediately, or the contract may be terminated.",
+  },
+  {
+    label: "长期未上传水单",
+    text: "You have an outstanding bill with no payment slip uploaded for an extended period. Please submit it within 3 days, or a late payment penalty will apply.",
+  },
 ];
 
 interface Letter {

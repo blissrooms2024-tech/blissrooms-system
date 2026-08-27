@@ -2,7 +2,28 @@ import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
-import { PAYMENT_TYPE_LABELS, MAINTENANCE_STATUS_LABELS } from "@/lib/config";
+
+// English labels for email content — the in-app UI stays Chinese (see lib/config.ts), but
+// all outbound email is English-only.
+const PAYMENT_TYPE_LABELS_EN: Record<string, string> = {
+  DEPOSIT: "Deposit",
+  UTILITIES: "Utilities Deposit",
+  RENTAL: "Rental",
+  ADMIN_FEE: "Admin Fee",
+  ACCESS_CARD: "Access Card Deposit",
+  AC: "Air-Cond Top-Up",
+  DRYER: "Dryer",
+  LATE_FEE: "Late Payment Penalty",
+  OTHER: "Other",
+};
+
+const MAINTENANCE_STATUS_LABELS_EN: Record<string, string> = {
+  SUBMITTED: "Submitted",
+  ACKNOWLEDGED: "Acknowledged",
+  IN_PROGRESS: "In Progress",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
 
 // Falls back to Vercel's own auto-provided deployment URL when NEXT_PUBLIC_APP_URL isn't
 // set, so email links never silently point at localhost in production.
@@ -51,24 +72,24 @@ async function send(to: string, subject: string, html: string, type: string, rel
 export async function sendVerifyEmail(user: { name: string; email: string }, token: string, triggeredBy: string) {
   const link = `${APP_URL}/api/auth/verify?token=${token}`;
   const html = `<div style="font-family:Arial;font-size:14px;line-height:1.6;">
-    <h2 style="color:#0b5394;">Bliss Rooms — 邮箱验证 Email Verification</h2>
-    <p>你好 ${user.name},</p>
-    <p>请点击下面的按钮验证你的邮箱 / Please click to verify your email:</p>
-    <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">✅ 验证邮箱 Verify Email</a></p>
-    <p style="color:#888;font-size:12px;">若按钮无效, 复制此链接: ${link}</p>
+    <h2 style="color:#0b5394;">Bliss Rooms — Email Verification</h2>
+    <p>Hi ${user.name},</p>
+    <p>Please click the button below to verify your email:</p>
+    <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">✅ Verify Email</a></p>
+    <p style="color:#888;font-size:12px;">If the button doesn't work, copy this link: ${link}</p>
     <p style="color:#888;font-size:12px;">Bliss Rooms Enterprise</p></div>`;
-  return send(user.email, "Bliss Rooms — 请验证你的邮箱 Verify Your Email", html, "VerifyEmail", user.email, triggeredBy);
+  return send(user.email, "Bliss Rooms — Please Verify Your Email", html, "VerifyEmail", user.email, triggeredBy);
 }
 
 export async function sendResetEmail(user: { name: string; email: string }, token: string) {
   const link = `${APP_URL}/reset-password?token=${token}`;
   const html = `<div style="font-family:Arial;font-size:14px;line-height:1.6;">
-    <h2 style="color:#0b5394;">Bliss Rooms — 重设密码 Reset Password</h2>
-    <p>你好 ${user.name},</p>
-    <p>点击下面按钮重设密码 (1小时内有效) / Click to reset your password (valid 1 hour):</p>
-    <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">🔑 重设密码 Reset Password</a></p>
-    <p style="color:#888;font-size:12px;">若不是你本人操作, 请忽略此邮件。</p></div>`;
-  return send(user.email, "Bliss Rooms — 重设密码 Reset Password", html, "ResetPassword", user.email, "system");
+    <h2 style="color:#0b5394;">Bliss Rooms — Reset Password</h2>
+    <p>Hi ${user.name},</p>
+    <p>Click the button below to reset your password (valid for 1 hour):</p>
+    <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">🔑 Reset Password</a></p>
+    <p style="color:#888;font-size:12px;">If you didn't request this, please ignore this email.</p></div>`;
+  return send(user.email, "Bliss Rooms — Reset Password", html, "ResetPassword", user.email, "system");
 }
 
 function wrap(title: string, bodyHtml: string) {
@@ -79,7 +100,7 @@ function wrap(title: string, bodyHtml: string) {
 }
 
 function typeLabel(type: string) {
-  return PAYMENT_TYPE_LABELS[type] ?? type;
+  return PAYMENT_TYPE_LABELS_EN[type] ?? type;
 }
 
 interface BillInfo {
@@ -98,27 +119,27 @@ export async function notifyAdminsSlipUploaded(bill: BillInfo, tenantName: strin
   const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
   const link = `${APP_URL}/payments/review`;
   const html = wrap(
-    "有新水单待审核 Slip Pending Review",
-    `<p>${tenantName} 上传了一笔水单，等待审核：</p>
+    "New Slip Pending Review",
+    `<p>${tenantName} uploaded a payment slip that needs review:</p>
      <p><b>${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type)} · RM${bill.amountPaid}</p>
-     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">前往审核</a></p>`
+     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Review</a></p>`
   );
-  const subject = `Bliss Rooms — 待审核: ${bill.contractCode} ${typeLabel(bill.type)} RM${bill.amountPaid}`;
+  const subject = `Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type)} RM${bill.amountPaid}`;
   return Promise.all(admins.map((a) => send(a.email, subject, html, "SlipUploaded", bill.paymentCode, triggeredBy)));
 }
 
 /** Admin issues a new bill (rent due, utility bill, etc.) — tells the tenant to pay & upload proof. */
 export async function notifyTenantBillCreated(tenant: { name: string; email: string }, bill: BillInfo, triggeredBy: string) {
   const html = wrap(
-    "新账单 New Bill",
-    `<p>你好 ${tenant.name},</p>
-     <p>你有一笔新账单，请尽快付款并上传水单：</p>
+    "New Bill",
+    `<p>Hi ${tenant.name},</p>
+     <p>You have a new bill. Please pay and upload your payment slip as soon as possible:</p>
      <p><b>${typeLabel(bill.type)}</b> · RM${bill.amountDue}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
-     <p>到期日: ${bill.dueDate ? bill.dueDate.slice(0, 10) : "-"}</p>
-     <p style="color:#c0392b;">逾期未上传水单将按 RM30/天 计迟交罚款。</p>
-     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">上传水单</a></p>`
+     <p>Due date: ${bill.dueDate ? bill.dueDate.slice(0, 10) : "-"}</p>
+     <p style="color:#c0392b;">A late payment penalty of RM30/day applies if the slip isn't uploaded by the due date.</p>
+     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Upload Slip</a></p>`
   );
-  return send(tenant.email, `Bliss Rooms — 新账单: ${typeLabel(bill.type)} RM${bill.amountDue}`, html, "BillCreated", bill.paymentCode, triggeredBy);
+  return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type)} RM${bill.amountDue}`, html, "BillCreated", bill.paymentCode, triggeredBy);
 }
 
 /** Admin approves or rejects an uploaded slip — tenant gets told either way. */
@@ -129,17 +150,17 @@ export async function notifyTenantBillReviewed(
   reason: string | null,
   triggeredBy: string
 ) {
-  const label = approved ? (bill.type === "AC" ? "已充值 Topped Up" : "已批准 Approved") : "已拒绝 Rejected";
+  const label = approved ? (bill.type === "AC" ? "Topped Up" : "Approved") : "Rejected";
   const html = wrap(
-    `账单${approved ? "已批准" : "被拒绝"} Bill ${approved ? "Approved" : "Rejected"}`,
-    `<p>你好 ${tenant.name},</p>
-     <p>你的账单 <b>${typeLabel(bill.type)} RM${bill.amountPaid}</b> ${label}。</p>
-     ${!approved ? `<p style="color:#c0392b;">原因: ${reason}</p><p>请重新上传正确的水单。</p>` : ""}
-     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">查看我的租约</a></p>`
+    `Bill ${approved ? "Approved" : "Rejected"}`,
+    `<p>Hi ${tenant.name},</p>
+     <p>Your bill <b>${typeLabel(bill.type)} RM${bill.amountPaid}</b> has been ${label}.</p>
+     ${!approved ? `<p style="color:#c0392b;">Reason: ${reason}</p><p>Please re-upload the correct payment slip.</p>` : ""}
+     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View My Tenancy</a></p>`
   );
   return send(
     tenant.email,
-    `Bliss Rooms — 账单${approved ? "已批准" : "被拒绝"}: ${typeLabel(bill.type)}`,
+    `Bliss Rooms — Bill ${approved ? "Approved" : "Rejected"}: ${typeLabel(bill.type)}`,
     html,
     "BillReviewed",
     bill.paymentCode,
@@ -150,13 +171,13 @@ export async function notifyTenantBillReviewed(
 /** Cron-generated late fee — lets the tenant know a penalty was charged and why. */
 export async function notifyTenantLateFee(tenant: { name: string; email: string }, bill: BillInfo, originalType: string) {
   const html = wrap(
-    "迟交罚款 Late Payment Penalty",
-    `<p>你好 ${tenant.name},</p>
-     <p>你的 <b>${typeLabel(originalType)}</b> 账单逾期未付, 已产生迟交罚款 RM${bill.amountDue}。</p>
-     <p>迟交罚款会按每天累计, 请尽快上传原账单和罚款的水单以避免继续产生罚款。</p>
-     <p><a href="${APP_URL}/my-tenancy" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">立即处理</a></p>`
+    "Late Payment Penalty",
+    `<p>Hi ${tenant.name},</p>
+     <p>Your <b>${typeLabel(originalType)}</b> bill is overdue, so a late payment penalty of RM${bill.amountDue} has been charged.</p>
+     <p>This penalty accrues daily — please upload the payment slip for the original bill and the penalty as soon as possible to avoid further charges.</p>
+     <p><a href="${APP_URL}/my-tenancy" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Handle Now</a></p>`
   );
-  return send(tenant.email, `Bliss Rooms — 迟交罚款 RM${bill.amountDue}`, html, "LateFee", bill.paymentCode, "system-cron");
+  return send(tenant.email, `Bliss Rooms — Late Payment Penalty RM${bill.amountDue}`, html, "LateFee", bill.paymentCode, "system-cron");
 }
 
 /** Admin-triggered formal warning letter (House Rules violation, repeated lateness, etc.) — free-text body. */
@@ -167,13 +188,13 @@ export async function sendWarningLetter(
   triggeredBy: string
 ) {
   const html = wrap(
-    "警告信 Warning Letter",
-    `<p>${tenant.name} 你好,</p>
-     <p>合同编号: <b>${contractCode}</b></p>
+    "Warning Letter",
+    `<p>Hi ${tenant.name},</p>
+     <p>Contract: <b>${contractCode}</b></p>
      <div style="border-left:3px solid #c0392b;padding:8px 14px;margin:12px 0;background:#fdf2f2;white-space:pre-wrap;">${message}</div>
-     <p>如有疑问请联系 Admin。</p>`
+     <p>Please contact Admin if you have any questions.</p>`
   );
-  return send(tenant.email, `Bliss Rooms — 警告信 Warning Letter (${contractCode})`, html, "WarningLetter", contractCode, triggeredBy);
+  return send(tenant.email, `Bliss Rooms — Warning Letter (${contractCode})`, html, "WarningLetter", contractCode, triggeredBy);
 }
 
 interface MaintenanceInfo {
@@ -189,13 +210,13 @@ export async function notifyAdminsMaintenanceSubmitted(req: MaintenanceInfo, ten
   const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
   const link = `${APP_URL}/maintenance`;
   const html = wrap(
-    "有新报修待处理 New Maintenance Request",
-    `<p>${tenantName} 提交了一个报修：</p>
-     <p>房间: <b>${req.roomCode}</b> (${req.contractCode})<br/>标题: <b>${req.title}</b></p>
-     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">去处理</a></p>`
+    "New Maintenance Request",
+    `<p>${tenantName} submitted a maintenance request:</p>
+     <p>Room: <b>${req.roomCode}</b> (${req.contractCode})<br/>Title: <b>${req.title}</b></p>
+     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Handle It</a></p>`
   );
   return Promise.all(
-    admins.map((a) => send(a.email, `Bliss Rooms — 新报修: ${req.title}`, html, "MaintenanceSubmitted", req.requestCode, triggeredBy))
+    admins.map((a) => send(a.email, `Bliss Rooms — New Maintenance Request: ${req.title}`, html, "MaintenanceSubmitted", req.requestCode, triggeredBy))
   );
 }
 
@@ -205,14 +226,14 @@ export async function notifyTenantMaintenanceUpdated(
   req: MaintenanceInfo,
   triggeredBy: string
 ) {
-  const label = MAINTENANCE_STATUS_LABELS[req.status] ?? req.status;
+  const label = MAINTENANCE_STATUS_LABELS_EN[req.status] ?? req.status;
   const html = wrap(
-    "报修进度更新 Maintenance Update",
-    `<p>你好 ${tenant.name},</p>
-     <p>你的报修 <b>${req.title}</b>（${req.roomCode}）状态更新为: <b>${label}</b></p>
-     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">查看详情</a></p>`
+    "Maintenance Update",
+    `<p>Hi ${tenant.name},</p>
+     <p>Your maintenance request <b>${req.title}</b> (${req.roomCode}) status has been updated to: <b>${label}</b></p>
+     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View Details</a></p>`
   );
-  return send(tenant.email, `Bliss Rooms — 报修进度更新: ${label}`, html, "MaintenanceUpdated", req.requestCode, triggeredBy);
+  return send(tenant.email, `Bliss Rooms — Maintenance Update: ${label}`, html, "MaintenanceUpdated", req.requestCode, triggeredBy);
 }
 
 /** Rent arrears cross the escalation threshold (default day 10) — every ACTIVE Admin gets told
@@ -227,14 +248,14 @@ export async function notifyAdminsRentEscalation(
   const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
   const link = `${APP_URL}/contracts`;
   const html = wrap(
-    "租金逾期需要处理 Rent Arrears — Action Needed",
-    `<p><b>${tenantName}</b>（合同 <b>${contractCode}</b>，房间 ${bill.roomCode}）的房租已经逾期 <b>${daysOverdue} 天</b>没缴。</p>
-     <p>已达到公司政策的处理门槛：请review是否需要终止合同并没收押金。系统不会自动执行, 需要 Admin 在合同页面手动确认。</p>
-     <p><a href="${link}" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">去处理</a></p>`
+    "Rent Arrears — Action Needed",
+    `<p><b>${tenantName}</b> (Contract <b>${contractCode}</b>, Room ${bill.roomCode}) has rent overdue by <b>${daysOverdue} days</b>.</p>
+     <p>This has crossed the company policy threshold — please review whether to terminate the contract and forfeit the deposit. The system will not do this automatically; it requires manual confirmation from Admin on the contracts page.</p>
+     <p><a href="${link}" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Handle It</a></p>`
   );
   return Promise.all(
     admins.map((a) =>
-      send(a.email, `Bliss Rooms — ${contractCode} 租金逾期 ${daysOverdue} 天, 需要处理`, html, "RentEscalation", bill.paymentCode, "system-cron")
+      send(a.email, `Bliss Rooms — ${contractCode} Rent Overdue ${daysOverdue} Days, Action Needed`, html, "RentEscalation", bill.paymentCode, "system-cron")
     )
   );
 }
@@ -246,10 +267,10 @@ export async function notifyTenantContractTerminated(
   triggeredBy: string
 ) {
   const html = wrap(
-    "合同终止通知 Contract Terminated",
-    `<p>你好 ${tenant.name},</p>
-     <p>由于房租长期逾期未缴, 你的合同 <b>${contractCode}</b> 已被终止, 押金已被没收作为欠款/违约赔偿。</p>
-     <p>请尽快联系 Admin 安排搬出手续。</p>`
+    "Contract Terminated",
+    `<p>Hi ${tenant.name},</p>
+     <p>Due to prolonged unpaid rent, your contract <b>${contractCode}</b> has been terminated, and the deposit has been forfeited as compensation for the outstanding amount/breach of contract.</p>
+     <p>Please contact Admin as soon as possible to arrange your move-out.</p>`
   );
-  return send(tenant.email, `Bliss Rooms — 合同终止通知 (${contractCode})`, html, "ContractTerminated", contractCode, triggeredBy);
+  return send(tenant.email, `Bliss Rooms — Contract Terminated (${contractCode})`, html, "ContractTerminated", contractCode, triggeredBy);
 }
