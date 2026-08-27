@@ -40,7 +40,7 @@ const editSchema = z.object({
   email: z.string().trim().toLowerCase().email().optional(),
   phone: z.string().trim().optional(),
   ic: z.string().trim().optional(),
-  role: z.enum(["BOSS", "ADMIN", "AGENT", "TENANT"]).optional(),
+  role: z.enum(["BOSS", "ADMIN", "AGENT", "TENANT", "WORKER"]).optional(),
   status: z.enum(["ACTIVE", "DISABLED"]).optional(),
   commRate: z.coerce.number().optional(),
 });

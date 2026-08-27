@@ -3,4 +3,5 @@ export const ROLE_HOME: Record<string, string> = {
   ADMIN: "/dashboard",
   AGENT: "/rooms",
   TENANT: "/my-tenancy",
+  WORKER: "/worker",
 };

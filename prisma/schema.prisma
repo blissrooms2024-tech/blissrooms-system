@@ -15,6 +15,7 @@ enum Role {
   ADMIN
   AGENT
   TENANT
+  WORKER
 }
 
 enum UserStatus {
@@ -63,6 +64,11 @@ enum MaintenanceStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+enum MaintenanceWorkerType {
+  IN_HOUSE
+  OUTSOURCED
 }
 
 model Counter {
@@ -304,8 +310,19 @@ model MaintenanceRequest {
   updatedAt   DateTime          @updatedAt
   resolvedAt  DateTime?
 
+  /// In-house staff (WORKER role account) upload their own before/after photos here; for
+  /// outsourced contractors there's no login, Admin just uploads the invoice/receipt instead.
+  workerType         MaintenanceWorkerType?
+  assignedWorkerId   String?
+  workerBeforePhotos Json                   @default("[]")
+  workerAfterPhotos  Json                   @default("[]")
+  invoiceUrl         String?
+  cost               Decimal?               @db.Decimal(10, 2)
+  costPaidAt         DateTime?
+
   @@index([contractId])
   @@index([status])
+  @@index([assignedWorkerId])
 }
 
 model WarningLetter {

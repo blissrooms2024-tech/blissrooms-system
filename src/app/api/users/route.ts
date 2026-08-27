@@ -31,7 +31,7 @@ export async function GET() {
 const createSchema = z.object({
   name: z.string().trim().min(1),
   email: z.string().trim().toLowerCase().email(),
-  role: z.enum(["BOSS", "ADMIN", "AGENT", "TENANT"]),
+  role: z.enum(["BOSS", "ADMIN", "AGENT", "TENANT", "WORKER"]),
   phone: z.string().trim().optional().default(""),
   ic: z.string().trim().optional().default(""),
   password: z.string().trim().optional().default("1234"),

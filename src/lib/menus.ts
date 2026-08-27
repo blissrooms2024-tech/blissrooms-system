@@ -27,4 +27,5 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/contracts", label: "📄 我的合同" },
   ],
   TENANT: [{ href: "/my-tenancy", label: "📄 我的租约" }],
+  WORKER: [{ href: "/worker", label: "🔧 我的报修任务" }],
 };

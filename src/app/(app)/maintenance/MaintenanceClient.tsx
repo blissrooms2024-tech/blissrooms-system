@@ -20,6 +20,19 @@ interface MaintenanceRow {
   adminNote: string | null;
   createdAt: string;
   resolvedAt: string | null;
+  workerType: "IN_HOUSE" | "OUTSOURCED" | null;
+  assignedWorkerId: string | null;
+  workerBeforePhotos: string[];
+  workerAfterPhotos: string[];
+  invoiceUrl: string | null;
+  cost: number | null;
+  costPaidAt: string | null;
+}
+
+interface Worker {
+  id: string;
+  userCode: string;
+  name: string;
 }
 
 const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "COMPLETED"];
@@ -27,7 +40,6 @@ const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "COMPLETED"];
 const NEXT_ACTION: Record<string, { status: string; label: string; color: string } | undefined> = {
   SUBMITTED: { status: "ACKNOWLEDGED", label: "受理", color: "bg-brand" },
   ACKNOWLEDGED: { status: "IN_PROGRESS", label: "开始处理", color: "bg-amber-500" },
-  IN_PROGRESS: { status: "COMPLETED", label: "标记完成", color: "bg-green-700" },
 };
 
 function buildSteps(r: MaintenanceRow): TimelineStep[] {
@@ -45,13 +57,33 @@ function buildSteps(r: MaintenanceRow): TimelineStep[] {
   }));
 }
 
+function fmt(v: number | null) {
+  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
+}
+
+function readAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+interface AssignDraft {
+  workerType: "IN_HOUSE" | "OUTSOURCED";
+  assignedWorkerId: string;
+  contractorName: string;
+  cost: string;
+}
+
 export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   const toast = useToast();
   const [items, setItems] = useState<MaintenanceRow[] | null>(null);
+  const [workers, setWorkers] = useState<Worker[]>([]);
   const [error, setError] = useState("");
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
-  const [assignedTo, setAssignedTo] = useState<Record<string, string>>({});
-  const [adminNote, setAdminNote] = useState<Record<string, string>>({});
+  const [draft, setDraft] = useState<Record<string, AssignDraft>>({});
 
   const load = useCallback(async () => {
     setError("");
@@ -62,7 +94,12 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         setError(data.message);
         return;
       }
-      setItems(data.requests.map((r: MaintenanceRow & { contract: { contractCode: string } }) => ({ ...r, contractCode: r.contract.contractCode })));
+      setItems(
+        data.requests.map((r: MaintenanceRow & { contract: { contractCode: string } }) => ({
+          ...r,
+          contractCode: r.contract.contractCode,
+        }))
+      );
     } catch {
       setError("出错，请稍后再试");
     }
@@ -72,18 +109,70 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
     // setState happens after the fetch's await, not synchronously in the effect body.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [load]);
+    if (canAct) {
+      fetch("/api/users/workers")
+        .then((res) => res.json())
+        .then((data) => data.success && setWorkers(data.workers));
+    }
+  }, [load, canAct]);
 
-  async function updateStatus(requestCode: string, status: string) {
+  function draftFor(r: MaintenanceRow): AssignDraft {
+    return (
+      draft[r.requestCode] ?? {
+        workerType: r.workerType ?? "IN_HOUSE",
+        assignedWorkerId: r.assignedWorkerId ?? "",
+        contractorName: r.workerType === "OUTSOURCED" ? (r.assignedTo ?? "") : "",
+        cost: r.cost != null ? String(r.cost) : "",
+      }
+    );
+  }
+  function setDraftFor(requestCode: string, patch: Partial<AssignDraft>) {
+    setDraft((m) => ({ ...m, [requestCode]: { ...draftFor(items!.find((i) => i.requestCode === requestCode)!), ...m[requestCode], ...patch } }));
+  }
+
+  async function patchRequest(requestCode: string, body: Record<string, unknown>) {
     const res = await fetch(`/api/maintenance/${requestCode}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, assignedTo: assignedTo[requestCode], adminNote: adminNote[requestCode] }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (data.success) toast.success(data.message);
     else toast.danger(data.message);
     load();
+  }
+
+  async function saveAssignment(r: MaintenanceRow) {
+    const d = draftFor(r);
+    if (d.workerType === "IN_HOUSE" && !d.assignedWorkerId) {
+      toast.warning("请选一个员工");
+      return;
+    }
+    if (d.workerType === "OUTSOURCED" && !d.contractorName.trim()) {
+      toast.warning("请填外包工人/公司名字");
+      return;
+    }
+    const workerName = workers.find((w) => w.id === d.assignedWorkerId)?.name;
+    await patchRequest(r.requestCode, {
+      workerType: d.workerType,
+      assignedWorkerId: d.workerType === "IN_HOUSE" ? d.assignedWorkerId : "",
+      assignedTo: d.workerType === "IN_HOUSE" ? (workerName ?? "") : d.contractorName.trim(),
+      ...(r.status === "SUBMITTED" ? { status: "ACKNOWLEDGED" } : {}),
+    });
+  }
+
+  async function uploadInvoice(r: MaintenanceRow, file: File) {
+    const dataUrl = await readAsDataURL(file);
+    await patchRequest(r.requestCode, { invoiceDataUrl: dataUrl });
+  }
+
+  async function complete(r: MaintenanceRow) {
+    const d = draftFor(r);
+    const cost = d.cost.trim() ? Number(d.cost) : undefined;
+    await patchRequest(r.requestCode, {
+      status: "COMPLETED",
+      ...(cost !== undefined ? { cost, markCostPaid: true } : {}),
+    });
   }
 
   if (!items && !error) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
@@ -100,6 +189,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         <div className="space-y-3">
           {open.map((r) => {
             const next = NEXT_ACTION[r.status];
+            const d = draftFor(r);
             return (
               <div key={r.requestCode} className="rounded-lg border border-gray-200 p-3.5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -115,7 +205,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     </div>
                     {r.description && <div className="text-xs text-gray-500">{r.description}</div>}
                     {r.photos.length > 0 && (
-                      <div className="mt-1.5 flex gap-2">
+                      <div className="mt-1.5 flex flex-wrap gap-2">
                         {r.photos.map((p, i) => (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -133,34 +223,124 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     <StepTimeline steps={buildSteps(r)} />
                   </div>
                 </div>
-                {canAct && (
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2.5">
-                    <input
-                      className="input w-[130px] text-xs"
-                      placeholder="处理人 (可选)"
-                      defaultValue={r.assignedTo ?? ""}
-                      onChange={(e) => setAssignedTo((m) => ({ ...m, [r.requestCode]: e.target.value }))}
-                    />
-                    <input
-                      className="input min-w-[160px] flex-1 text-xs"
-                      placeholder="备注 (可选)"
-                      defaultValue={r.adminNote ?? ""}
-                      onChange={(e) => setAdminNote((m) => ({ ...m, [r.requestCode]: e.target.value }))}
-                    />
-                    {next && (
-                      <button
-                        onClick={() => updateStatus(r.requestCode, next.status)}
-                        className={`rounded-md ${next.color} px-3 py-1.5 text-xs font-semibold text-white`}
-                      >
-                        {next.label}
-                      </button>
+
+                {(r.workerBeforePhotos.length > 0 || r.workerAfterPhotos.length > 0) && (
+                  <div className="mt-2 flex flex-wrap gap-4 border-t border-gray-100 pt-2">
+                    {r.workerBeforePhotos.length > 0 && (
+                      <div>
+                        <div className="mb-1 text-xs text-gray-400">工人拍的 Before</div>
+                        <div className="flex gap-1.5">
+                          {r.workerBeforePhotos.map((p, i) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={i} src={p} alt="" onClick={() => setZoomUrl(p)} className="h-12 w-12 cursor-pointer rounded object-cover" />
+                          ))}
+                        </div>
+                      </div>
                     )}
-                    <button
-                      onClick={() => updateStatus(r.requestCode, "CANCELLED")}
-                      className="rounded-md bg-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600"
-                    >
-                      取消
-                    </button>
+                    {r.workerAfterPhotos.length > 0 && (
+                      <div>
+                        <div className="mb-1 text-xs text-gray-400">工人拍的 After</div>
+                        <div className="flex gap-1.5">
+                          {r.workerAfterPhotos.map((p, i) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={i} src={p} alt="" onClick={() => setZoomUrl(p)} className="h-12 w-12 cursor-pointer rounded object-cover" />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {canAct && (
+                  <div className="mt-2.5 space-y-2 border-t border-gray-100 pt-2.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <select
+                        className="input w-[110px] text-xs"
+                        value={d.workerType}
+                        onChange={(e) => setDraftFor(r.requestCode, { workerType: e.target.value as "IN_HOUSE" | "OUTSOURCED" })}
+                      >
+                        <option value="IN_HOUSE">在职员工</option>
+                        <option value="OUTSOURCED">外包</option>
+                      </select>
+                      {d.workerType === "IN_HOUSE" ? (
+                        <select
+                          className="input w-[140px] text-xs"
+                          value={d.assignedWorkerId}
+                          onChange={(e) => setDraftFor(r.requestCode, { assignedWorkerId: e.target.value })}
+                        >
+                          <option value="">选员工...</option>
+                          {workers.map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          className="input w-[140px] text-xs"
+                          placeholder="外包公司/工人名字"
+                          value={d.contractorName}
+                          onChange={(e) => setDraftFor(r.requestCode, { contractorName: e.target.value })}
+                        />
+                      )}
+                      <button
+                        onClick={() => saveAssignment(r)}
+                        className="rounded-md bg-brand px-2.5 py-1.5 text-xs font-semibold text-white"
+                      >
+                        指派
+                      </button>
+                      {r.assignedTo && <span className="text-xs text-gray-500">当前: {r.assignedTo}</span>}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {next && (
+                        <button
+                          onClick={() => patchRequest(r.requestCode, { status: next.status })}
+                          className={`rounded-md ${next.color} px-3 py-1.5 text-xs font-semibold text-white`}
+                        >
+                          {next.label}
+                        </button>
+                      )}
+                      {r.status === "IN_PROGRESS" && (
+                        <>
+                          <input
+                            className="input w-[100px] text-xs"
+                            type="number"
+                            placeholder="费用 RM"
+                            value={d.cost}
+                            onChange={(e) => setDraftFor(r.requestCode, { cost: e.target.value })}
+                          />
+                          {d.workerType === "OUTSOURCED" && (
+                            <label className="cursor-pointer rounded-md bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">
+                              📎 上传单据
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && uploadInvoice(r, e.target.files[0])}
+                              />
+                            </label>
+                          )}
+                          {r.invoiceUrl && (
+                            <button onClick={() => setZoomUrl(r.invoiceUrl)} className="text-xs font-semibold text-brand underline">
+                              查看单据
+                            </button>
+                          )}
+                          <button
+                            onClick={() => complete(r)}
+                            className="rounded-md bg-green-700 px-3 py-1.5 text-xs font-semibold text-white"
+                          >
+                            ✅ 标记完成{d.cost.trim() ? " + 出工钱" : ""}
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => patchRequest(r.requestCode, { status: "CANCELLED" })}
+                        className="rounded-md bg-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600"
+                      >
+                        取消
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -177,6 +357,8 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
               <div key={r.requestCode} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-50 py-2 text-sm last:border-none">
                 <div>
                   <b>{r.contractCode}</b> · {r.roomCode} · {r.title}
+                  {r.assignedTo && <span className="text-gray-400"> · {r.assignedTo}</span>}
+                  {r.cost != null && <span className="text-gray-500"> · {fmt(r.cost)}</span>}
                 </div>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${

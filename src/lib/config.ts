@@ -49,6 +49,7 @@ export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
   AGENT: "Agent",
   TENANT: "租客 Tenant",
+  WORKER: "维修工人 Worker",
 };
 
 export const ROOM_STATUS_LABELS: Record<string, string> = {
