@@ -37,28 +37,38 @@ export default function AppShell({
     router.refresh();
   }
 
+  const mtceHref = user.role === "TENANT" ? "/my-maintenance" : user.role === "ADMIN" || user.role === "BOSS" ? "/maintenance" : null;
+
   useEffect(() => {
-    if (user.role !== "TENANT") return;
-    // Visiting 报修 marks any completed cases as seen before we ask the server for counts,
-    // so the teal dot clears on this same load instead of lagging a render behind.
-    if (pathname.startsWith("/my-maintenance")) {
-      localStorage.setItem(MAINTENANCE_SEEN_KEY, new Date().toISOString());
+    if (!mtceHref) return;
+    if (user.role === "TENANT") {
+      // Visiting 报修 marks any completed cases as seen before we ask the server for counts,
+      // so the teal dot clears on this same load instead of lagging a render behind.
+      if (pathname.startsWith(mtceHref)) {
+        localStorage.setItem(MAINTENANCE_SEEN_KEY, new Date().toISOString());
+      }
+      fetch("/api/contracts/maintenance-summary")
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.success) return;
+          setMtceOpenCount(data.openCount);
+          const seenAt = localStorage.getItem(MAINTENANCE_SEEN_KEY);
+          setMtceHasUnseenCompleted(!!data.latestResolvedAt && (!seenAt || data.latestResolvedAt > seenAt));
+        });
+    } else {
+      fetch("/api/maintenance/summary")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) setMtceOpenCount(data.openCount);
+        });
     }
-    fetch("/api/contracts/maintenance-summary")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.success) return;
-        setMtceOpenCount(data.openCount);
-        const seenAt = localStorage.getItem(MAINTENANCE_SEEN_KEY);
-        setMtceHasUnseenCompleted(!!data.latestResolvedAt && (!seenAt || data.latestResolvedAt > seenAt));
-      });
-  }, [user.role, pathname]);
+  }, [user.role, pathname, mtceHref]);
 
   const menu = MENUS[user.role] ?? [];
 
   const sidebarLinks = menu.map((m) => {
     const active = pathname === m.href || pathname.startsWith(m.href + "/");
-    const isMaintenance = m.href === "/my-maintenance";
+    const isMaintenance = m.href === mtceHref;
     return (
       <Link
         key={m.href}

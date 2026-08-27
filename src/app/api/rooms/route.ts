@@ -27,6 +27,7 @@ export async function GET() {
       currentTenantId: r.currentTenantId,
       currentContractId: r.currentContractId,
       notes: r.notes,
+      photoLink: r.photoLink,
     })),
   });
 }

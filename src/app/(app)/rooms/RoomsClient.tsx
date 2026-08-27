@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import Link from "next/link";
 import { ROOM_STATUS_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
+import RoomEditModal from "./RoomEditModal";
 
 interface Room {
   roomCode: string;
@@ -17,6 +18,7 @@ interface Room {
   currentTenantId: string | null;
   currentContractId: string | null;
   notes: string | null;
+  photoLink: string | null;
 }
 interface PropertyOption {
   propertyCode: string;
@@ -36,6 +38,7 @@ export default function RoomsClient({ role }: { role: string }) {
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ roomCode: "", propertyCode: "", roomType: "", roomRental: "", hasAircon: false });
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
 
   async function loadRooms() {
     setError("");
@@ -192,14 +195,16 @@ export default function RoomsClient({ role }: { role: string }) {
                   <Th>类型</Th>
                   <Th>房租</Th>
                   <Th>冷气</Th>
+                  <Th>照片</Th>
                   <Th>状态</Th>
                   {canEdit && <Th>改状态</Th>}
+                  {canEdit && <Th>操作</Th>}
                 </tr>
               </thead>
               <tbody>
                 {rooms.length === 0 && (
                   <tr>
-                    <td colSpan={canEdit ? 7 : 6} className="py-6 text-center text-gray-400">
+                    <td colSpan={canEdit ? 9 : 7} className="py-6 text-center text-gray-400">
                       暂时没有房间
                     </td>
                   </tr>
@@ -238,6 +243,20 @@ export default function RoomsClient({ role }: { role: string }) {
                       )}
                     </Td>
                     <Td>
+                      {r.photoLink ? (
+                        <a
+                          href={r.photoLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand underline"
+                        >
+                          📷 查看
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </Td>
+                    <Td>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status]}`}>
                         {ROOM_STATUS_LABELS[r.status]}
                       </span>
@@ -257,6 +276,17 @@ export default function RoomsClient({ role }: { role: string }) {
                         </select>
                       </Td>
                     )}
+                    {canEdit && (
+                      <Td>
+                        <button
+                          type="button"
+                          onClick={() => setEditingRoom(r)}
+                          className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                        >
+                          ✏️ 编辑
+                        </button>
+                      </Td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -264,6 +294,10 @@ export default function RoomsClient({ role }: { role: string }) {
           </div>
         )}
       </div>
+
+      {editingRoom && (
+        <RoomEditModal room={editingRoom} onClose={() => setEditingRoom(null)} onSaved={loadRooms} />
+      )}
     </div>
   );
 }

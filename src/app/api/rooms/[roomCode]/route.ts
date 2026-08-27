@@ -7,8 +7,13 @@ const patchSchema = z
   .object({
     status: z.enum(["VACANT", "OCCUPIED", "RESERVED", "MAINTENANCE"]).optional(),
     hasAircon: z.boolean().optional(),
+    roomType: z.string().trim().optional(),
+    roomRental: z.coerce.number().min(0).optional(),
+    carparkRental: z.coerce.number().min(0).optional(),
+    notes: z.string().trim().optional(),
+    photoLink: z.string().trim().optional(),
   })
-  .refine((d) => d.status !== undefined || d.hasAircon !== undefined, { message: "没有要改的东西" });
+  .refine((d) => Object.values(d).some((v) => v !== undefined), { message: "没有要改的东西" });
 
 export async function PATCH(
   req: NextRequest,
@@ -29,9 +34,23 @@ export async function PATCH(
     return NextResponse.json({ success: false, message: "找不到这间房" }, { status: 404 });
   }
 
-  const data: { status?: typeof parsed.data.status; hasAircon?: boolean } = {};
-  if (parsed.data.status !== undefined) data.status = parsed.data.status;
-  if (parsed.data.hasAircon !== undefined) data.hasAircon = parsed.data.hasAircon;
+  const d = parsed.data;
+  const data: {
+    status?: typeof d.status;
+    hasAircon?: boolean;
+    roomType?: string;
+    roomRental?: number;
+    carparkRental?: number;
+    notes?: string;
+    photoLink?: string | null;
+  } = {};
+  if (d.status !== undefined) data.status = d.status;
+  if (d.hasAircon !== undefined) data.hasAircon = d.hasAircon;
+  if (d.roomType !== undefined) data.roomType = d.roomType;
+  if (d.roomRental !== undefined) data.roomRental = d.roomRental;
+  if (d.carparkRental !== undefined) data.carparkRental = d.carparkRental;
+  if (d.notes !== undefined) data.notes = d.notes;
+  if (d.photoLink !== undefined) data.photoLink = d.photoLink || null;
   await prisma.room.update({ where: { roomCode }, data });
 
   return NextResponse.json({ success: true, message: `✅ ${roomCode} 已更新` });

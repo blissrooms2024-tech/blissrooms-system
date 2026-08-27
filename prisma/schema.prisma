@@ -134,6 +134,8 @@ model Room {
   currentTenant   User?      @relation("RoomCurrentTenant", fields: [currentTenantId], references: [id])
   currentContractId String?
   notes          String?
+  /// Google Drive folder/album link with room photos, so Agents can view them without a native upload.
+  photoLink      String?
 
   contracts Contract[]
 
