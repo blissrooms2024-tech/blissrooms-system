@@ -49,9 +49,10 @@ export default function LoginPage() {
         <div className="mb-6 text-center text-sm text-gray-400">租房管理系统</div>
 
         <form onSubmit={doLogin}>
-          <label className="mb-1.5 mt-3 block text-sm text-gray-600">Email</label>
+          <label className="mb-1.5 mt-3 block text-sm text-gray-600">用户名 / Email</label>
           <input
-            type="email"
+            type="text"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@bliss.com"
