@@ -97,6 +97,17 @@ export default function RoomsClient({ role }: { role: string }) {
     loadRooms();
   }
 
+  async function toggleAircon(roomCode: string, hasAircon: boolean) {
+    const res = await fetch(`/api/rooms/${roomCode}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hasAircon }),
+    });
+    const data = await res.json();
+    if (!data.success) toast.danger(data.message);
+    loadRooms();
+  }
+
   const canEdit = role === "ADMIN";
   const title = role === "AGENT" ? "空房清单 (做 Sales 用)" : "房间清单";
 
@@ -209,7 +220,23 @@ export default function RoomsClient({ role }: { role: string }) {
                     </Td>
                     <Td>{r.roomType}</Td>
                     <Td>RM{r.roomRental}</Td>
-                    <Td>{r.hasAircon ? "❄️" : "-"}</Td>
+                    <Td>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleAircon(r.roomCode, !r.hasAircon)}
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            r.hasAircon ? "bg-sky-50 text-sky-700" : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {r.hasAircon ? "❄️ 有" : "- 没有"}
+                        </button>
+                      ) : r.hasAircon ? (
+                        "❄️"
+                      ) : (
+                        "-"
+                      )}
+                    </Td>
                     <Td>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status]}`}>
                         {ROOM_STATUS_LABELS[r.status]}

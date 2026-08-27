@@ -3,9 +3,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 
-const statusSchema = z.object({
-  status: z.enum(["VACANT", "OCCUPIED", "RESERVED", "MAINTENANCE"]),
-});
+const patchSchema = z
+  .object({
+    status: z.enum(["VACANT", "OCCUPIED", "RESERVED", "MAINTENANCE"]).optional(),
+    hasAircon: z.boolean().optional(),
+  })
+  .refine((d) => d.status !== undefined || d.hasAircon !== undefined, { message: "没有要改的东西" });
 
 export async function PATCH(
   req: NextRequest,
@@ -16,9 +19,9 @@ export async function PATCH(
     return NextResponse.json({ success: false, message: "只有 Admin 可以改" }, { status: 403 });
   }
   const { roomCode } = await params;
-  const parsed = statusSchema.safeParse(await req.json().catch(() => null));
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ success: false, message: "状态不对" }, { status: 400 });
+    return NextResponse.json({ success: false, message: "资料不对" }, { status: 400 });
   }
 
   const existing = await prisma.room.findUnique({ where: { roomCode } });
@@ -26,7 +29,10 @@ export async function PATCH(
     return NextResponse.json({ success: false, message: "找不到这间房" }, { status: 404 });
   }
 
-  await prisma.room.update({ where: { roomCode }, data: { status: parsed.data.status } });
+  const data: { status?: typeof parsed.data.status; hasAircon?: boolean } = {};
+  if (parsed.data.status !== undefined) data.status = parsed.data.status;
+  if (parsed.data.hasAircon !== undefined) data.hasAircon = parsed.data.hasAircon;
+  await prisma.room.update({ where: { roomCode }, data });
 
-  return NextResponse.json({ success: true, message: `✅ ${roomCode} 已改成 ${parsed.data.status}` });
+  return NextResponse.json({ success: true, message: `✅ ${roomCode} 已更新` });
 }
