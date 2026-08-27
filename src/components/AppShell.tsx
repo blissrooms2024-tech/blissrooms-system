@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MENUS } from "@/lib/menus";
 import { ROLE_LABELS } from "@/lib/config";
 import ChangePasswordModal from "./ChangePasswordModal";
+
+const MAINTENANCE_SEEN_KEY = "mtce_seen_resolved_at";
 
 export interface CurrentUser {
   userCode: string;
@@ -26,6 +28,8 @@ export default function AppShell({
   const router = useRouter();
   const [showChangePw, setShowChangePw] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mtceOpenCount, setMtceOpenCount] = useState(0);
+  const [mtceHasUnseenCompleted, setMtceHasUnseenCompleted] = useState(false);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -33,22 +37,50 @@ export default function AppShell({
     router.refresh();
   }
 
+  useEffect(() => {
+    if (user.role !== "TENANT") return;
+    // Visiting 报修 marks any completed cases as seen before we ask the server for counts,
+    // so the teal dot clears on this same load instead of lagging a render behind.
+    if (pathname.startsWith("/my-maintenance")) {
+      localStorage.setItem(MAINTENANCE_SEEN_KEY, new Date().toISOString());
+    }
+    fetch("/api/contracts/maintenance-summary")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return;
+        setMtceOpenCount(data.openCount);
+        const seenAt = localStorage.getItem(MAINTENANCE_SEEN_KEY);
+        setMtceHasUnseenCompleted(!!data.latestResolvedAt && (!seenAt || data.latestResolvedAt > seenAt));
+      });
+  }, [user.role, pathname]);
+
   const menu = MENUS[user.role] ?? [];
 
   const sidebarLinks = menu.map((m) => {
     const active = pathname === m.href || pathname.startsWith(m.href + "/");
+    const isMaintenance = m.href === "/my-maintenance";
     return (
       <Link
         key={m.href}
         href={m.href}
         onClick={() => setMenuOpen(false)}
-        className={`block border-l-[3px] px-5 py-3 text-sm ${
+        className={`flex items-center justify-between gap-2 border-l-[3px] px-5 py-3 text-sm ${
           active
             ? "border-brand bg-brand-light font-semibold text-brand"
             : "border-transparent text-gray-700 hover:bg-gray-50"
         }`}
       >
-        {m.label}
+        <span>{m.label}</span>
+        {isMaintenance && (
+          <span className="flex items-center gap-1">
+            {mtceHasUnseenCompleted && <span className="h-2 w-2 rounded-full bg-teal-500" />}
+            {mtceOpenCount > 0 && (
+              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] font-bold text-yellow-900">
+                {mtceOpenCount}
+              </span>
+            )}
+          </span>
+        )}
       </Link>
     );
   });
