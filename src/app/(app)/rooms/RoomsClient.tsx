@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import Link from "next/link";
 import { ROOM_STATUS_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import RoomEditModal from "./RoomEditModal";
 
 interface Room {
@@ -39,6 +40,7 @@ export default function RoomsClient({ role }: { role: string }) {
   const [error, setError] = useState("");
   const [form, setForm] = useState({ roomCode: "", propertyCode: "", roomType: "", roomRental: "", hasAircon: false });
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [deletingRoom, setDeletingRoom] = useState<Room | null>(null);
 
   async function loadRooms() {
     setError("");
@@ -109,6 +111,19 @@ export default function RoomsClient({ role }: { role: string }) {
     const data = await res.json();
     if (!data.success) toast.danger(data.message);
     loadRooms();
+  }
+
+  async function confirmDeleteRoom() {
+    if (!deletingRoom) return;
+    const res = await fetch(`/api/rooms/${deletingRoom.roomCode}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) {
+      toast.success(data.message);
+      loadRooms();
+    } else {
+      toast.danger(data.message);
+    }
+    setDeletingRoom(null);
   }
 
   const canEdit = role === "ADMIN";
@@ -278,13 +293,22 @@ export default function RoomsClient({ role }: { role: string }) {
                     )}
                     {canEdit && (
                       <Td>
-                        <button
-                          type="button"
-                          onClick={() => setEditingRoom(r)}
-                          className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
-                        >
-                          ✏️ 编辑
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingRoom(r)}
+                            className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                          >
+                            ✏️ 编辑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingRoom(r)}
+                            className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                          >
+                            🗑️ 删除
+                          </button>
+                        </div>
                       </Td>
                     )}
                   </tr>
@@ -298,6 +322,16 @@ export default function RoomsClient({ role }: { role: string }) {
       {editingRoom && (
         <RoomEditModal room={editingRoom} onClose={() => setEditingRoom(null)} onSaved={loadRooms} />
       )}
+
+      <ConfirmDialog
+        open={!!deletingRoom}
+        danger
+        title="⚠️ 删除房间"
+        message={`确定要删除房间 ${deletingRoom?.roomCode} 吗？此操作不能撤销。`}
+        confirmLabel="确定删除"
+        onConfirm={confirmDeleteRoom}
+        onCancel={() => setDeletingRoom(null)}
+      />
     </div>
   );
 }

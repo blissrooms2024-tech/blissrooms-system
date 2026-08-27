@@ -55,3 +55,30 @@ export async function PATCH(
 
   return NextResponse.json({ success: true, message: `✅ ${roomCode} 已更新` });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ roomCode: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    return NextResponse.json({ success: false, message: "只有 Admin 可以删除" }, { status: 403 });
+  }
+  const { roomCode } = await params;
+  const existing = await prisma.room.findUnique({ where: { roomCode } });
+  if (!existing) {
+    return NextResponse.json({ success: false, message: "找不到这间房" }, { status: 404 });
+  }
+
+  const contractCount = await prisma.contract.count({ where: { roomId: existing.id } });
+  if (contractCount > 0 || existing.currentTenantId) {
+    return NextResponse.json(
+      { success: false, message: "这间房有关联的合同记录，不能删除" },
+      { status: 409 }
+    );
+  }
+
+  await prisma.room.delete({ where: { roomCode } });
+
+  return NextResponse.json({ success: true, message: `✅ ${roomCode} 已删除` });
+}

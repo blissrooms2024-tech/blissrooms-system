@@ -3,6 +3,8 @@
 import { useEffect, useState, FormEvent } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import PropertyEditModal from "./PropertyEditModal";
 
 interface PropertyRow {
   propertyCode: string;
@@ -12,6 +14,7 @@ interface PropertyRow {
   landlord: string | null;
   managementFeeRate: number | null;
   status: string | null;
+  notes: string | null;
   roomCount: number;
 }
 
@@ -22,6 +25,8 @@ export default function UnitsClient({ role }: { role: string }) {
   const [properties, setProperties] = useState<PropertyRow[] | null>(null);
   const [error, setError] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [editingProperty, setEditingProperty] = useState<PropertyRow | null>(null);
+  const [deletingProperty, setDeletingProperty] = useState<PropertyRow | null>(null);
   const canEdit = role === "ADMIN";
 
   async function load() {
@@ -67,6 +72,19 @@ export default function UnitsClient({ role }: { role: string }) {
     } else {
       toast.danger(data.message);
     }
+  }
+
+  async function confirmDeleteProperty() {
+    if (!deletingProperty) return;
+    const res = await fetch(`/api/properties/${deletingProperty.propertyCode}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) {
+      toast.success(data.message);
+      load();
+    } else {
+      toast.danger(data.message);
+    }
+    setDeletingProperty(null);
   }
 
   return (
@@ -151,9 +169,29 @@ export default function UnitsClient({ role }: { role: string }) {
                     </Td>
                     <Td>{p.landlord && p.managementFeeRate ? `${(p.managementFeeRate * 100).toFixed(1)}%` : "-"}</Td>
                     <Td>
-                      <Link href={`/units/${p.propertyCode}`} className="btn-soft px-2.5 py-1 text-xs">
-                        📊 月报
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link href={`/units/${p.propertyCode}`} className="btn-soft px-2.5 py-1 text-xs">
+                          📊 月报
+                        </Link>
+                        {canEdit && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setEditingProperty(p)}
+                              className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                            >
+                              ✏️ 编辑
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingProperty(p)}
+                              className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                            >
+                              🗑️ 删除
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </Td>
                   </tr>
                 ))}
@@ -162,6 +200,20 @@ export default function UnitsClient({ role }: { role: string }) {
           </div>
         )}
       </div>
+
+      {editingProperty && (
+        <PropertyEditModal property={editingProperty} onClose={() => setEditingProperty(null)} onSaved={load} />
+      )}
+
+      <ConfirmDialog
+        open={!!deletingProperty}
+        danger
+        title="⚠️ 删除楼盘"
+        message={`确定要删除楼盘 ${deletingProperty?.name} 吗？此操作不能撤销。`}
+        confirmLabel="确定删除"
+        onConfirm={confirmDeleteProperty}
+        onCancel={() => setDeletingProperty(null)}
+      />
     </div>
   );
 }

@@ -80,3 +80,28 @@ export async function PATCH(
 
   return NextResponse.json({ success: true, message: `✅ 楼盘已更新: ${d.name}` });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ propertyCode: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    return NextResponse.json({ success: false, message: "只有 Admin 可以删除" }, { status: 403 });
+  }
+  const { propertyCode } = await params;
+  const existing = await prisma.property.findUnique({ where: { propertyCode } });
+  if (!existing) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
+
+  const roomCount = await prisma.room.count({ where: { propertyId: existing.id } });
+  if (roomCount > 0) {
+    return NextResponse.json(
+      { success: false, message: "这个楼盘底下还有房间，请先删除或转移那些房间" },
+      { status: 409 }
+    );
+  }
+
+  await prisma.property.delete({ where: { propertyCode } });
+
+  return NextResponse.json({ success: true, message: `✅ 楼盘已删除: ${existing.name}` });
+}
