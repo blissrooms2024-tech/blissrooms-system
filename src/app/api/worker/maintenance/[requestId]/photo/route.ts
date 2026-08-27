@@ -33,6 +33,12 @@ export async function POST(
   }
   const d = parsed.data;
 
+  const field = d.slot === "before" ? "workerBeforePhotos" : "workerAfterPhotos";
+  const existing = Array.isArray(reqRow[field]) ? (reqRow[field] as string[]) : [];
+  if (existing.length >= 5) {
+    return NextResponse.json({ success: false, message: "最多只能传5张照片" }, { status: 400 });
+  }
+
   let url: string;
   try {
     url = await uploadDataUrl(d.dataUrl, `${reqRow.contractId}_MAINT_${d.slot}_${reqRow.requestCode}_${Date.now()}.jpg`);
@@ -42,9 +48,6 @@ export async function POST(
       { status: 500 }
     );
   }
-
-  const field = d.slot === "before" ? "workerBeforePhotos" : "workerAfterPhotos";
-  const existing = Array.isArray(reqRow[field]) ? (reqRow[field] as string[]) : [];
 
   await prisma.maintenanceRequest.update({
     where: { requestCode: requestId },

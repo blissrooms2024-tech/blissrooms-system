@@ -60,26 +60,38 @@ export default function WorkerClient() {
     load();
   }, [load]);
 
-  async function uploadPhoto(requestCode: string, slot: "before" | "after", file: File) {
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning("图片太大(超过3MB)，请压缩");
+  async function uploadPhotos(requestCode: string, slot: "before" | "after", existingCount: number, files: FileList) {
+    const room = 5 - existingCount;
+    if (room <= 0) {
+      toast.warning("最多只能传5张照片");
       return;
     }
+    const toUpload = Array.from(files).slice(0, room);
+    if (files.length > room) {
+      toast.warning(`最多只能传5张，只上传前 ${room} 张`);
+    }
+
     setUploadingId(`${requestCode}_${slot}`);
     try {
-      const dataUrl = await readAsDataURL(file);
-      const res = await fetch(`/api/worker/maintenance/${requestCode}/photo`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot, dataUrl }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message);
-        load();
-      } else {
-        toast.danger(data.message);
+      for (const file of toUpload) {
+        if (file.size > 3 * 1024 * 1024) {
+          toast.warning(`${file.name} 太大(超过3MB)，跳过`);
+          continue;
+        }
+        const dataUrl = await readAsDataURL(file);
+        const res = await fetch(`/api/worker/maintenance/${requestCode}/photo`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slot, dataUrl }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          toast.danger(data.message);
+          break;
+        }
       }
+      toast.success("✅ 照片已上传");
+      load();
     } catch {
       toast.danger("系统出错，请稍后再试");
     } finally {
@@ -130,14 +142,14 @@ export default function WorkerClient() {
                   photos={j.workerBeforePhotos}
                   uploading={uploadingId === `${j.requestCode}_before`}
                   onZoom={setZoomUrl}
-                  onUpload={(file) => uploadPhoto(j.requestCode, "before", file)}
+                  onUpload={(files) => uploadPhotos(j.requestCode, "before", j.workerBeforePhotos.length, files)}
                 />
                 <PhotoSlot
                   label="✅ After (完工后拍)"
                   photos={j.workerAfterPhotos}
                   uploading={uploadingId === `${j.requestCode}_after`}
                   onZoom={setZoomUrl}
-                  onUpload={(file) => uploadPhoto(j.requestCode, "after", file)}
+                  onUpload={(files) => uploadPhotos(j.requestCode, "after", j.workerAfterPhotos.length, files)}
                 />
               </div>
             </div>
@@ -177,11 +189,15 @@ function PhotoSlot({
   photos: string[];
   uploading: boolean;
   onZoom: (url: string) => void;
-  onUpload: (file: File) => void;
+  onUpload: (files: FileList) => void;
 }) {
+  const atLimit = photos.length >= 5;
   return (
     <div>
-      <div className="mb-1 text-xs font-semibold text-gray-600">{label}</div>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <span className="text-xs font-semibold text-gray-600">{label}</span>
+        <span className="text-xs text-gray-400">{photos.length}/5 张 (最少1张)</span>
+      </div>
       {photos.length > 0 && (
         <div className="mb-1.5 flex flex-wrap gap-1.5">
           {photos.map((p, i) => (
@@ -190,13 +206,21 @@ function PhotoSlot({
           ))}
         </div>
       )}
-      <input
-        type="file"
-        accept="image/*"
-        disabled={uploading}
-        onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
-        className="block text-xs text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
-      />
+      {atLimit ? (
+        <div className="text-xs text-gray-400">已达上限</div>
+      ) : (
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          disabled={uploading}
+          onChange={(e) => {
+            if (e.target.files?.length) onUpload(e.target.files);
+            e.target.value = "";
+          }}
+          className="block text-xs text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
+        />
+      )}
       {uploading && <span className="text-xs text-gray-500">上传中...</span>}
     </div>
   );
