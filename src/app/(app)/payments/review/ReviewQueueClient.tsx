@@ -116,6 +116,11 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                   {PAYMENT_TYPE_LABELS[p.type] ?? p.type} · {fmt(p.amountPaid)}
                   {p.periodMonth ? ` · ${p.periodMonth}` : ""} · 到期 {fmtDate(p.dueDate)} · 上传于 {fmtDate(p.paidDate)}
                 </div>
+                {p.type === "AC" && (
+                  <div className="mt-1 text-xs font-semibold text-amber-700">
+                    ❄️ 冷气充值：批准后请在12小时内(工作日)更新到 Smart Meter
+                  </div>
+                )}
               </div>
               {canAct && (
                 <div className="shrink-0">
