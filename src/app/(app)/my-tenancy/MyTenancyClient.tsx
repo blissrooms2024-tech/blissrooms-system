@@ -5,27 +5,15 @@ import Link from "next/link";
 import { CONTRACT_STATUS_LABELS } from "@/lib/config";
 import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
-import MoveFormModal from "../contracts/MoveFormModal";
-import BillsModal from "../contracts/BillsModal";
-import MaintenanceModal from "./MaintenanceModal";
 
 interface Card {
   contractCode: string;
   roomCode: string;
   status: string;
-  totalOutstanding: number;
-  paid: number;
-  outstanding: number;
-  depositOutstanding: number;
   agentSigned: boolean;
   tenantSigned: boolean;
   hasICFront: boolean;
   hasICBack: boolean;
-  moveInDone: boolean;
-  moveOutDone: boolean;
-  unpaidBillCount: number;
-  openMaintenanceCount: number;
-  daysToExpiry: number | null;
 }
 
 function Pill({ tone, children }: { tone: "done" | "wait" | "lock" | "due"; children: React.ReactNode }) {
@@ -43,9 +31,6 @@ export default function MyTenancyClient() {
   const [error, setError] = useState("");
   const [signing, setSigning] = useState<string | null>(null);
   const [icUploading, setIcUploading] = useState<string | null>(null);
-  const [moveForm, setMoveForm] = useState<{ code: string; type: "MoveIn" | "MoveOut" } | null>(null);
-  const [billsFor, setBillsFor] = useState<string | null>(null);
-  const [maintenanceFor, setMaintenanceFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -71,15 +56,8 @@ export default function MyTenancyClient() {
     return <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">你还没有租约</div>;
   }
 
-  const needsDeposit = cards.some((c) => c.status === "ACTIVE" && c.depositOutstanding > 0);
-
   return (
     <div className="space-y-5">
-      {needsDeposit && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-          ⚠️ 请先缴清押金 (Deposit)，才能填写 Move-in 表单，请尽快联系 Admin 缴费。
-        </div>
-      )}
       {cards.map((c) => {
         const icDone = c.hasICFront && c.hasICBack;
         const canSign = c.agentSigned && icDone && !c.tenantSigned;
@@ -151,113 +129,6 @@ export default function MyTenancyClient() {
                   </button>
                 }
               />
-
-              <Row
-                icon="📋"
-                name="Move-in 表单"
-                desc="搬入房间物品记录"
-                status={
-                  c.status !== "ACTIVE" ? (
-                    <Pill tone="lock">🔒 合同生效后开放</Pill>
-                  ) : c.moveInDone ? (
-                    <Pill tone="done">✅ 已填</Pill>
-                  ) : c.depositOutstanding > 0 ? (
-                    <Pill tone="lock">🔒 请先缴押金</Pill>
-                  ) : (
-                    <Pill tone="wait">⚠️ 未填</Pill>
-                  )
-                }
-                action={
-                  c.status === "ACTIVE" &&
-                  (c.moveInDone || c.depositOutstanding <= 0) && (
-                    <button
-                      onClick={() => setMoveForm({ code: c.contractCode, type: "MoveIn" })}
-                      className={c.moveInDone ? "btn-soft px-3.5 py-1.5 text-xs" : "btn-primary px-3.5 py-1.5 text-xs"}
-                    >
-                      {c.moveInDone ? "查看/修改" : "填写"}
-                    </button>
-                  )
-                }
-              />
-
-              {(() => {
-                // No expiredDate set -> treat like the original's 999-day fallback: not open yet.
-                const withinWindow = c.daysToExpiry !== null && c.daysToExpiry <= 14;
-                return (
-                  <Row
-                    icon="📦"
-                    name="Move-out 表单"
-                    desc="搬出房间状况记录"
-                    status={
-                      c.status !== "ACTIVE" ? (
-                        <Pill tone="lock">🔒 未开放</Pill>
-                      ) : !withinWindow ? (
-                        <Pill tone="lock">
-                          🔒 到期前2周开放{c.daysToExpiry !== null ? ` (还有${c.daysToExpiry}天)` : ""}
-                        </Pill>
-                      ) : c.moveOutDone ? (
-                        <Pill tone="done">✅ 已填</Pill>
-                      ) : (
-                        <Pill tone="wait">⚠️ 可以填了</Pill>
-                      )
-                    }
-                    action={
-                      c.status === "ACTIVE" &&
-                      withinWindow && (
-                        <button
-                          onClick={() => setMoveForm({ code: c.contractCode, type: "MoveOut" })}
-                          className={c.moveOutDone ? "btn-soft px-3.5 py-1.5 text-xs" : "btn-primary px-3.5 py-1.5 text-xs"}
-                        >
-                          {c.moveOutDone ? "查看" : "填写"}
-                        </button>
-                      )
-                    }
-                  />
-                );
-              })()}
-
-              <Row
-                icon="💳"
-                name="我的账单 Bills"
-                desc={`总款 RM${c.totalOutstanding.toLocaleString()} · 已收 RM${c.paid.toLocaleString()}`}
-                status={
-                  c.unpaidBillCount > 0 ? (
-                    <Pill tone="due">{c.unpaidBillCount} 个账单待处理</Pill>
-                  ) : c.outstanding > 0 ? (
-                    <Pill tone="due">RM{c.outstanding.toLocaleString()} 未清</Pill>
-                  ) : (
-                    <Pill tone="done">✅ 已清</Pill>
-                  )
-                }
-                action={
-                  <button onClick={() => setBillsFor(c.contractCode)} className="btn-soft px-3.5 py-1.5 text-xs">
-                    查看账单
-                  </button>
-                }
-              />
-
-              {c.status === "ACTIVE" && (
-                <Row
-                  icon="🔧"
-                  name="报修 Maintenance"
-                  desc="东西坏了？跟 Admin 报修"
-                  status={
-                    c.openMaintenanceCount > 0 ? (
-                      <Pill tone="wait">{c.openMaintenanceCount} 个处理中</Pill>
-                    ) : (
-                      <Pill tone="done">✅ 没有待处理</Pill>
-                    )
-                  }
-                  action={
-                    <button
-                      onClick={() => setMaintenanceFor(c.contractCode)}
-                      className="btn-soft px-3.5 py-1.5 text-xs"
-                    >
-                      报修
-                    </button>
-                  }
-                />
-              )}
             </div>
           </div>
         );
@@ -268,24 +139,6 @@ export default function MyTenancyClient() {
       )}
       {icUploading && (
         <ICUploadModal contractCode={icUploading} onClose={() => setIcUploading(null)} onUploaded={load} />
-      )}
-      {moveForm && (
-        <MoveFormModal
-          contractCode={moveForm.code}
-          type={moveForm.type}
-          onClose={() => setMoveForm(null)}
-          onSubmitted={load}
-        />
-      )}
-      {billsFor && <BillsModal contractCode={billsFor} onClose={() => setBillsFor(null)} onChanged={load} />}
-      {maintenanceFor && (
-        <MaintenanceModal
-          contractCode={maintenanceFor}
-          onClose={() => {
-            setMaintenanceFor(null);
-            load();
-          }}
-        />
       )}
     </div>
   );

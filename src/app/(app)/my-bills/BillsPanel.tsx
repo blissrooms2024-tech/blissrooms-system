@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
@@ -71,15 +70,7 @@ function buildBillSteps(b: PaymentRow): TimelineStep[] {
   ];
 }
 
-export default function BillsModal({
-  contractCode,
-  onClose,
-  onChanged,
-}: {
-  contractCode: string;
-  onClose: () => void;
-  onChanged: () => void;
-}) {
+export default function BillsPanel({ contractCode }: { contractCode: string }) {
   const toast = useToast();
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [breakdown, setBreakdown] = useState<BreakdownRow[]>([]);
@@ -126,7 +117,6 @@ export default function BillsModal({
       if (data.success) {
         toast.success(data.message);
         load();
-        onChanged();
       } else {
         toast.danger(data.message);
       }
@@ -160,7 +150,6 @@ export default function BillsModal({
         toast.success(data.message);
         setTopupAmount("");
         load();
-        onChanged();
       } else {
         toast.danger(data.message);
       }
@@ -175,7 +164,7 @@ export default function BillsModal({
   const paidHistory = payments.filter((p) => p.status === "Paid");
 
   return (
-    <Modal onClose={onClose} wide>
+    <div className="rounded-xl bg-white p-5 shadow-sm">
       <h3 className="text-lg font-bold text-brand">💳 我的账单 — {contractCode}</h3>
 
       <div className="my-3 flex gap-2.5">
@@ -319,7 +308,7 @@ export default function BillsModal({
       </table>
 
       {zoomUrl && <Lightbox src={zoomUrl} alt="水单" onClose={() => setZoomUrl(null)} />}
-    </Modal>
+    </div>
   );
 }
 

@@ -17,16 +17,17 @@ function readAsDataURL(file: File): Promise<string> {
 
 type MoveType = "MoveIn" | "MoveOut";
 
-export default function MoveFormModal({
+/** The actual form content — reused as a plain page section (tenant's own dedicated
+ * Move-in/Move-out pages) and, via MoveFormModal below, as the modal Admin still uses
+ * from the contracts list. */
+export function MoveFormPanel({
   contractCode,
   type,
-  onClose,
   onSubmitted,
 }: {
   contractCode: string;
   type: MoveType;
-  onClose: () => void;
-  onSubmitted: () => void;
+  onSubmitted?: () => void;
 }) {
   const toast = useToast();
   const [loadingState, setLoadingState] = useState<"loading" | "ready" | "blocked">("loading");
@@ -147,10 +148,7 @@ export default function MoveFormModal({
       const data = await res.json();
       if (data.success) {
         toast.success(data.message);
-        setTimeout(() => {
-          onSubmitted();
-          onClose();
-        }, 1000);
+        onSubmitted?.();
       } else {
         toast.danger(data.message);
       }
@@ -162,7 +160,7 @@ export default function MoveFormModal({
   }
 
   return (
-    <Modal onClose={onClose} wide>
+    <div>
       <h3 className="text-lg font-bold text-brand">
         📋 {type === "MoveIn" ? "Move-in" : "Move-out"} Form — {contractCode}
       </h3>
@@ -282,6 +280,32 @@ export default function MoveFormModal({
         </div>
       )}
       {zoomUrl && <Lightbox src={zoomUrl} alt="" onClose={() => setZoomUrl(null)} />}
+    </div>
+  );
+}
+
+/** Thin modal wrapper around MoveFormPanel — Admin still opens this from the contracts list. */
+export default function MoveFormModal({
+  contractCode,
+  type,
+  onClose,
+  onSubmitted,
+}: {
+  contractCode: string;
+  type: MoveType;
+  onClose: () => void;
+  onSubmitted: () => void;
+}) {
+  return (
+    <Modal onClose={onClose} wide>
+      <MoveFormPanel
+        contractCode={contractCode}
+        type={type}
+        onSubmitted={() => {
+          onSubmitted();
+          setTimeout(onClose, 1000);
+        }}
+      />
     </Modal>
   );
 }

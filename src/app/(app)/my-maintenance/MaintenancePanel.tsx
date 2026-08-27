@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, FormEvent } from "react";
-import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
@@ -57,13 +56,7 @@ function readAsDataURL(file: File): Promise<string> {
   });
 }
 
-export default function MaintenanceModal({
-  contractCode,
-  onClose,
-}: {
-  contractCode: string;
-  onClose: () => void;
-}) {
+export default function MaintenancePanel({ contractCode }: { contractCode: string }) {
   const toast = useToast();
   const [requests, setRequests] = useState<MaintenanceRow[]>([]);
   const [title, setTitle] = useState("");
@@ -128,7 +121,7 @@ export default function MaintenanceModal({
   }
 
   return (
-    <Modal onClose={onClose} wide>
+    <div className="rounded-xl bg-white p-5 shadow-sm">
       <h3 className="text-lg font-bold text-brand">🔧 报修 — {contractCode}</h3>
 
       <div className="my-3 rounded-lg border border-gray-200 bg-brand-light/40 p-3">
@@ -202,6 +195,6 @@ export default function MaintenanceModal({
       </div>
 
       {zoomUrl && <Lightbox src={zoomUrl} alt="报修照片" onClose={() => setZoomUrl(null)} />}
-    </Modal>
+    </div>
   );
 }
