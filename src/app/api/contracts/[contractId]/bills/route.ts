@@ -21,13 +21,16 @@ const BILL_TYPES = [
   "OTHER",
 ] as const;
 
-const createSchema = z.object({
-  type: z.enum(BILL_TYPES),
-  amountDue: z.coerce.number().positive(),
-  dueDate: z.string().trim().min(1),
-  periodMonth: z.string().trim().optional().default(""),
-  notes: z.string().trim().optional().default(""),
-});
+const createSchema = z
+  .object({
+    type: z.enum(BILL_TYPES),
+    amountDue: z.coerce.number().positive(),
+    dueDate: z.string().trim().min(1),
+    periodMonth: z.string().trim().optional().default(""),
+    notes: z.string().trim().optional().default(""),
+    customLabel: z.string().trim().optional().default(""),
+  })
+  .refine((d) => d.type !== "OTHER" || d.customLabel, { message: "「其他」类型要填费用名称" });
 
 /** Admin issues a bill (a Payment row with status PENDING) for the tenant to pay and upload
  * proof against — used for the recurring RENTAL/UTILITIES/AC/DRYER charges. */
@@ -48,7 +51,8 @@ export async function POST(
 
   const parsed = createSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ success: false, message: "项目/金额/到期日一定要填" }, { status: 400 });
+    const msg = parsed.error.issues[0]?.message || "项目/金额/到期日一定要填";
+    return NextResponse.json({ success: false, message: msg }, { status: 400 });
   }
   const d = parsed.data;
 
@@ -72,6 +76,7 @@ export async function POST(
       status: "PENDING",
       recordedBy: user.name,
       notes: d.notes,
+      customLabel: d.type === "OTHER" ? d.customLabel : null,
     },
   });
 
@@ -92,5 +97,6 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({ success: true, message: `✅ 账单已开: ${d.type} RM${d.amountDue}` });
+  const label = d.type === "OTHER" ? d.customLabel : d.type;
+  return NextResponse.json({ success: true, message: `✅ 账单已开: ${label} RM${d.amountDue}` });
 }

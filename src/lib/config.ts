@@ -105,6 +105,13 @@ export const PAYMENT_TYPE_LABELS: Record<string, string> = {
   OTHER: "其他",
 };
 
+/** Shows Admin's own custom name for a type=OTHER charge (e.g. "清洁费") instead of the
+ * generic "其他" label, since those are ad-hoc bill types Admin creates on the fly. */
+export function paymentTypeLabel(type: string, customLabel?: string | null): string {
+  if (type === "OTHER" && customLabel) return customLabel;
+  return PAYMENT_TYPE_LABELS[type] ?? type;
+}
+
 export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
   SUBMITTED: "已提交",
   ACKNOWLEDGED: "已受理",

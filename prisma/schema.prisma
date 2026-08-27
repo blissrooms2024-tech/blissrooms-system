@@ -242,6 +242,9 @@ model Payment {
   receiptLink String?
   recordedBy  String
   notes       String?
+  /// When type=OTHER: Admin's own name for this charge (e.g. "清洁费", "锁匙费") — lets Admin
+  /// create ad-hoc bill types on the fly instead of needing a new PaymentType added by a dev.
+  customLabel String?
 
   /// Tenant-upload-then-Admin-approve flow (RENTAL/UTILITIES/AC/DRYER bills): status also takes
   /// "PENDING" (bill issued, awaiting slip), "PENDING_REVIEW" (slip uploaded, awaiting Admin),

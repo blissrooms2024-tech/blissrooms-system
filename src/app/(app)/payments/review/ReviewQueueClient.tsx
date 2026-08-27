@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
-import { PAYMENT_TYPE_LABELS } from "@/lib/config";
+import { paymentTypeLabel } from "@/lib/config";
 
 interface PendingPayment {
   id: string;
@@ -20,6 +20,7 @@ interface PendingPayment {
   paidDate: string | null;
   receiptLink: string | null;
   notes: string | null;
+  customLabel: string | null;
 }
 
 function fmt(v: number) {
@@ -113,7 +114,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                   · {p.roomCode} · {p.tenantName}
                 </div>
                 <div className="text-sm text-gray-600">
-                  {PAYMENT_TYPE_LABELS[p.type] ?? p.type} · {fmt(p.amountPaid)}
+                  {paymentTypeLabel(p.type, p.customLabel)} · {fmt(p.amountPaid)}
                   {p.periodMonth ? ` · ${p.periodMonth}` : ""} · 到期 {fmtDate(p.dueDate)} · 上传于 {fmtDate(p.paidDate)}
                 </div>
                 {p.type === "AC" && (

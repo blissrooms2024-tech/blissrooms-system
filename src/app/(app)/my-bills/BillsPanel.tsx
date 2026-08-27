@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
-import { PAYMENT_TYPE_LABELS, COMPANY } from "@/lib/config";
+import { PAYMENT_TYPE_LABELS, paymentTypeLabel, COMPANY } from "@/lib/config";
 
 interface BreakdownRow {
   item: string;
@@ -25,6 +25,7 @@ interface PaymentRow {
   receiptLink: string | null;
   reviewNote: string | null;
   periodMonth: string | null;
+  customLabel: string | null;
 }
 
 function fmt(v: number) {
@@ -243,7 +244,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                 <div key={b.id} className="rounded-lg border border-gray-200 p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-[160px] flex-1">
-                      <b className="text-sm">{PAYMENT_TYPE_LABELS[b.type] ?? b.type}</b>{" "}
+                      <b className="text-sm">{paymentTypeLabel(b.type, b.customLabel)}</b>{" "}
                       <span className="text-sm text-gray-600">{fmt(b.amountDue)}</span>
                       {b.periodMonth && <span className="ml-1.5 text-xs text-gray-400">({b.periodMonth})</span>}
                       <div className="text-xs text-gray-500">到期日: {fmtDate(b.dueDate)}</div>
@@ -299,7 +300,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
           )}
           {paidHistory.map((p) => (
             <tr key={p.paymentCode} className="border-b border-gray-100">
-              <td className="px-2.5 py-1.5">{PAYMENT_TYPE_LABELS[p.type] ?? p.type}</td>
+              <td className="px-2.5 py-1.5">{paymentTypeLabel(p.type, p.customLabel)}</td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
             </tr>

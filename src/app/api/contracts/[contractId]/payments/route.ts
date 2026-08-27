@@ -70,16 +70,19 @@ export async function GET(
   });
 }
 
-const addSchema = z.object({
-  type: z.enum(["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"]),
-  amountPaid: z.coerce.number(),
-  amountDue: z.coerce.number().optional().default(0),
-  periodMonth: z.string().trim().optional().default(""),
-  dueDate: z.string().trim().optional(),
-  paidDate: z.string().trim().optional(),
-  method: z.string().trim().optional().default(""),
-  notes: z.string().trim().optional().default(""),
-});
+const addSchema = z
+  .object({
+    type: z.enum(["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"]),
+    amountPaid: z.coerce.number(),
+    amountDue: z.coerce.number().optional().default(0),
+    periodMonth: z.string().trim().optional().default(""),
+    dueDate: z.string().trim().optional(),
+    paidDate: z.string().trim().optional(),
+    method: z.string().trim().optional().default(""),
+    notes: z.string().trim().optional().default(""),
+    customLabel: z.string().trim().optional().default(""),
+  })
+  .refine((d) => d.type !== "OTHER" || d.customLabel, { message: "「其他」类型要填费用名称" });
 
 export async function POST(
   req: NextRequest,
@@ -95,7 +98,8 @@ export async function POST(
 
   const parsed = addSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ success: false, message: "请填金额" }, { status: 400 });
+    const msg = parsed.error.issues[0]?.message || "请填金额";
+    return NextResponse.json({ success: false, message: msg }, { status: 400 });
   }
   const d = parsed.data;
 
@@ -116,8 +120,10 @@ export async function POST(
       method: d.method,
       recordedBy: user.name,
       notes: d.notes,
+      customLabel: d.type === "OTHER" ? d.customLabel : null,
     },
   });
 
-  return NextResponse.json({ success: true, message: `✅ 已记一笔: ${d.type} RM${d.amountPaid}` });
+  const label = d.type === "OTHER" ? d.customLabel : d.type;
+  return NextResponse.json({ success: true, message: `✅ 已记一笔: ${label} RM${d.amountPaid}` });
 }

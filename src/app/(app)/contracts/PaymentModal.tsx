@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
-import { PAYMENT_TYPE_LABELS } from "@/lib/config";
+import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
 
 interface Breakdown {
   item: string;
@@ -25,6 +25,7 @@ interface PaymentRow {
   receiptLink: string | null;
   reviewNote: string | null;
   periodMonth: string | null;
+  customLabel: string | null;
 }
 
 function fmt(v: number) {
@@ -59,8 +60,8 @@ export default function PaymentModal({
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [totals, setTotals] = useState({ due: 0, paid: 0, outstanding: 0 });
   const [hasAircon, setHasAircon] = useState(false);
-  const [form, setForm] = useState({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer" });
-  const [billForm, setBillForm] = useState({ type: "RENTAL", amountDue: "", dueDate: "", periodMonth: "" });
+  const [form, setForm] = useState({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer", customLabel: "" });
+  const [billForm, setBillForm] = useState({ type: "RENTAL", amountDue: "", dueDate: "", periodMonth: "", customLabel: "" });
   const [loading, setLoading] = useState(false);
   const [billLoading, setBillLoading] = useState(false);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
@@ -91,6 +92,10 @@ export default function PaymentModal({
       toast.warning("请填金额");
       return;
     }
+    if (form.type === "OTHER" && !form.customLabel.trim()) {
+      toast.warning("「其他」类型要填费用名称");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/contracts/${contractCode}/payments`, {
@@ -104,7 +109,7 @@ export default function PaymentModal({
       const data = await res.json();
       if (data.success) {
         toast.success(data.message);
-        setForm({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer" });
+        setForm({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer", customLabel: "" });
         load();
         onChanged();
       } else {
@@ -122,6 +127,10 @@ export default function PaymentModal({
       toast.warning("金额和到期日一定要填");
       return;
     }
+    if (billForm.type === "OTHER" && !billForm.customLabel.trim()) {
+      toast.warning("「其他」类型要填费用名称");
+      return;
+    }
     setBillLoading(true);
     try {
       const res = await fetch(`/api/contracts/${contractCode}/bills`, {
@@ -132,7 +141,7 @@ export default function PaymentModal({
       const data = await res.json();
       if (data.success) {
         toast.success(data.message);
-        setBillForm({ type: "RENTAL", amountDue: "", dueDate: "", periodMonth: "" });
+        setBillForm({ type: "RENTAL", amountDue: "", dueDate: "", periodMonth: "", customLabel: "" });
         load();
         onChanged();
       } else {
@@ -242,6 +251,17 @@ export default function PaymentModal({
               ))}
             </select>
           </div>
+          {form.type === "OTHER" && (
+            <div className="min-w-[130px] flex-1">
+              <label className="mb-1.5 block text-sm text-gray-600">费用名称</label>
+              <input
+                className="input"
+                placeholder="例: 清洁费"
+                value={form.customLabel}
+                onChange={(e) => setForm({ ...form, customLabel: e.target.value })}
+              />
+            </div>
+          )}
           <div className="min-w-[130px] flex-1">
             <label className="mb-1.5 block text-sm text-gray-600">金额 RM</label>
             <input
@@ -291,6 +311,17 @@ export default function PaymentModal({
               ))}
             </select>
           </div>
+          {billForm.type === "OTHER" && (
+            <div className="min-w-[110px] flex-1">
+              <label className="mb-1.5 block text-sm text-gray-600">费用名称</label>
+              <input
+                className="input"
+                placeholder="例: 清洁费"
+                value={billForm.customLabel}
+                onChange={(e) => setBillForm({ ...billForm, customLabel: e.target.value })}
+              />
+            </div>
+          )}
           <div className="min-w-[110px] flex-1">
             <label className="mb-1.5 block text-sm text-gray-600">金额 RM</label>
             <input
@@ -343,7 +374,7 @@ export default function PaymentModal({
                 const badge = STATUS_BADGE[b.status] ?? { label: b.status, cls: "bg-gray-100 text-gray-600" };
                 return (
                   <tr key={b.id} className="border-b border-gray-100 align-top">
-                    <td className="px-2.5 py-1.5">{PAYMENT_TYPE_LABELS[b.type] ?? b.type}</td>
+                    <td className="px-2.5 py-1.5">{paymentTypeLabel(b.type, b.customLabel)}</td>
                     <td className="px-2.5 py-1.5">{fmt(b.amountDue)}</td>
                     <td className="px-2.5 py-1.5">{fmtDate(b.dueDate)}</td>
                     <td className="px-2.5 py-1.5">
@@ -448,7 +479,7 @@ export default function PaymentModal({
           )}
           {paidHistory.map((p) => (
             <tr key={p.paymentCode} className="border-b border-gray-100">
-              <td className="px-2.5 py-1.5">{PAYMENT_TYPE_LABELS[p.type] ?? p.type}</td>
+              <td className="px-2.5 py-1.5">{paymentTypeLabel(p.type, p.customLabel)}</td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
               <td className="px-2.5 py-1.5">{p.method || (p.receiptLink ? "水单上传" : "-")}</td>

@@ -33,6 +33,7 @@ export async function GET() {
         paidDate: p.paidDate,
         receiptLink: p.receiptLink,
         notes: p.notes,
+        customLabel: p.customLabel,
       }))
     ),
   });
