@@ -192,3 +192,42 @@ export async function notifyTenantMaintenanceUpdated(
   );
   return send(tenant.email, `Bliss Rooms — 报修进度更新: ${label}`, html, "MaintenanceUpdated", req.requestCode, triggeredBy);
 }
+
+/** Rent arrears cross the escalation threshold (default day 10) — every ACTIVE Admin gets told
+ * this contract needs a manual decision on terminating the contract and forfeiting the deposit.
+ * This is deliberately notify-only: the system never executes that itself. */
+export async function notifyAdminsRentEscalation(
+  bill: BillInfo,
+  contractCode: string,
+  tenantName: string,
+  daysOverdue: number
+) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
+  const link = `${APP_URL}/contracts`;
+  const html = wrap(
+    "租金逾期需要处理 Rent Arrears — Action Needed",
+    `<p><b>${tenantName}</b>（合同 <b>${contractCode}</b>，房间 ${bill.roomCode}）的房租已经逾期 <b>${daysOverdue} 天</b>没缴。</p>
+     <p>已达到公司政策的处理门槛：请review是否需要终止合同并没收押金。系统不会自动执行, 需要 Admin 在合同页面手动确认。</p>
+     <p><a href="${link}" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">去处理</a></p>`
+  );
+  return Promise.all(
+    admins.map((a) =>
+      send(a.email, `Bliss Rooms — ${contractCode} 租金逾期 ${daysOverdue} 天, 需要处理`, html, "RentEscalation", bill.paymentCode, "system-cron")
+    )
+  );
+}
+
+/** Admin manually confirms terminating a contract for rent arrears (deposit forfeited). */
+export async function notifyTenantContractTerminated(
+  tenant: { name: string; email: string },
+  contractCode: string,
+  triggeredBy: string
+) {
+  const html = wrap(
+    "合同终止通知 Contract Terminated",
+    `<p>你好 ${tenant.name},</p>
+     <p>由于房租长期逾期未缴, 你的合同 <b>${contractCode}</b> 已被终止, 押金已被没收作为欠款/违约赔偿。</p>
+     <p>请尽快联系 Admin 安排搬出手续。</p>`
+  );
+  return send(tenant.email, `Bliss Rooms — 合同终止通知 (${contractCode})`, html, "ContractTerminated", contractCode, triggeredBy);
+}

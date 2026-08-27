@@ -173,6 +173,15 @@ export default function PaymentModal({
     onChanged();
   }
 
+  async function waiveLateFee(id: string) {
+    const res = await fetch(`/api/payments/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) toast.success(data.message);
+    else toast.danger(data.message);
+    load();
+    onChanged();
+  }
+
   const paidHistory = payments.filter((p) => p.status === "Paid");
   const bills = payments.filter((p) => p.status !== "Paid");
   const billTypeOptions = BILL_TYPES.filter((t) => t !== "AC" || hasAircon);
@@ -399,7 +408,17 @@ export default function PaymentModal({
                           )}
                         </div>
                       )}
-                      {b.status !== "PENDING_REVIEW" && <span className="text-xs text-gray-400">等租客上传</span>}
+                      {b.status !== "PENDING_REVIEW" && b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED") && (
+                        <button
+                          onClick={() => waiveLateFee(b.id)}
+                          className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                        >
+                          🗑️ 撤销罚款
+                        </button>
+                      )}
+                      {b.status !== "PENDING_REVIEW" && !(b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED")) && (
+                        <span className="text-xs text-gray-400">等租客上传</span>
+                      )}
                     </td>
                   </tr>
                 );

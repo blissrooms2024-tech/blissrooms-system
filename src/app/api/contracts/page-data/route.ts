@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
+import { RENT_ARREARS } from "@/lib/config";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -12,7 +13,11 @@ export async function GET() {
 
   const where = user.role === "AGENT" ? { agentId: user.sub } : {};
 
-  const [contracts, paidGroups, vacantRooms, agents] = await Promise.all([
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
+
+  const [contracts, paidGroups, vacantRooms, agents, escalatedRentBills] = await Promise.all([
     prisma.contract.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -27,13 +32,18 @@ export async function GET() {
           orderBy: { name: "asc" },
         })
       : Promise.resolve([]),
+    prisma.payment.findMany({
+      where: { type: "RENTAL", status: "PENDING", dueDate: { lte: escalationCutoff } },
+      select: { contractId: true },
+    }),
   ]);
 
   const paidMap = new Map(paidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));
+  const escalatedSet = new Set(escalatedRentBills.map((b) => b.contractId));
   const list = contracts.map((c) => {
     const paid = paidMap.get(c.id) ?? 0;
     const outstanding = Math.max(Number(c.totalOutstanding) - paid, 0);
-    return serialize({ ...c, _paid: paid, _outstanding: outstanding });
+    return serialize({ ...c, _paid: paid, _outstanding: outstanding, _rentEscalated: escalatedSet.has(c.id) });
   });
 
   return NextResponse.json({ success: true, contracts: list, vacant: vacantRooms, agents });

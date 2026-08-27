@@ -206,6 +206,7 @@ model Contract {
   commissions         Commission[]
   moveForms           MoveInOutForm[]
   maintenanceRequests MaintenanceRequest[]
+  warningLetters      WarningLetter[]
 
   @@index([status])
   @@index([agentId])
@@ -305,6 +306,19 @@ model MaintenanceRequest {
 
   @@index([contractId])
   @@index([status])
+}
+
+model WarningLetter {
+  id          String   @id @default(cuid())
+  letterCode  String   @unique
+  contractId  String
+  contract    Contract @relation(fields: [contractId], references: [id])
+  message     String
+  sentBy      String
+  triggeredBy String
+  createdAt   DateTime @default(now())
+
+  @@index([contractId])
 }
 
 model Log {

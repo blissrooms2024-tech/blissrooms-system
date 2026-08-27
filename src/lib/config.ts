@@ -17,6 +17,13 @@ export const FEES = {
   ELECTRIC_PER_KWH: 0.5, // 电费 RM0.50/kWh
 } as const;
 
+// Rent-arrears escalation policy: days a RENTAL bill has been overdue (past its dueDate)
+// before each step fires — see src/app/api/cron/late-fees/route.ts.
+export const RENT_ARREARS = {
+  WARNING_LETTER_DAYS: 2, // day 7 if due on the 5th: auto warning letter to tenant
+  ESCALATION_DAYS: 5, // day 10 if due on the 5th: Admin gets told to consider termination
+} as const;
+
 export const RULES = {
   RENT_DUE_DAY: 25, // 每月25号前交租
   RENT_GRACE_DAY: 5, // 最迟实际月份5号

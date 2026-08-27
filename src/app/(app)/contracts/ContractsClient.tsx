@@ -24,6 +24,7 @@ interface Contract {
   tenantSignature: string | null;
   _paid: number;
   _outstanding: number;
+  _rentEscalated?: boolean;
   room?: { roomCode: string };
 }
 
@@ -42,6 +43,7 @@ export default function ContractsClient({ role }: { role: string }) {
   const [paying, setPaying] = useState<Contract | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [warningFor, setWarningFor] = useState<Contract | null>(null);
+  const [terminating, setTerminating] = useState<Contract | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -77,6 +79,17 @@ export default function ContractsClient({ role }: { role: string }) {
     const contractCode = deleting;
     setDeleting(null);
     const res = await fetch(`/api/contracts/${contractCode}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) toast.success(data.message);
+    else toast.danger(data.message);
+    load();
+  }
+
+  async function confirmTerminate() {
+    if (!terminating) return;
+    const contractCode = terminating.contractCode;
+    setTerminating(null);
+    const res = await fetch(`/api/contracts/${contractCode}/terminate-arrears`, { method: "POST" });
     const data = await res.json();
     if (data.success) toast.success(data.message);
     else toast.danger(data.message);
@@ -143,6 +156,11 @@ export default function ContractsClient({ role }: { role: string }) {
                       <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
                         {CONTRACT_STATUS_LABELS[c.status] ?? c.status}
                       </span>
+                      {c._rentEscalated && (
+                        <div className="mt-1 whitespace-normal rounded bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600">
+                          ⚠️ 租金逾期超10天
+                        </div>
+                      )}
                     </Td>
                     <Td>
                       <div className="flex flex-wrap gap-1.5">
@@ -190,6 +208,11 @@ export default function ContractsClient({ role }: { role: string }) {
                         {role === "ADMIN" && (
                           <ActionBtn color="bg-orange-600" onClick={() => setWarningFor(c)}>
                             ⚠️ 警告信
+                          </ActionBtn>
+                        )}
+                        {role === "ADMIN" && c._rentEscalated && c.status !== "TERMINATED" && c.status !== "MOVED_OUT" && (
+                          <ActionBtn color="bg-red-800" onClick={() => setTerminating(c)}>
+                            🔒 终止+没收押金
                           </ActionBtn>
                         )}
                         {role === "ADMIN" && (
@@ -246,6 +269,14 @@ export default function ContractsClient({ role }: { role: string }) {
         confirmLabel="确定删除"
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
+      />
+      <ConfirmDialog
+        open={!!terminating}
+        danger
+        message={`确定终止合同 ${terminating?.contractCode}（${terminating?.tenantName}）？押金会标记没收，房间放回空房，这个操作不能撤销。`}
+        confirmLabel="确定终止+没收押金"
+        onConfirm={confirmTerminate}
+        onCancel={() => setTerminating(null)}
       />
     </div>
   );

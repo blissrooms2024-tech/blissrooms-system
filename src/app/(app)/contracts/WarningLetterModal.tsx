@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const TEMPLATES = [
   { label: "迟交房租", text: "你已多次逾期缴交房租，请注意每月25号前完成付款，否则将影响你的租约状态。" },
   { label: "违反 House Rules", text: "根据现场检查/其他住户反馈，你的行为已违反 House Rules 相关条款，请立即改善，否则合同可能被终止。" },
   { label: "长期未上传水单", text: "你有账单长期未上传付款水单，请在3天内补交，否则将产生迟交罚款。" },
 ];
+
+interface Letter {
+  letterCode: string;
+  message: string;
+  sentBy: string;
+  triggeredBy: string;
+  createdAt: string;
+}
 
 export default function WarningLetterModal({
   contractCode,
@@ -22,6 +31,20 @@ export default function WarningLetterModal({
   const toast = useToast();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [letters, setLetters] = useState<Letter[]>([]);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch(`/api/contracts/${contractCode}/warning-letter`);
+    const data = await res.json();
+    if (data.success) setLetters(data.letters);
+  }, [contractCode]);
+
+  useEffect(() => {
+    // setState happens after the fetch's await, not synchronously in the effect body.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
   async function send() {
     if (!message.trim()) {
@@ -38,7 +61,8 @@ export default function WarningLetterModal({
       const data = await res.json();
       if (data.success) {
         toast.success(data.message);
-        onClose();
+        setMessage("");
+        load();
       } else {
         toast.danger(data.message);
       }
@@ -49,9 +73,20 @@ export default function WarningLetterModal({
     }
   }
 
+  async function confirmDelete() {
+    if (!deleting) return;
+    const letterCode = deleting;
+    setDeleting(null);
+    const res = await fetch(`/api/contracts/${contractCode}/warning-letter/${letterCode}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) toast.success(data.message);
+    else toast.danger(data.message);
+    load();
+  }
+
   return (
-    <Modal onClose={onClose}>
-      <h3 className="text-lg font-bold text-brand">⚠️ 发警告信 — {contractCode} ({tenantName})</h3>
+    <Modal onClose={onClose} wide>
+      <h3 className="text-lg font-bold text-brand">⚠️ 警告信 — {contractCode} ({tenantName})</h3>
       <p className="mt-1 text-sm text-gray-500">会直接发邮件给租客登录邮箱。</p>
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -68,7 +103,7 @@ export default function WarningLetterModal({
       </div>
 
       <textarea
-        className="input mt-2.5 h-32"
+        className="input mt-2.5 h-24"
         placeholder="警告内容..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
@@ -77,6 +112,38 @@ export default function WarningLetterModal({
       <button onClick={send} disabled={sending} className="btn-primary mt-3">
         {sending ? "发送中..." : "发送警告信"}
       </button>
+
+      <b className="mt-4 block text-sm">📜 警告信记录</b>
+      {letters.length === 0 && <div className="py-3 text-center text-sm text-gray-400">还没有发过警告信</div>}
+      <div className="mt-1.5 space-y-2">
+        {letters.map((l) => (
+          <div key={l.letterCode} className="rounded-lg border border-gray-200 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-gray-400">
+                  {l.createdAt.slice(0, 10)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
+                </div>
+                <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{l.message}</div>
+              </div>
+              <button
+                onClick={() => setDeleting(l.letterCode)}
+                className="shrink-0 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+              >
+                撤销
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <ConfirmDialog
+        open={!!deleting}
+        danger
+        message="确定撤销这封警告信记录？（邮件已经发出去了, 这只会移除系统里的记录）"
+        confirmLabel="确定撤销"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </Modal>
   );
 }
