@@ -1,20 +1,38 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
 import { PAYMENT_TYPE_LABELS, MAINTENANCE_STATUS_LABELS } from "@/lib/config";
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM = process.env.EMAIL_FROM || "Bliss Rooms <onboarding@resend.dev>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+// Gmail SMTP is preferred when configured: unlike Resend's default onboarding@resend.dev
+// sender, a real Gmail account can actually deliver to any recipient without needing a
+// verified custom domain — no domain purchase required. Falls back to Resend, then to a
+// console.log-only dev stub if neither is configured.
+const gmailUser = process.env.GMAIL_USER;
+const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+const gmailTransport =
+  gmailUser && gmailAppPassword
+    ? nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: gmailUser, pass: gmailAppPassword },
+      })
+    : null;
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const RESEND_FROM = process.env.EMAIL_FROM || "Bliss Rooms <onboarding@resend.dev>";
 
 async function send(to: string, subject: string, html: string, type: string, relatedId: string, triggeredBy: string) {
   let status = "sent";
   try {
-    if (resend) {
-      await resend.emails.send({ from: FROM, to, subject, html });
+    if (gmailTransport) {
+      await gmailTransport.sendMail({ from: `Bliss Rooms <${gmailUser}>`, to, subject, html });
+    } else if (resend) {
+      await resend.emails.send({ from: RESEND_FROM, to, subject, html });
     } else {
-      // No RESEND_API_KEY configured yet — log instead of throwing, so local dev keeps working.
-      console.log(`[mail:${type}] (RESEND_API_KEY not set, not actually sent) to=${to} subject=${subject}`);
+      // No mail provider configured yet — log instead of throwing, so local dev keeps working.
+      console.log(`[mail:${type}] (no mail provider configured, not actually sent) to=${to} subject=${subject}`);
       status = "skipped-no-api-key";
     }
   } catch (e) {

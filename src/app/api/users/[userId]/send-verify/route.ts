@@ -26,7 +26,7 @@ export async function POST(
 
   if (status === "skipped-no-api-key") {
     return NextResponse.json(
-      { success: false, message: "⚠️ 没设置 RESEND_API_KEY，邮件没真的发出去（本地/测试环境正常，生产环境要检查 Vercel 环境变量）" },
+      { success: false, message: "⚠️ 没配置发信服务 (GMAIL_USER/GMAIL_APP_PASSWORD 或 RESEND_API_KEY)，邮件没真的发出去（本地/测试环境正常，生产环境要检查 Vercel 环境变量）" },
       { status: 502 }
     );
   }
