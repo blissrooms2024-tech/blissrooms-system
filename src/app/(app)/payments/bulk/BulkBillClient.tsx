@@ -137,67 +137,71 @@ export default function BulkBillClient() {
 
       {propertyCode && (
         <>
-          <div className="mb-3.5 flex flex-wrap items-end gap-2.5">
-            <div className="min-w-[110px] flex-1">
-              <label className="mb-1.5 block text-sm text-gray-600">项目</label>
-              <select
-                className="input"
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-              >
-                {BULK_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {PAYMENT_TYPE_LABELS[t] ?? t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {form.type === "OTHER" && (
-              <div className="min-w-[110px] flex-1">
-                <label className="mb-1.5 block text-sm text-gray-600">费用名称</label>
-                <input
-                  className="input"
-                  placeholder="例: 清洁费"
-                  value={form.customLabel}
-                  onChange={(e) => setForm({ ...form, customLabel: e.target.value })}
-                />
-              </div>
-            )}
-            <div className="min-w-[110px] flex-1">
-              <label className="mb-1.5 block text-sm text-gray-600">金额 RM (每人)</label>
-              <input
-                type="number"
-                className="input"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              />
-            </div>
-            <div className="min-w-[130px] flex-1">
-              <label className="mb-1.5 block text-sm text-gray-600">到期日</label>
-              <input
-                type="date"
-                className="input"
-                value={form.dueDate}
-                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              />
-            </div>
-            <div className="min-w-[110px] flex-1">
-              <label className="mb-1.5 block text-sm text-gray-600">月份 (选填)</label>
-              <input
-                type="month"
-                className="input"
-                value={form.periodMonth}
-                onChange={(e) => setForm({ ...form, periodMonth: e.target.value })}
-              />
-            </div>
-          </div>
-
           {!tenants && <div className="text-sm text-gray-500">载入租客中...</div>}
           {tenants && tenants.length === 0 && (
-            <div className="py-4 text-center text-sm text-gray-400">这个楼盘现在没有生效中的合同</div>
+            <div className="rounded-lg border border-dashed border-gray-300 py-8 text-center">
+              <div className="text-2xl">🈳</div>
+              <div className="mt-1.5 text-sm font-semibold text-gray-600">这个楼盘现在没有生效中的租客</div>
+              <div className="mt-0.5 text-xs text-gray-400">没有人可以开账单，换一个楼盘试试</div>
+            </div>
           )}
           {tenants && tenants.length > 0 && (
             <>
+              <div className="mb-3.5 flex flex-wrap items-end gap-2.5">
+                <div className="min-w-[110px] flex-1">
+                  <label className="mb-1.5 block text-sm text-gray-600">项目</label>
+                  <select
+                    className="input"
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  >
+                    {BULK_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {PAYMENT_TYPE_LABELS[t] ?? t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {form.type === "OTHER" && (
+                  <div className="min-w-[110px] flex-1">
+                    <label className="mb-1.5 block text-sm text-gray-600">费用名称</label>
+                    <input
+                      className="input"
+                      placeholder="例: 清洁费"
+                      value={form.customLabel}
+                      onChange={(e) => setForm({ ...form, customLabel: e.target.value })}
+                    />
+                  </div>
+                )}
+                <div className="min-w-[110px] flex-1">
+                  <label className="mb-1.5 block text-sm text-gray-600">金额 RM (每人)</label>
+                  <input
+                    type="number"
+                    className="input"
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  />
+                </div>
+                <div className="min-w-[130px] flex-1">
+                  <label className="mb-1.5 block text-sm text-gray-600">到期日</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={form.dueDate}
+                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                  />
+                </div>
+                <div className="min-w-[110px] flex-1">
+                  <label className="mb-1.5 block text-sm text-gray-600">月份 (选填)</label>
+                  <input
+                    type="month"
+                    className="input"
+                    value={form.periodMonth}
+                    onChange={(e) => setForm({ ...form, periodMonth: e.target.value })}
+                  />
+                </div>
+              </div>
+
               <div className="mb-1.5 flex items-center justify-between">
                 <b className="text-sm">选租客 ({selected.size}/{tenants.length})</b>
                 <div className="flex gap-2">

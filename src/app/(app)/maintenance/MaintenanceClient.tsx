@@ -392,6 +392,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                   <b>{r.contractCode}</b> · {r.roomCode} · {r.title}
                   {r.assignedTo && <span className="text-gray-400"> · {r.assignedTo}</span>}
                   {r.cost != null && <span className="text-gray-500"> · {fmt(r.cost)}</span>}
+                  <span className="text-gray-400"> · {(r.resolvedAt ?? r.createdAt).slice(0, 10)}</span>
                 </div>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
