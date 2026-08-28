@@ -111,12 +111,15 @@ export default function ContractsClient({ role }: { role: string }) {
         </div>
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!contracts && !error && <div className="text-sm text-gray-500">载入中...</div>}
+        {contracts && contracts.length > 0 && (
+          <div className="mb-1.5 text-xs text-gray-400 sm:hidden">👉 表格可以左右滑动，查看「收款」等操作按钮</div>
+        )}
         {contracts && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th>合同号</Th>
+                  <Th className="sticky left-0 z-[1] bg-gray-50">合同号</Th>
                   <Th>房间</Th>
                   <Th>租客</Th>
                   <Th>Agent</Th>
@@ -137,7 +140,7 @@ export default function ContractsClient({ role }: { role: string }) {
                 )}
                 {contracts.map((c) => (
                   <tr key={c.contractCode} className="border-b border-gray-100 align-top">
-                    <Td>
+                    <Td className="sticky left-0 z-[1] bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                       <b>{c.contractCode}</b>
                     </Td>
                     <Td>{c.room?.roomCode}</Td>
@@ -171,6 +174,11 @@ export default function ContractsClient({ role }: { role: string }) {
                           📄 合同
                         </Link>
                         {role === "ADMIN" && (
+                          <ActionBtn color="bg-amber-500" onClick={() => setPaying(c)}>
+                            💰 收款
+                          </ActionBtn>
+                        )}
+                        {role === "ADMIN" && (
                           <ActionBtn color="bg-violet-600" onClick={() => setIcUploading(c.contractCode)}>
                             🪪 查看IC
                           </ActionBtn>
@@ -183,11 +191,6 @@ export default function ContractsClient({ role }: { role: string }) {
                         {role === "ADMIN" && c.status === "ACTIVE" && (
                           <ActionBtn color="bg-cyan-600" onClick={() => setMoveForm(c.contractCode)}>
                             📋 Move-in
-                          </ActionBtn>
-                        )}
-                        {role === "ADMIN" && (
-                          <ActionBtn color="bg-amber-500" onClick={() => setPaying(c)}>
-                            💰 收款
                           </ActionBtn>
                         )}
                         {(role === "AGENT" || role === "ADMIN") && c.status === "DRAFT" && (
@@ -297,9 +300,9 @@ function ActionBtn({
     </button>
   );
 }
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-2.5 py-2 font-semibold">{children}</th>;
+function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <th className={`whitespace-nowrap px-2.5 py-2 font-semibold ${className}`}>{children}</th>;
 }
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="whitespace-nowrap px-2.5 py-2.5">{children}</td>;
+function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <td className={`whitespace-nowrap px-2.5 py-2.5 ${className}`}>{children}</td>;
 }
