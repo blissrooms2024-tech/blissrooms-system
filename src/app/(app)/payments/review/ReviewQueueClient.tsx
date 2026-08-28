@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
-import { paymentTypeLabel } from "@/lib/config";
+import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
 
 interface PendingPayment {
   id: string;
@@ -37,6 +37,8 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -85,6 +87,19 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
     load();
   }
 
+  const typeOptions = items ? [...new Set(items.map((p) => p.type))] : [];
+  const q = search.trim().toLowerCase();
+  const filteredItems =
+    items?.filter((p) => {
+      if (typeFilter && p.type !== typeFilter) return false;
+      if (!q) return true;
+      return (
+        p.contractCode.toLowerCase().includes(q) ||
+        p.roomCode.toLowerCase().includes(q) ||
+        (p.tenantName ?? "").toLowerCase().includes(q)
+      );
+    }) ?? null;
+
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
       <h3 className="mb-3.5 text-base font-semibold text-brand">🧾 水单审核队列</h3>
@@ -94,8 +109,31 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
         <div className="py-8 text-center text-gray-400">🎉 没有待审核的水单</div>
       )}
       {items && items.length > 0 && (
+        <>
+          <div className="mb-3.5 flex flex-wrap gap-2.5">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜索合同号 / 房间 / 租客姓名"
+              className="input max-w-[220px] flex-1"
+            />
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="input max-w-[160px]">
+              <option value="">全部项目</option>
+              {typeOptions.map((t) => (
+                <option key={t} value={t}>
+                  {PAYMENT_TYPE_LABELS[t] ?? t}
+                </option>
+              ))}
+            </select>
+          </div>
+          {filteredItems && filteredItems.length === 0 && (
+            <div className="py-8 text-center text-gray-400">没有符合条件的水单</div>
+          )}
+        </>
+      )}
+      {filteredItems && filteredItems.length > 0 && (
         <div className="space-y-3">
-          {items.map((p) => (
+          {filteredItems.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 p-3.5">
               {p.receiptLink && (
                 <button type="button" onClick={() => setZoomUrl(p.receiptLink)} className="shrink-0 cursor-zoom-in">
