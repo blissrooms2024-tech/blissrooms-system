@@ -64,7 +64,10 @@ export async function POST(
       user.name
     );
 
-    return NextResponse.json({ success: true, message: "✅ 已提交冷气充值申请，Admin 会在12小时内处理" });
+    return NextResponse.json({
+      success: true,
+      message: "✅ 已提交冷气充值申请，Admin 会在12小时内处理 (只在周一至五, 六日/公共假期不处理)",
+    });
   } catch (e) {
     return NextResponse.json(
       { success: false, message: "上传失败: " + (e instanceof Error ? e.message : String(e)) },

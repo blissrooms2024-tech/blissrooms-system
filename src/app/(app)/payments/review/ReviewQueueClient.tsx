@@ -119,7 +119,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                 </div>
                 {p.type === "AC" && (
                   <div className="mt-1 text-xs font-semibold text-amber-700">
-                    ❄️ 冷气充值：批准后请在12小时内(工作日)更新到 Smart Meter
+                    ❄️ 冷气充值：批准后请在12小时内更新到 Smart Meter (只在周一至五, 六日/公共假期不处理)
                   </div>
                 )}
               </div>

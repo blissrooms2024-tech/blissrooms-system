@@ -54,7 +54,7 @@ function buildAcSteps(p: AcPayment): TimelineStep[] {
     },
     {
       label: "已充值",
-      sublabel: currentIndex === 1 ? "Admin 会在12小时内(工作日)更新到 Smart Meter" : undefined,
+      sublabel: currentIndex === 1 ? "Admin 会在12小时内更新到 Smart Meter (只在周一至五, 六日/公共假期不处理)" : undefined,
       state: currentIndex === 2 ? "done" : "pending",
     },
   ];
@@ -152,7 +152,10 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
           </div>
           <p className="mt-2 text-xs text-gray-500">
             请先把充值金额转入以上公司户口，然后在下面填写金额并上传转账证明。Admin
-            会在收到后12小时内(工作日)更新到 Smart Meter。
+            会在收到后12小时内更新到 Smart Meter。
+          </p>
+          <p className="mt-1 text-xs font-semibold text-amber-700">
+            ⏰ 只在星期一至星期五处理，星期六、星期日及公共假期不处理。
           </p>
         </div>
 
