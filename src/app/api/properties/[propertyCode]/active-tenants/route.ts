@@ -16,7 +16,13 @@ export async function GET(
   const property = await prisma.property.findUnique({ where: { propertyCode } });
   if (!property) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
 
-  const rooms = await prisma.room.findMany({ where: { propertyId: property.id } });
+  // Match by propertyId, but also fall back to the denormalized propertyName string — some
+  // rooms (e.g. imported from the old spreadsheet system) never got a propertyId FK set even
+  // though their propertyName clearly identifies the unit, which silently hid their tenants
+  // from this picker.
+  const rooms = await prisma.room.findMany({
+    where: { OR: [{ propertyId: property.id }, { propertyName: property.name }] },
+  });
   const roomIds = rooms.map((r) => r.id);
   const roomById = new Map(rooms.map((r) => [r.id, r]));
 

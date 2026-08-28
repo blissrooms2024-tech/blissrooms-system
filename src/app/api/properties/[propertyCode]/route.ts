@@ -75,7 +75,10 @@ export async function PATCH(
   });
 
   if (d.name !== existing.name) {
-    await prisma.room.updateMany({ where: { propertyId: existing.id }, data: { propertyName: d.name } });
+    await prisma.room.updateMany({
+      where: { OR: [{ propertyId: existing.id }, { propertyName: existing.name }] },
+      data: { propertyName: d.name },
+    });
   }
 
   return NextResponse.json({ success: true, message: `✅ 楼盘已更新: ${d.name}` });
@@ -93,7 +96,9 @@ export async function DELETE(
   const existing = await prisma.property.findUnique({ where: { propertyCode } });
   if (!existing) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
 
-  const roomCount = await prisma.room.count({ where: { propertyId: existing.id } });
+  const roomCount = await prisma.room.count({
+    where: { OR: [{ propertyId: existing.id }, { propertyName: existing.name }] },
+  });
   if (roomCount > 0) {
     return NextResponse.json(
       { success: false, message: "这个楼盘底下还有房间，请先删除或转移那些房间" },
