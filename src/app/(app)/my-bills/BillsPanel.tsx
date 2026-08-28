@@ -5,6 +5,7 @@ import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
+import BreakdownPayModal from "./BreakdownPayModal";
 
 interface BreakdownRow {
   item: string;
@@ -72,9 +73,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   const [totals, setTotals] = useState({ due: 0, paid: 0, outstanding: 0 });
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
-  const [payAmount, setPayAmount] = useState<Record<string, string>>({});
-  const [payFile, setPayFile] = useState<Record<string, File | null>>({});
-  const [paySubmitting, setPaySubmitting] = useState<Record<string, boolean>>({});
+  const [payingItem, setPayingItem] = useState<{ item: string; outstanding: number } | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -122,51 +121,11 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
     }
   }
 
-  async function submitBreakdownPay(item: string) {
-    const amount = Number(payAmount[item]);
-    if (!amount || amount <= 0) {
-      toast.warning("请填正确的金额");
-      return;
-    }
-    const file = payFile[item];
-    if (!file) {
-      toast.warning("请上传付款证明");
-      return;
-    }
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning("图片太大(超过3MB)，请压缩");
-      return;
-    }
-    setPaySubmitting((s) => ({ ...s, [item]: true }));
-    try {
-      const dataUrl = await readAsDataURL(file);
-      const res = await fetch(`/api/contracts/${contractCode}/breakdown-pay`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item, amount, dataUrl }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message);
-        setPayAmount((s) => ({ ...s, [item]: "" }));
-        setPayFile((s) => ({ ...s, [item]: null }));
-        load();
-      } else {
-        toast.danger(data.message);
-      }
-    } catch {
-      toast.danger("系统出错，请稍后再试");
-    } finally {
-      setPaySubmitting((s) => ({ ...s, [item]: false }));
-    }
-  }
-
   const actionable = payments.filter((p) => p.status !== "Paid");
   const paidHistory = payments.filter((p) => p.status === "Paid");
   // Items still owed but that Admin hasn't opened a bill for yet — tenant can self-initiate
   // payment on these directly instead of waiting for Admin to issue one.
   const coveredTypes = new Set(actionable.map((p) => p.type));
-  const payableItems = breakdown.filter((b) => b.outstanding > 0 && !coveredTypes.has(b.item));
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
@@ -198,7 +157,18 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                   <td className="px-2.5 py-1.5">{fmt(b.paid)}</td>
                   <td className="px-2.5 py-1.5">
                     {b.outstanding > 0 ? (
-                      <span className="font-semibold text-red-600">{fmt(b.outstanding)}</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="font-semibold text-red-600">{fmt(b.outstanding)}</span>
+                        {!coveredTypes.has(b.item) && (
+                          <button
+                            type="button"
+                            onClick={() => setPayingItem({ item: b.item, outstanding: b.outstanding })}
+                            className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-brand-dark"
+                          >
+                            付款
+                          </button>
+                        )}
+                      </span>
                     ) : (
                       <span className="text-green-700">✅清</span>
                     )}
@@ -207,51 +177,6 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
               ))}
             </tbody>
           </table>
-        </>
-      )}
-
-      {payableItems.length > 0 && (
-        <>
-          <b className="mb-1.5 block text-sm">💰 立即付款</b>
-          <p className="mb-2 text-xs text-gray-400">Admin 还没为这些项目开账单，你可以先转账后自己上传付款证明</p>
-          <div className="mb-3.5 space-y-2.5">
-            {payableItems.map((b) => (
-              <div key={b.item} className="rounded-lg border border-gray-200 p-3">
-                <div className="mb-2">
-                  <b className="text-sm">{PAYMENT_TYPE_LABELS[b.item] ?? b.item}</b>{" "}
-                  <span className="text-sm text-gray-600">还欠 {fmt(b.outstanding)}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    placeholder="金额 RM"
-                    value={payAmount[b.item] ?? ""}
-                    onChange={(e) => setPayAmount((s) => ({ ...s, [b.item]: e.target.value }))}
-                    className="input w-[120px]"
-                  />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    disabled={!!paySubmitting[b.item]}
-                    onChange={(e) => setPayFile((s) => ({ ...s, [b.item]: e.target.files?.[0] ?? null }))}
-                    className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
-                  />
-                  <button
-                    onClick={() => submitBreakdownPay(b.item)}
-                    disabled={!!paySubmitting[b.item]}
-                    className="btn-primary px-3.5 py-1.5 text-xs"
-                  >
-                    {paySubmitting[b.item] ? "提交中..." : "提交付款证明"}
-                  </button>
-                </div>
-                {payFile[b.item] && (
-                  <div className="mt-1.5 text-xs text-gray-500">已选择: {payFile[b.item]!.name}</div>
-                )}
-              </div>
-            ))}
-          </div>
         </>
       )}
 
@@ -329,6 +254,16 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
       </table>
 
       {zoomUrl && <Lightbox src={zoomUrl} alt="水单" onClose={() => setZoomUrl(null)} />}
+
+      {payingItem && (
+        <BreakdownPayModal
+          contractCode={contractCode}
+          item={payingItem.item}
+          outstanding={payingItem.outstanding}
+          onClose={() => setPayingItem(null)}
+          onPaid={load}
+        />
+      )}
     </div>
   );
 }
