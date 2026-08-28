@@ -6,7 +6,7 @@ import { uploadDataUrl } from "@/lib/storage";
 import { newId } from "@/lib/id";
 import { notifyAdminsSlipUploaded } from "@/lib/mail";
 
-const BREAKDOWN_ITEMS = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "RENTAL"] as const;
+const BREAKDOWN_ITEMS = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "RENTAL"] as const;
 
 const schema = z.object({
   item: z.enum(BREAKDOWN_ITEMS),
@@ -43,6 +43,7 @@ export async function POST(
     UTILITIES: Number(c.utilitiesDeposit),
     ADMIN_FEE: Number(c.adminFee),
     ACCESS_CARD: Number(c.accessCardDeposit),
+    CARPARK: Number(c.carparkRental),
     RENTAL: Number(c.roomRental),
   };
 

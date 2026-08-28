@@ -98,6 +98,7 @@ export const PAYMENT_TYPE_LABELS: Record<string, string> = {
   RENTAL: "房租",
   ADMIN_FEE: "Admin Fee",
   ACCESS_CARD: "门卡押",
+  CARPARK: "车位租金",
   AC: "冷气",
   DRYER: "烘干机",
   ELECTRIC: "电费",

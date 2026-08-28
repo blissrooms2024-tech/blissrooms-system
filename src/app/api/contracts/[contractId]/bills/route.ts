@@ -15,6 +15,7 @@ const BILL_TYPES = [
   "RENTAL",
   "ADMIN_FEE",
   "ACCESS_CARD",
+  "CARPARK",
   "AC",
   "DRYER",
   "ELECTRIC",
