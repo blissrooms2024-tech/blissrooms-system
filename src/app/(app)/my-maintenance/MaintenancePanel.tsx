@@ -17,11 +17,12 @@ interface MaintenanceRow {
   resolvedAt: string | null;
 }
 
-const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "COMPLETED"];
+const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING_REVIEW", "COMPLETED"];
 const FLOW_LABELS: Record<string, string> = {
   SUBMITTED: "已提交",
   ACKNOWLEDGED: "已受理",
   IN_PROGRESS: "处理中",
+  PENDING_REVIEW: "待审核",
   COMPLETED: "已完成",
 };
 
@@ -169,10 +170,11 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
           <div key={r.requestCode} className="rounded-lg border border-gray-200 p-3">
             <div className="mb-2 flex items-start justify-between gap-2">
               <div>
+                <div className="text-xs text-gray-400">🧾 {r.requestCode}</div>
                 <b className="text-sm">{r.title}</b>
                 {r.description && <div className="text-xs text-gray-500">{r.description}</div>}
               </div>
-              <span className="whitespace-nowrap text-xs text-gray-400">{r.createdAt.slice(0, 10)}</span>
+              <span className="whitespace-nowrap text-xs text-gray-400">收到日期 {r.createdAt.slice(0, 10)}</span>
             </div>
             {r.photos.length > 0 && (
               <div className="mb-2 flex gap-2">
@@ -190,6 +192,9 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
             )}
             <StepTimeline steps={buildSteps(r)} />
             {r.assignedTo && <div className="mt-1 text-xs text-gray-500">处理人: {r.assignedTo}</div>}
+            {r.status !== "CANCELLED" && r.adminNote && (
+              <div className="mt-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">📝 {r.adminNote}</div>
+            )}
           </div>
         ))}
       </div>

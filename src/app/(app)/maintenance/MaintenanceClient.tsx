@@ -35,7 +35,7 @@ interface Worker {
   name: string;
 }
 
-const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "COMPLETED"];
+const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING_REVIEW", "COMPLETED"];
 
 const NEXT_ACTION: Record<string, { status: string; label: string; color: string } | undefined> = {
   SUBMITTED: { status: "ACKNOWLEDGED", label: "受理", color: "bg-brand" },
@@ -75,6 +75,7 @@ interface AssignDraft {
   assignedWorkerId: string;
   contractorName: string;
   cost: string;
+  note: string;
 }
 
 export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
@@ -123,6 +124,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         assignedWorkerId: r.assignedWorkerId ?? "",
         contractorName: r.workerType === "OUTSOURCED" ? (r.assignedTo ?? "") : "",
         cost: r.cost != null ? String(r.cost) : "",
+        note: r.adminNote ?? "",
       }
     );
   }
@@ -166,6 +168,11 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
     await patchRequest(r.requestCode, { invoiceDataUrl: dataUrl });
   }
 
+  async function saveNote(r: MaintenanceRow) {
+    const d = draftFor(r);
+    await patchRequest(r.requestCode, { adminNote: d.note.trim() });
+  }
+
   async function complete(r: MaintenanceRow) {
     const d = draftFor(r);
     const cost = d.cost.trim() ? Number(d.cost) : undefined;
@@ -194,6 +201,9 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
               <div key={r.requestCode} className="rounded-lg border border-gray-200 p-3.5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-[220px] flex-1">
+                    <div className="text-xs text-gray-400">
+                      🧾 {r.requestCode} · 收到日期 {r.createdAt.slice(0, 10)}
+                    </div>
                     <div className="text-sm font-semibold">
                       <Link href="/contracts" className="text-brand hover:underline">
                         {r.contractCode}
@@ -254,6 +264,23 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                 {canAct && (
                   <div className="mt-2.5 space-y-2 border-t border-gray-100 pt-2.5">
                     <div className="flex flex-wrap items-center gap-1.5">
+                      <input
+                        className="input min-w-[220px] flex-1 text-xs"
+                        placeholder="备注给租客看，例如: 配件还没到，预计延迟3天"
+                        value={d.note}
+                        onChange={(e) => setDraftFor(r.requestCode, { note: e.target.value })}
+                      />
+                      <button
+                        onClick={() => saveNote(r)}
+                        className="rounded-md bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                      >
+                        💾 保存备注
+                      </button>
+                    </div>
+                    {r.adminNote && (
+                      <div className="rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">📝 租客会看到: {r.adminNote}</div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <select
                         className="input w-[110px] text-xs"
                         value={d.workerType}
@@ -301,7 +328,12 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                           {next.label}
                         </button>
                       )}
-                      {r.status === "IN_PROGRESS" && (
+                      {r.status === "PENDING_REVIEW" && (
+                        <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">
+                          ⏳ 工人已提交，请检查后完成
+                        </span>
+                      )}
+                      {(r.status === "IN_PROGRESS" || r.status === "PENDING_REVIEW") && (
                         <>
                           <input
                             className="input w-[100px] text-xs"
@@ -356,6 +388,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
             {closed.map((r) => (
               <div key={r.requestCode} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-50 py-2 text-sm last:border-none">
                 <div>
+                  <span className="text-gray-400">{r.requestCode} · </span>
                   <b>{r.contractCode}</b> · {r.roomCode} · {r.title}
                   {r.assignedTo && <span className="text-gray-400"> · {r.assignedTo}</span>}
                   {r.cost != null && <span className="text-gray-500"> · {fmt(r.cost)}</span>}

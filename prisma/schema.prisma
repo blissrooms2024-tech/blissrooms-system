@@ -63,6 +63,8 @@ enum MaintenanceStatus {
   SUBMITTED
   ACKNOWLEDGED
   IN_PROGRESS
+  /// Worker uploaded after-photos and submitted for Admin to check + close out with a cost.
+  PENDING_REVIEW
   COMPLETED
   CANCELLED
 }

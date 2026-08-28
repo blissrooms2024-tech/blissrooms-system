@@ -21,6 +21,7 @@ const MAINTENANCE_STATUS_LABELS_EN: Record<string, string> = {
   SUBMITTED: "Submitted",
   ACKNOWLEDGED: "Acknowledged",
   IN_PROGRESS: "In Progress",
+  PENDING_REVIEW: "Pending Review",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
 };
@@ -220,6 +221,22 @@ export async function notifyAdminsMaintenanceSubmitted(req: MaintenanceInfo, ten
   );
 }
 
+/** In-house worker submits their after-photos as done — every ACTIVE Admin gets pinged to check
+ * the work and close it out with a cost. */
+export async function notifyAdminsMaintenanceWorkerSubmitted(req: MaintenanceInfo, workerName: string, triggeredBy: string) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
+  const link = `${APP_URL}/maintenance`;
+  const html = wrap(
+    "Maintenance Job Submitted for Review",
+    `<p>${workerName} finished a repair job and submitted it for review:</p>
+     <p>Room: <b>${req.roomCode}</b> (${req.contractCode})<br/>Title: <b>${req.title}</b></p>
+     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Review It</a></p>`
+  );
+  return Promise.all(
+    admins.map((a) => send(a.email, `Bliss Rooms — Job Ready for Review: ${req.title}`, html, "MaintenanceWorkerSubmitted", req.requestCode, triggeredBy))
+  );
+}
+
 /** Admin updates a maintenance request's status — tenant gets told. */
 export async function notifyTenantMaintenanceUpdated(
   tenant: { name: string; email: string },
@@ -231,9 +248,27 @@ export async function notifyTenantMaintenanceUpdated(
     "Maintenance Update",
     `<p>Hi ${tenant.name},</p>
      <p>Your maintenance request <b>${req.title}</b> (${req.roomCode}) status has been updated to: <b>${label}</b></p>
-     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View Details</a></p>`
+     <p><a href="${APP_URL}/my-maintenance" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View Details</a></p>`
   );
   return send(tenant.email, `Bliss Rooms — Maintenance Update: ${label}`, html, "MaintenanceUpdated", req.requestCode, triggeredBy);
+}
+
+/** Admin leaves a remark on an open request (e.g. explaining a delay) without necessarily
+ * changing its status — tenant gets told so they're not left guessing why nothing's moving. */
+export async function notifyTenantMaintenanceNoteAdded(
+  tenant: { name: string; email: string },
+  req: MaintenanceInfo,
+  note: string,
+  triggeredBy: string
+) {
+  const html = wrap(
+    "Maintenance Update",
+    `<p>Hi ${tenant.name},</p>
+     <p>A note was added to your maintenance request <b>${req.title}</b> (${req.roomCode}):</p>
+     <p style="background:#fff8e1;padding:10px 14px;border-radius:6px;">${note}</p>
+     <p><a href="${APP_URL}/my-maintenance" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View Details</a></p>`
+  );
+  return send(tenant.email, `Bliss Rooms — Maintenance Update: ${req.title}`, html, "MaintenanceNoteAdded", req.requestCode, triggeredBy);
 }
 
 /** Rent arrears cross the escalation threshold (default day 10) — every ACTIVE Admin gets told

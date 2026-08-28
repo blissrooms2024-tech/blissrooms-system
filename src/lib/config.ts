@@ -116,6 +116,7 @@ export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
   SUBMITTED: "已提交",
   ACKNOWLEDGED: "已受理",
   IN_PROGRESS: "处理中",
+  PENDING_REVIEW: "待审核",
   COMPLETED: "已完成",
   CANCELLED: "已取消",
 };

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
-import { notifyTenantMaintenanceUpdated } from "@/lib/mail";
+import { notifyTenantMaintenanceUpdated, notifyTenantMaintenanceNoteAdded } from "@/lib/mail";
 
 const schema = z.object({
   status: z.enum(["ACKNOWLEDGED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
@@ -68,14 +68,15 @@ export async function PATCH(
     },
   });
 
-  if (d.status && reqRow.tenantId) {
+  if (reqRow.tenantId && (d.status || (d.adminNote !== undefined && d.adminNote && d.adminNote !== reqRow.adminNote))) {
     const tenant = await prisma.user.findUnique({ where: { id: reqRow.tenantId } });
     if (tenant) {
-      await notifyTenantMaintenanceUpdated(
-        tenant,
-        { requestCode: reqRow.requestCode, contractCode: reqRow.contract.contractCode, roomCode: reqRow.roomCode, title: reqRow.title, status: d.status },
-        user.name
-      );
+      const info = { requestCode: reqRow.requestCode, contractCode: reqRow.contract.contractCode, roomCode: reqRow.roomCode, title: reqRow.title, status: d.status ?? reqRow.status };
+      if (d.status) {
+        await notifyTenantMaintenanceUpdated(tenant, info, user.name);
+      } else {
+        await notifyTenantMaintenanceNoteAdded(tenant, info, d.adminNote!, user.name);
+      }
     }
   }
 

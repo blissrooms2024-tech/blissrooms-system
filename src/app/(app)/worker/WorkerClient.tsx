@@ -35,6 +35,7 @@ function readAsDataURL(file: File): Promise<string> {
 const STATUS_BADGE: Record<string, string> = {
   ACKNOWLEDGED: "bg-blue-50 text-blue-700",
   IN_PROGRESS: "bg-amber-50 text-amber-700",
+  PENDING_REVIEW: "bg-purple-50 text-purple-700",
   COMPLETED: "bg-green-50 text-green-700",
 };
 
@@ -44,6 +45,7 @@ export default function WorkerClient() {
   const [error, setError] = useState("");
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -105,6 +107,24 @@ export default function WorkerClient() {
     }
   }
 
+  async function submitForReview(requestCode: string) {
+    setSubmittingId(requestCode);
+    try {
+      const res = await fetch(`/api/worker/maintenance/${requestCode}`, { method: "PATCH" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger("系统出错，请稍后再试");
+    } finally {
+      setSubmittingId(null);
+    }
+  }
+
   if (!jobs && !error) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
 
@@ -147,6 +167,7 @@ export default function WorkerClient() {
                   label="📷 Before (到场时拍)"
                   photos={j.workerBeforePhotos}
                   uploading={uploadingId === `${j.requestCode}_before`}
+                  locked={j.status === "PENDING_REVIEW"}
                   onZoom={setZoomUrl}
                   onUpload={(files) => uploadPhotos(j.requestCode, "before", j.workerBeforePhotos.length, files)}
                 />
@@ -154,10 +175,31 @@ export default function WorkerClient() {
                   label="✅ After (完工后拍)"
                   photos={j.workerAfterPhotos}
                   uploading={uploadingId === `${j.requestCode}_after`}
+                  locked={j.status === "PENDING_REVIEW"}
                   onZoom={setZoomUrl}
                   onUpload={(files) => uploadPhotos(j.requestCode, "after", j.workerAfterPhotos.length, files)}
                 />
               </div>
+
+              {j.status === "IN_PROGRESS" && (
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                  <button
+                    onClick={() => submitForReview(j.requestCode)}
+                    disabled={j.workerAfterPhotos.length === 0 || submittingId === j.requestCode}
+                    className="rounded-md bg-green-700 px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {submittingId === j.requestCode ? "提交中..." : "✅ 完工，提交给 Admin 确认"}
+                  </button>
+                  {j.workerAfterPhotos.length === 0 && (
+                    <div className="mt-1 text-xs text-gray-400">先传至少1张 After 照片才能提交</div>
+                  )}
+                </div>
+              )}
+              {j.status === "PENDING_REVIEW" && (
+                <div className="mt-3 border-t border-gray-100 pt-3 text-xs font-semibold text-purple-700">
+                  ⏳ 已提交，等待 Admin 确认
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -191,12 +233,14 @@ function PhotoSlot({
   label,
   photos,
   uploading,
+  locked,
   onZoom,
   onUpload,
 }: {
   label: string;
   photos: string[];
   uploading: boolean;
+  locked: boolean;
   onZoom: (url: string) => void;
   onUpload: (files: FileList) => void;
 }) {
@@ -215,7 +259,7 @@ function PhotoSlot({
           ))}
         </div>
       )}
-      {atLimit ? (
+      {locked ? null : atLimit ? (
         <div className="text-xs text-gray-400">已达上限</div>
       ) : (
         <input
