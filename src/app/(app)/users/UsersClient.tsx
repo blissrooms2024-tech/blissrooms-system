@@ -138,17 +138,23 @@ export default function UsersClient() {
                     <Td>{ROLE_LABELS[u.role] ?? u.role}</Td>
                     <Td>{u.phone || "-"}</Td>
                     <Td>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          u.status === "PENDING"
-                            ? "bg-amber-50 text-amber-700"
-                            : u.status === "DISABLED"
-                              ? "bg-gray-100 text-gray-500"
-                              : "bg-green-50 text-green-700"
-                        }`}
-                      >
-                        {USER_STATUS_LABELS[u.status] ?? u.status}
-                      </span>
+                      {u.status === "PENDING" ? (
+                        <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                          {USER_STATUS_LABELS[u.status]}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => toggleStatus(u.userCode, u.status)}
+                          title={u.status === "DISABLED" ? "点一下启用" : "点一下停用"}
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            u.status === "DISABLED"
+                              ? "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                              : "bg-green-50 text-green-700 hover:bg-green-100"
+                          }`}
+                        >
+                          {USER_STATUS_LABELS[u.status] ?? u.status}
+                        </button>
+                      )}
                     </Td>
                     <Td>
                       {u.verified ? (
@@ -174,18 +180,6 @@ export default function UsersClient() {
                         {!u.verified && (
                           <button onClick={() => sendVerify(u.userCode)} className="btn-soft px-2.5 py-1 text-xs">
                             发送验证
-                          </button>
-                        )}
-                        {u.status !== "PENDING" && (
-                          <button
-                            onClick={() => toggleStatus(u.userCode, u.status)}
-                            className={
-                              u.status === "DISABLED"
-                                ? "rounded-lg bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-100"
-                                : "rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
-                            }
-                          >
-                            {u.status === "DISABLED" ? "✅启用" : "🚫停用"}
                           </button>
                         )}
                         <button onClick={() => openEdit(u.userCode)} className="btn-primary px-2.5 py-1 text-xs">
