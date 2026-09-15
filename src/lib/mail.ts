@@ -309,3 +309,29 @@ export async function notifyTenantContractTerminated(
   );
   return send(tenant.email, `Bliss Rooms — Contract Terminated (${contractCode})`, html, "ContractTerminated", contractCode, triggeredBy);
 }
+
+/** An Agent self-registers — every ACTIVE Admin gets pinged to review and approve the account
+ * before it can log in. */
+export async function notifyAdminsAgentSignup(agent: { userCode: string; name: string; email: string }, triggeredBy: string) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
+  const link = `${APP_URL}/users`;
+  const html = wrap(
+    "New Agent Signup Pending Approval",
+    `<p>${agent.name} (${agent.email}) just signed up as an Agent and is waiting for approval before they can log in.</p>
+     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Review & Approve</a></p>`
+  );
+  return Promise.all(
+    admins.map((a) => send(a.email, `Bliss Rooms — New Agent Signup: ${agent.name}`, html, "AgentSignup", agent.userCode, triggeredBy))
+  );
+}
+
+/** Admin approves a pending Agent signup — the Agent gets told they can now log in. */
+export async function notifyAgentApproved(agent: { userCode: string; name: string; email: string }, triggeredBy: string) {
+  const html = wrap(
+    "Account Approved",
+    `<p>Hi ${agent.name},</p>
+     <p>Your Agent account has been approved — you can now log in to Bliss Rooms.</p>
+     <p><a href="${APP_URL}/login" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Log In</a></p>`
+  );
+  return send(agent.email, "Bliss Rooms — Your Agent Account Has Been Approved", html, "AgentApproved", agent.userCode, triggeredBy);
+}

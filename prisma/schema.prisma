@@ -21,6 +21,9 @@ enum Role {
 enum UserStatus {
   ACTIVE
   DISABLED
+  /// Self-registered Agent account awaiting Admin approval — can't log in until Admin flips
+  /// this to ACTIVE.
+  PENDING
 }
 
 enum RoomStatus {

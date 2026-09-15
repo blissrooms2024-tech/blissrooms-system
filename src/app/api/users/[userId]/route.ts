@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
+import { notifyAgentApproved } from "@/lib/mail";
 
 async function requireAdmin() {
   const user = await getCurrentUser();
@@ -45,7 +46,7 @@ const editSchema = z.object({
   phone: z.string().trim().optional(),
   ic: z.string().trim().optional(),
   role: z.enum(["BOSS", "ADMIN", "AGENT", "TENANT", "WORKER"]).optional(),
-  status: z.enum(["ACTIVE", "DISABLED"]).optional(),
+  status: z.enum(["ACTIVE", "DISABLED", "PENDING"]).optional(),
   commRate: z.coerce.number().optional(),
   bankName: z.string().trim().optional(),
   bankAccountName: z.string().trim().optional(),
@@ -57,7 +58,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
-  if (!(await requireAdmin())) {
+  const admin = await requireAdmin();
+  if (!admin) {
     return NextResponse.json({ success: false, message: "只有 Admin 可以改" }, { status: 403 });
   }
   const { userId } = await params;
@@ -90,6 +92,10 @@ export async function PATCH(
   }
 
   const updated = await prisma.user.update({ where: { userCode: userId }, data });
+
+  if (u.status === "PENDING" && updated.status === "ACTIVE") {
+    await notifyAgentApproved({ userCode: updated.userCode, name: updated.name, email: updated.email }, admin.name);
+  }
 
   return NextResponse.json({ success: true, message: `✅ 用户已更新: ${updated.name}` });
 }

@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ROLE_HOME } from "@/lib/roleHome";
 import { useToast } from "@/components/Toast";
 import ForgotPasswordModal from "./ForgotPasswordModal";
@@ -82,6 +83,12 @@ export default function LoginPage() {
           >
             忘记密码 Forgot password?
           </button>
+        </div>
+        <div className="mt-2 text-center text-sm text-gray-500">
+          我是 Agent，还没有账号？{" "}
+          <Link href="/signup" className="text-brand hover:underline">
+            注册
+          </Link>
         </div>
       </div>
 

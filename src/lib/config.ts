@@ -52,6 +52,12 @@ export const ROLE_LABELS: Record<string, string> = {
   WORKER: "维修工人 Worker",
 };
 
+export const USER_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "已启用",
+  DISABLED: "已停用",
+  PENDING: "待审核",
+};
+
 export const ROOM_STATUS_LABELS: Record<string, string> = {
   VACANT: "空房",
   OCCUPIED: "已出租",

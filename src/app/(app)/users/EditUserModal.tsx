@@ -106,6 +106,7 @@ export default function EditUserModal({
           <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
             <option value="ACTIVE">Active</option>
             <option value="DISABLED">Disabled</option>
+            <option value="PENDING">Pending (待审核)</option>
           </select>
         </Field>
         <Field label="佣金率">

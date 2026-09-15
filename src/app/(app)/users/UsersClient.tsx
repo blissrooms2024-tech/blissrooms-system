@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
-import { ROLE_LABELS } from "@/lib/config";
+import { ROLE_LABELS, USER_STATUS_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EditUserModal, { EditableUser } from "./EditUserModal";
@@ -81,6 +81,21 @@ export default function UsersClient() {
     const data = await res.json();
     if (data.success) {
       toast.success(data.message);
+      load();
+    } else {
+      toast.danger(data.message);
+    }
+  }
+
+  async function approve(userCode: string) {
+    const res = await fetch(`/api/users/${userCode}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "ACTIVE" }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast.success("✅ 已批准，Agent 现在可以登入了");
       load();
     } else {
       toast.danger(data.message);
@@ -191,6 +206,7 @@ export default function UsersClient() {
                   <Th>Email</Th>
                   <Th>角色</Th>
                   <Th>电话</Th>
+                  <Th>状态</Th>
                   <Th>验证</Th>
                   <Th>操作</Th>
                 </tr>
@@ -204,6 +220,19 @@ export default function UsersClient() {
                     <Td>{ROLE_LABELS[u.role] ?? u.role}</Td>
                     <Td>{u.phone || "-"}</Td>
                     <Td>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          u.status === "PENDING"
+                            ? "bg-amber-50 text-amber-700"
+                            : u.status === "DISABLED"
+                              ? "bg-gray-100 text-gray-500"
+                              : "bg-green-50 text-green-700"
+                        }`}
+                      >
+                        {USER_STATUS_LABELS[u.status] ?? u.status}
+                      </span>
+                    </Td>
+                    <Td>
                       {u.verified ? (
                         <span className="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">
                           ✅已验证
@@ -216,6 +245,14 @@ export default function UsersClient() {
                     </Td>
                     <Td>
                       <div className="flex items-center gap-2">
+                        {u.status === "PENDING" && (
+                          <button
+                            onClick={() => approve(u.userCode)}
+                            className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-700"
+                          >
+                            ✅批准
+                          </button>
+                        )}
                         {!u.verified && (
                           <button onClick={() => sendVerify(u.userCode)} className="btn-soft px-2.5 py-1 text-xs">
                             发送验证

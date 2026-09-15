@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
   if (user.status === "DISABLED") {
     return NextResponse.json({ success: false, message: "此账号已停用" }, { status: 403 });
   }
+  if (user.status === "PENDING") {
+    return NextResponse.json({ success: false, message: "你的账号还在等 Admin 审核，请耐心等待" }, { status: 403 });
+  }
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
     return NextResponse.json({ success: false, message: "密码错误" }, { status: 401 });
