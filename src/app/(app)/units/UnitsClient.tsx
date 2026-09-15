@@ -93,7 +93,65 @@ export default function UnitsClient({ role }: { role: string }) {
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!properties && !error && <div className="text-sm text-gray-500">载入中...</div>}
         {properties && (
-          <div className="overflow-x-auto">
+          <div className="space-y-2.5 sm:hidden">
+            {filteredProperties.length === 0 && (
+              <div className="py-6 text-center text-sm text-gray-400">{q ? "没有符合条件的楼盘" : "还没有楼盘"}</div>
+            )}
+            {filteredProperties.map((p) => (
+              <div key={p.propertyCode} className="rounded-lg border border-gray-100 p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <Link href={`/units/${p.propertyCode}`} className="font-semibold text-brand hover:underline">
+                      {p.propertyCode}
+                    </Link>
+                    <div className="text-sm text-gray-700">{p.name}</div>
+                  </div>
+                  <div className="shrink-0 text-right text-xs text-gray-500">
+                    <div>{p.roomCount} 房</div>
+                    <div>{p.carparkCount} 车位</div>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                  {p.landlord ? (
+                    <span className="rounded-full bg-brand-light px-2.5 py-0.5 font-semibold text-brand">
+                      {p.landlord}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">自己名下</span>
+                  )}
+                  {p.landlord && p.managementFeeRate && (
+                    <span className="text-gray-500">{(p.managementFeeRate * 100).toFixed(1)}% 管理费</span>
+                  )}
+                </div>
+                <div className="mt-2.5 flex gap-1.5">
+                  <Link href={`/units/${p.propertyCode}`} className="btn-soft flex-1 py-1.5 text-center text-xs">
+                    📊 月报
+                  </Link>
+                  {canEdit && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setEditingProperty(p)}
+                        className="flex-1 rounded-md bg-gray-100 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                      >
+                        ✏️ 编辑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingProperty(p)}
+                        className="flex-1 rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        🗑️ 删除
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {properties && (
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
