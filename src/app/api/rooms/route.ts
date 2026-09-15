@@ -3,12 +3,32 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 
+// Agents need a heads-up before a room actually frees up, so they can start re-marketing
+// it ahead of time — not just once it's already VACANT.
+const EXPIRING_SOON_DAYS = 30;
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "请重新登录" }, { status: 401 });
 
+  const expiringDateByRoomId = new Map<string, Date>();
+  if (user.role === "AGENT") {
+    const now = new Date();
+    const soon = new Date(now.getTime() + EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000);
+    const expiringContracts = await prisma.contract.findMany({
+      where: { status: "ACTIVE", expiredDate: { gte: now, lte: soon } },
+      select: { roomId: true, expiredDate: true },
+    });
+    for (const c of expiringContracts) {
+      if (c.expiredDate) expiringDateByRoomId.set(c.roomId, c.expiredDate);
+    }
+  }
+
   const rooms = await prisma.room.findMany({
-    where: user.role === "AGENT" ? { status: "VACANT" } : undefined,
+    where:
+      user.role === "AGENT"
+        ? { OR: [{ status: "VACANT" }, { id: { in: [...expiringDateByRoomId.keys()] } }] }
+        : undefined,
     orderBy: { roomCode: "asc" },
     include: { property: { select: { propertyCode: true } } },
   });
@@ -30,6 +50,7 @@ export async function GET() {
       currentContractId: r.currentContractId,
       notes: r.notes,
       photoLink: r.photoLink,
+      expiringSoonDate: expiringDateByRoomId.get(r.id) ?? null,
     })),
   });
 }

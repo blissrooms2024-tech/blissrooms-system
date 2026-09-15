@@ -22,6 +22,7 @@ interface Room {
   currentContractId: string | null;
   notes: string | null;
   photoLink: string | null;
+  expiringSoonDate: string | null;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -96,7 +97,7 @@ export default function RoomsClient({ role }: { role: string }) {
   }
 
   const canEdit = role === "ADMIN";
-  const title = role === "AGENT" ? "空房清单 (做 Sales 用)" : "房间清单";
+  const title = role === "AGENT" ? "空房 + 快到期清单 (做 Sales 用)" : "房间清单";
   const rentalOf = (r: Room) => (r.isCarpark ? r.carparkRental : r.roomRental);
 
   const q = search.trim().toLowerCase();
@@ -161,6 +162,11 @@ export default function RoomsClient({ role }: { role: string }) {
                     {ROOM_STATUS_LABELS[r.status]}
                   </span>
                 </div>
+                {r.expiringSoonDate && (
+                  <div className="mt-1.5 text-xs font-semibold text-orange-600">
+                    ⏰ 快到期: {r.expiringSoonDate.slice(0, 10)}
+                  </div>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
                   <span>RM{rentalOf(r)}</span>
                   {r.hasAircon && <span>❄️ 有冷气</span>}
@@ -285,6 +291,11 @@ export default function RoomsClient({ role }: { role: string }) {
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status]}`}>
                         {ROOM_STATUS_LABELS[r.status]}
                       </span>
+                      {r.expiringSoonDate && (
+                        <div className="mt-1 text-xs font-semibold text-orange-600">
+                          ⏰ {r.expiringSoonDate.slice(0, 10)}
+                        </div>
+                      )}
                     </Td>
                     {canEdit && (
                       <Td>
