@@ -14,6 +14,7 @@ interface Room {
   roomType: string | null;
   roomRental: number;
   carparkRental: number;
+  carparkLotNumber: string | null;
   hasAircon: boolean;
   isCarpark: boolean;
   status: "VACANT" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";
@@ -140,7 +141,7 @@ export default function RoomsClient({ role }: { role: string }) {
                   <Th>照片</Th>
                   <Th>状态</Th>
                   {canEdit && <Th>改状态</Th>}
-                  {canEdit && <Th>操作</Th>}
+                  {canEdit && <Th className="sticky right-0 bg-gray-50 shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">操作</Th>}
                 </tr>
               </thead>
               <tbody>
@@ -159,7 +160,7 @@ export default function RoomsClient({ role }: { role: string }) {
                       </Link>
                       {r.isCarpark && (
                         <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                          🅿️ 车位
+                          🅿️ {r.carparkLotNumber || "车位"}
                         </span>
                       )}
                     </Td>
@@ -226,7 +227,7 @@ export default function RoomsClient({ role }: { role: string }) {
                       </Td>
                     )}
                     {canEdit && (
-                      <Td>
+                      <Td className="sticky right-0 bg-white shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
@@ -270,9 +271,9 @@ export default function RoomsClient({ role }: { role: string }) {
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-2.5 py-2 font-semibold">{children}</th>;
+function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <th className={`whitespace-nowrap px-2.5 py-2 font-semibold ${className}`}>{children}</th>;
 }
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="whitespace-nowrap px-2.5 py-2.5">{children}</td>;
+function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <td className={`whitespace-nowrap px-2.5 py-2.5 ${className}`}>{children}</td>;
 }

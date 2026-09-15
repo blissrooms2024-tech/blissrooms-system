@@ -103,7 +103,7 @@ export default function UnitsClient({ role }: { role: string }) {
                   <Th>车位数</Th>
                   <Th>Landlord</Th>
                   <Th>管理费</Th>
-                  <Th>操作</Th>
+                  <Th className="sticky right-0 bg-gray-50 shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">操作</Th>
                 </tr>
               </thead>
               <tbody>
@@ -134,7 +134,7 @@ export default function UnitsClient({ role }: { role: string }) {
                       )}
                     </Td>
                     <Td>{p.landlord && p.managementFeeRate ? `${(p.managementFeeRate * 100).toFixed(1)}%` : "-"}</Td>
-                    <Td>
+                    <Td className="sticky right-0 bg-white shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">
                       <div className="flex items-center gap-1.5">
                         <Link href={`/units/${p.propertyCode}`} className="btn-soft px-2.5 py-1 text-xs">
                           📊 月报
@@ -184,9 +184,9 @@ export default function UnitsClient({ role }: { role: string }) {
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-2.5 py-2 font-semibold">{children}</th>;
+function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <th className={`whitespace-nowrap px-2.5 py-2 font-semibold ${className}`}>{children}</th>;
 }
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="whitespace-nowrap px-2.5 py-2.5">{children}</td>;
+function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <td className={`whitespace-nowrap px-2.5 py-2.5 ${className}`}>{children}</td>;
 }

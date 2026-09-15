@@ -73,6 +73,43 @@ async function nextSuffixNum(propertyId: string, propertyCode: string, isCarpark
   return max + 1;
 }
 
+// Deletes down toward targetCount, removing only rooms with no tenant and no contract
+// history (never touches an occupied or previously-contracted room), preferring to remove
+// the highest-numbered ones first so the remaining sequence stays contiguous.
+async function shrinkRooms(propertyId: string, propertyCode: string, isCarpark: boolean, targetCount: number) {
+  const rooms = await prisma.room.findMany({
+    where: { propertyId, isCarpark },
+    select: { id: true, roomCode: true, currentTenantId: true },
+  });
+  const toRemoveCount = rooms.length - targetCount;
+  if (toRemoveCount <= 0) return { removed: 0, kept: 0 };
+
+  const contractCounts = await prisma.contract.groupBy({
+    by: ["roomId"],
+    where: { roomId: { in: rooms.map((r) => r.id) } },
+    _count: { _all: true },
+  });
+  const contractedRoomIds = new Set(contractCounts.map((c) => c.roomId));
+
+  const prefix = isCarpark ? `${propertyCode}-CP` : `${propertyCode}-`;
+  const regex = new RegExp(`^${escapeRegExp(prefix)}(\\d+)$`);
+  const eligible = rooms.filter((r) => !r.currentTenantId && !contractedRoomIds.has(r.id));
+  eligible.sort((a, b) => {
+    const na = a.roomCode.match(regex)?.[1];
+    const nb = b.roomCode.match(regex)?.[1];
+    if (na && nb) return parseInt(nb, 10) - parseInt(na, 10);
+    if (na) return 1;
+    if (nb) return -1;
+    return b.roomCode.localeCompare(a.roomCode);
+  });
+
+  const toRemove = eligible.slice(0, toRemoveCount);
+  if (toRemove.length > 0) {
+    await prisma.room.deleteMany({ where: { id: { in: toRemove.map((r) => r.id) } } });
+  }
+  return { removed: toRemove.length, kept: toRemoveCount - toRemove.length };
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ propertyCode: string }> }
@@ -112,11 +149,15 @@ export async function PATCH(
 
   let addedRooms = 0;
   let addedCarparks = 0;
+  let removedRooms = 0;
+  let removedCarparks = 0;
+  let keptRooms = 0;
+  let keptCarparks = 0;
 
   if (d.roomCount !== undefined) {
     const currentCount = await prisma.room.count({ where: { propertyId: existing.id, isCarpark: false } });
-    addedRooms = Math.max(0, d.roomCount - currentCount);
-    if (addedRooms > 0) {
+    if (d.roomCount > currentCount) {
+      addedRooms = d.roomCount - currentCount;
       const start = await nextSuffixNum(existing.id, propertyCode, false);
       for (let i = 0; i < addedRooms; i++) {
         await prisma.room.create({
@@ -129,13 +170,17 @@ export async function PATCH(
           },
         });
       }
+    } else if (d.roomCount < currentCount) {
+      const result = await shrinkRooms(existing.id, propertyCode, false, d.roomCount);
+      removedRooms = result.removed;
+      keptRooms = result.kept;
     }
   }
 
   if (d.carparkCount !== undefined) {
     const currentCount = await prisma.room.count({ where: { propertyId: existing.id, isCarpark: true } });
-    addedCarparks = Math.max(0, d.carparkCount - currentCount);
-    if (addedCarparks > 0) {
+    if (d.carparkCount > currentCount) {
+      addedCarparks = d.carparkCount - currentCount;
       const start = await nextSuffixNum(existing.id, propertyCode, true);
       for (let i = 0; i < addedCarparks; i++) {
         await prisma.room.create({
@@ -150,13 +195,21 @@ export async function PATCH(
           },
         });
       }
+    } else if (d.carparkCount < currentCount) {
+      const result = await shrinkRooms(existing.id, propertyCode, true, d.carparkCount);
+      removedCarparks = result.removed;
+      keptCarparks = result.kept;
     }
   }
 
-  const extra =
-    addedRooms || addedCarparks
-      ? ` (新增了 ${addedRooms} 间房${addedCarparks ? ` + ${addedCarparks} 个车位` : ""})`
-      : "";
+  const parts: string[] = [];
+  if (addedRooms) parts.push(`新增了 ${addedRooms} 间房`);
+  if (addedCarparks) parts.push(`新增了 ${addedCarparks} 个车位`);
+  if (removedRooms) parts.push(`删除了 ${removedRooms} 间空房`);
+  if (removedCarparks) parts.push(`删除了 ${removedCarparks} 个空车位`);
+  if (keptRooms) parts.push(`⚠️ ${keptRooms} 间房有租客/合同记录，不能删`);
+  if (keptCarparks) parts.push(`⚠️ ${keptCarparks} 个车位有租客/合同记录，不能删`);
+  const extra = parts.length ? ` (${parts.join("、")})` : "";
   return NextResponse.json({ success: true, message: `✅ 楼盘已更新: ${d.name}${extra}` });
 }
 

@@ -12,6 +12,7 @@ export interface EditableRoom {
   roomType: string | null;
   roomRental: number;
   carparkRental: number;
+  carparkLotNumber: string | null;
   hasAircon: boolean;
   isCarpark: boolean;
   notes: string | null;
@@ -34,6 +35,7 @@ export default function RoomEditModal({
   const [useCustomType, setUseCustomType] = useState(!!room.roomType && !isPresetType(room.roomType));
   const [roomRental, setRoomRental] = useState(String(room.roomRental));
   const [carparkRental, setCarparkRental] = useState(String(room.carparkRental));
+  const [carparkLotNumber, setCarparkLotNumber] = useState(room.carparkLotNumber ?? "");
   const [hasAircon, setHasAircon] = useState(room.hasAircon);
   const [isCarpark, setIsCarpark] = useState(room.isCarpark);
   const [notes, setNotes] = useState(room.notes ?? "");
@@ -51,6 +53,7 @@ export default function RoomEditModal({
           roomType: useCustomType ? customType : roomType,
           roomRental: Number(roomRental) || 0,
           carparkRental: Number(carparkRental) || 0,
+          carparkLotNumber,
           hasAircon,
           isCarpark,
           notes,
@@ -144,6 +147,18 @@ export default function RoomEditModal({
           <input type="checkbox" checked={isCarpark} onChange={(e) => setIsCarpark(e.target.checked)} />
           🅿️ 这是车位专用 (不是房间，只租车位)
         </label>
+        {isCarpark && (
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">车位编号 Carpark Lot</label>
+            <input
+              value={carparkLotNumber}
+              onChange={(e) => setCarparkLotNumber(e.target.value)}
+              className="input"
+              placeholder="例: B-123"
+            />
+            <p className="mt-1 text-xs text-gray-400">建筑物本身画的车位号码 (跟系统内部的 Room Code 可以不一样)</p>
+          </div>
+        )}
         <div>
           <label className="mb-1.5 block text-sm text-gray-600">📷 房间照片 (Google Drive 链接)</label>
           <input

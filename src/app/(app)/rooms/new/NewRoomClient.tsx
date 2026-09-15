@@ -20,6 +20,7 @@ export default function NewRoomClient() {
     propertyCode: "",
     roomType: "",
     roomRental: "",
+    carparkLotNumber: "",
     hasAircon: false,
     isCarpark: false,
   });
@@ -162,6 +163,16 @@ export default function NewRoomClient() {
             />
             🅿️ 这是车位专用 (不是房间，只租车位)
           </label>
+          {form.isCarpark && (
+            <Field label="车位编号 Carpark Lot">
+              <input
+                value={form.carparkLotNumber}
+                onChange={(e) => setForm({ ...form, carparkLotNumber: e.target.value })}
+                className="input"
+                placeholder="例: B-123"
+              />
+            </Field>
+          )}
 
           <button type="submit" disabled={submitting} className="btn-primary w-full">
             {submitting ? "加入中..." : "加入房间"}
