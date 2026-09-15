@@ -25,6 +25,7 @@ export default function RoomEditModal({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const [roomCode, setRoomCode] = useState(room.roomCode);
   const [roomType, setRoomType] = useState(room.roomType ?? "");
   const [roomRental, setRoomRental] = useState(String(room.roomRental));
   const [carparkRental, setCarparkRental] = useState(String(room.carparkRental));
@@ -41,6 +42,7 @@ export default function RoomEditModal({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          roomCode,
           roomType,
           roomRental: Number(roomRental) || 0,
           carparkRental: Number(carparkRental) || 0,
@@ -69,6 +71,15 @@ export default function RoomEditModal({
     <Modal onClose={onClose}>
       <h3 className="mb-3.5 text-lg font-bold text-brand">✏️ 编辑房间 — {room.roomCode}</h3>
       <div className="space-y-3">
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">Room Code</label>
+          <input
+            value={roomCode}
+            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+            className="input uppercase"
+          />
+          <p className="mt-1 text-xs text-gray-400">改了 code 要确保没有跟别的房间/车位重复</p>
+        </div>
         <div>
           <label className="mb-1.5 block text-sm text-gray-600">类型</label>
           <input value={roomType} onChange={(e) => setRoomType(e.target.value)} className="input" placeholder="Master/Single" />

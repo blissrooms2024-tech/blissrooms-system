@@ -2,9 +2,62 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { serialize } from "@/lib/serialize";
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ roomCode: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user || !["BOSS", "ADMIN", "AGENT"].includes(user.role)) {
+    return NextResponse.json({ success: false, message: "没有权限" }, { status: 403 });
+  }
+  const { roomCode } = await params;
+  const room = await prisma.room.findUnique({
+    where: { roomCode },
+    include: { property: { select: { propertyCode: true } }, currentTenant: { select: { name: true, email: true, phone: true } } },
+  });
+  if (!room) return NextResponse.json({ success: false, message: "找不到这间房" }, { status: 404 });
+
+  const contracts = await prisma.contract.findMany({
+    where: { roomId: room.id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json({
+    success: true,
+    room: serialize({
+      roomCode: room.roomCode,
+      propertyCode: room.property?.propertyCode ?? null,
+      propertyName: room.propertyName,
+      roomType: room.roomType,
+      roomRental: room.roomRental,
+      carparkRental: room.carparkRental,
+      hasAircon: room.hasAircon,
+      isCarpark: room.isCarpark,
+      status: room.status,
+      notes: room.notes,
+      photoLink: room.photoLink,
+      currentTenant: room.currentTenant,
+    }),
+    contracts: serialize(
+      contracts.map((c) => ({
+        contractCode: c.contractCode,
+        tenantName: c.tenantName,
+        agentName: c.agentName,
+        status: c.status,
+        moveInDate: c.moveInDate,
+        expiredDate: c.expiredDate,
+        totalOutstanding: c.totalOutstanding,
+        createdAt: c.createdAt,
+      }))
+    ),
+  });
+}
 
 const patchSchema = z
   .object({
+    roomCode: z.string().trim().min(1).toUpperCase().optional(),
     status: z.enum(["VACANT", "OCCUPIED", "RESERVED", "MAINTENANCE"]).optional(),
     hasAircon: z.boolean().optional(),
     isCarpark: z.boolean().optional(),
@@ -36,7 +89,16 @@ export async function PATCH(
   }
 
   const d = parsed.data;
+
+  if (d.roomCode !== undefined && d.roomCode !== existing.roomCode) {
+    const dup = await prisma.room.findUnique({ where: { roomCode: d.roomCode } });
+    if (dup) {
+      return NextResponse.json({ success: false, message: "这个 Room Code 已经有人用了" }, { status: 409 });
+    }
+  }
+
   const data: {
+    roomCode?: string;
     status?: typeof d.status;
     hasAircon?: boolean;
     isCarpark?: boolean;
@@ -46,6 +108,7 @@ export async function PATCH(
     notes?: string;
     photoLink?: string | null;
   } = {};
+  if (d.roomCode !== undefined) data.roomCode = d.roomCode;
   if (d.status !== undefined) data.status = d.status;
   if (d.hasAircon !== undefined) data.hasAircon = d.hasAircon;
   if (d.isCarpark !== undefined) data.isCarpark = d.isCarpark;
@@ -56,7 +119,7 @@ export async function PATCH(
   if (d.photoLink !== undefined) data.photoLink = d.photoLink || null;
   await prisma.room.update({ where: { roomCode }, data });
 
-  return NextResponse.json({ success: true, message: `✅ ${roomCode} 已更新` });
+  return NextResponse.json({ success: true, message: `✅ ${d.roomCode ?? roomCode} 已更新`, roomCode: d.roomCode ?? roomCode });
 }
 
 export async function DELETE(

@@ -154,7 +154,9 @@ export default function RoomsClient({ role }: { role: string }) {
                 {filteredRooms!.map((r) => (
                   <tr key={r.roomCode} className="border-b border-gray-100">
                     <Td>
-                      <b>{r.roomCode}</b>
+                      <Link href={`/rooms/${r.roomCode}`} className="font-semibold text-brand hover:underline">
+                        {r.roomCode}
+                      </Link>
                       {r.isCarpark && (
                         <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
                           🅿️ 车位
