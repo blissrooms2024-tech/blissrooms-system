@@ -34,6 +34,8 @@ export default function PropertyEditModal({
   );
   const [status, setStatus] = useState(property.status ?? "Active");
   const [notes, setNotes] = useState(property.notes ?? "");
+  const [addRoomCount, setAddRoomCount] = useState("0");
+  const [addCarparkCount, setAddCarparkCount] = useState("0");
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -54,6 +56,8 @@ export default function PropertyEditModal({
           managementFeeRate: managementFeeRate ? Number(managementFeeRate) / 100 : undefined,
           status,
           notes,
+          addRoomCount: Number(addRoomCount) || 0,
+          addCarparkCount: Number(addCarparkCount) || 0,
         }),
       });
       const data = await res.json();
@@ -117,6 +121,31 @@ export default function PropertyEditModal({
           <label className="mb-1.5 block text-sm text-gray-600">备注 Notes</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input" />
         </div>
+        <div className="flex gap-3 rounded-lg bg-gray-50 p-3">
+          <div className="flex-1">
+            <label className="mb-1.5 block text-sm text-gray-600">➕ 加房间数量</label>
+            <input
+              type="number"
+              min="0"
+              value={addRoomCount}
+              onChange={(e) => setAddRoomCount(e.target.value)}
+              className="input"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="mb-1.5 block text-sm text-gray-600">➕ 加车位数量</label>
+            <input
+              type="number"
+              min="0"
+              value={addCarparkCount}
+              onChange={(e) => setAddCarparkCount(e.target.value)}
+              className="input"
+            />
+          </div>
+        </div>
+        <p className="-mt-2 text-xs text-gray-400">
+          填了数字保存后，会自动加新的房间/车位，接着现有的编号继续 (不影响现有房间)
+        </p>
         <button onClick={save} disabled={saving} className="btn-primary w-full">
           {saving ? "保存中..." : "保存"}
         </button>
