@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import UnitDetailClient from "./UnitDetailClient";
 import UnitReportClient from "./UnitReportClient";
 
 export default async function UnitReportPage({
@@ -12,5 +13,10 @@ export default async function UnitReportPage({
   if (!["BOSS", "ADMIN", "AGENT"].includes(session.role)) redirect("/dashboard");
 
   const { propertyCode } = await params;
-  return <UnitReportClient propertyCode={propertyCode} />;
+  return (
+    <div className="space-y-4">
+      <UnitDetailClient propertyCode={propertyCode} />
+      <UnitReportClient propertyCode={propertyCode} />
+    </div>
+  );
 }

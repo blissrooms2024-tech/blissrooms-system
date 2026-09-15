@@ -115,7 +115,9 @@ export default function UnitsClient({ role }: { role: string }) {
                 {filteredProperties.map((p) => (
                   <tr key={p.propertyCode} className="border-b border-gray-100">
                     <Td>
-                      <b>{p.propertyCode}</b>
+                      <Link href={`/units/${p.propertyCode}`} className="font-semibold text-brand hover:underline">
+                        {p.propertyCode}
+                      </Link>
                     </Td>
                     <Td>{p.name}</Td>
                     <Td>{p.roomCount}</Td>

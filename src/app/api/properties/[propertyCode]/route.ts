@@ -14,7 +14,12 @@ export async function GET(
   const { propertyCode } = await params;
   const property = await prisma.property.findUnique({
     where: { propertyCode },
-    include: { rooms: { select: { roomCode: true, roomType: true, status: true } } },
+    include: {
+      rooms: {
+        select: { roomCode: true, roomType: true, status: true, isCarpark: true },
+        orderBy: { roomCode: "asc" },
+      },
+    },
   });
   if (!property) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
 
