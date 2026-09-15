@@ -15,6 +15,7 @@ interface Room {
   roomRental: number;
   carparkRental: number;
   hasAircon: boolean;
+  isCarpark: boolean;
   status: "VACANT" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";
   currentTenantId: string | null;
   currentContractId: string | null;
@@ -154,6 +155,11 @@ export default function RoomsClient({ role }: { role: string }) {
                   <tr key={r.roomCode} className="border-b border-gray-100">
                     <Td>
                       <b>{r.roomCode}</b>
+                      {r.isCarpark && (
+                        <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                          🅿️ 车位
+                        </span>
+                      )}
                     </Td>
                     <Td>
                       {r.propertyCode ? (

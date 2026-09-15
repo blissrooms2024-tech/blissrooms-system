@@ -10,6 +10,7 @@ export interface EditableRoom {
   roomRental: number;
   carparkRental: number;
   hasAircon: boolean;
+  isCarpark: boolean;
   notes: string | null;
   photoLink: string | null;
 }
@@ -28,6 +29,7 @@ export default function RoomEditModal({
   const [roomRental, setRoomRental] = useState(String(room.roomRental));
   const [carparkRental, setCarparkRental] = useState(String(room.carparkRental));
   const [hasAircon, setHasAircon] = useState(room.hasAircon);
+  const [isCarpark, setIsCarpark] = useState(room.isCarpark);
   const [notes, setNotes] = useState(room.notes ?? "");
   const [photoLink, setPhotoLink] = useState(room.photoLink ?? "");
   const [saving, setSaving] = useState(false);
@@ -43,6 +45,7 @@ export default function RoomEditModal({
           roomRental: Number(roomRental) || 0,
           carparkRental: Number(carparkRental) || 0,
           hasAircon,
+          isCarpark,
           notes,
           photoLink,
         }),
@@ -93,6 +96,10 @@ export default function RoomEditModal({
         <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
           <input type="checkbox" checked={hasAircon} onChange={(e) => setHasAircon(e.target.checked)} />
           ❄️ 有冷气
+        </label>
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
+          <input type="checkbox" checked={isCarpark} onChange={(e) => setIsCarpark(e.target.checked)} />
+          🅿️ 这是车位专用 (不是房间，只租车位)
         </label>
         <div>
           <label className="mb-1.5 block text-sm text-gray-600">📷 房间照片 (Google Drive 链接)</label>

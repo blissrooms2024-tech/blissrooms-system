@@ -7,6 +7,7 @@ const patchSchema = z
   .object({
     status: z.enum(["VACANT", "OCCUPIED", "RESERVED", "MAINTENANCE"]).optional(),
     hasAircon: z.boolean().optional(),
+    isCarpark: z.boolean().optional(),
     roomType: z.string().trim().optional(),
     roomRental: z.coerce.number().min(0).optional(),
     carparkRental: z.coerce.number().min(0).optional(),
@@ -38,6 +39,7 @@ export async function PATCH(
   const data: {
     status?: typeof d.status;
     hasAircon?: boolean;
+    isCarpark?: boolean;
     roomType?: string;
     roomRental?: number;
     carparkRental?: number;
@@ -46,6 +48,7 @@ export async function PATCH(
   } = {};
   if (d.status !== undefined) data.status = d.status;
   if (d.hasAircon !== undefined) data.hasAircon = d.hasAircon;
+  if (d.isCarpark !== undefined) data.isCarpark = d.isCarpark;
   if (d.roomType !== undefined) data.roomType = d.roomType;
   if (d.roomRental !== undefined) data.roomRental = d.roomRental;
   if (d.carparkRental !== undefined) data.carparkRental = d.carparkRental;

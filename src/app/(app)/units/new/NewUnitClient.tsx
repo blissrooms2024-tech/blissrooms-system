@@ -5,7 +5,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 
-const emptyForm = { propertyCode: "", name: "", address: "", region: "", landlord: "", managementFeeRate: "" };
+const emptyForm = {
+  propertyCode: "",
+  name: "",
+  address: "",
+  region: "",
+  landlord: "",
+  managementFeeRate: "",
+  roomCount: "",
+  carparkCount: "",
+};
 
 export default function NewUnitClient() {
   const router = useRouter();
@@ -31,6 +40,8 @@ export default function NewUnitClient() {
         body: JSON.stringify({
           ...form,
           managementFeeRate: form.managementFeeRate ? Number(form.managementFeeRate) / 100 : undefined,
+          roomCount: form.roomCount || 0,
+          carparkCount: form.carparkCount || 0,
         }),
       });
       const data = await res.json();
@@ -106,6 +117,35 @@ export default function NewUnitClient() {
                 />
               </Field>
             </div>
+          </section>
+
+          <section>
+            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">自动加房间/车位 (选填)</h4>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="房间数量">
+                <input
+                  type="number"
+                  min="0"
+                  className="input"
+                  placeholder="例: 4"
+                  value={form.roomCount}
+                  onChange={(e) => setForm({ ...form, roomCount: e.target.value })}
+                />
+              </Field>
+              <Field label="车位数量">
+                <input
+                  type="number"
+                  min="0"
+                  className="input"
+                  placeholder="例: 2"
+                  value={form.carparkCount}
+                  onChange={(e) => setForm({ ...form, carparkCount: e.target.value })}
+                />
+              </Field>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              会自动生成 {form.propertyCode || "代号"}-01, {form.propertyCode || "代号"}-02... 房间，跟 CP01, CP02... 车位，之后再个别编辑房租/类型。留空 = 不自动加，之后自己去「房间」页面加。
+            </p>
           </section>
 
           <button type="submit" disabled={submitting} className="btn-primary w-full">

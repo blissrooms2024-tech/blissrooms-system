@@ -14,7 +14,14 @@ export default function NewRoomClient() {
   const router = useRouter();
   const toast = useToast();
   const [properties, setProperties] = useState<PropertyOption[]>([]);
-  const [form, setForm] = useState({ roomCode: "", propertyCode: "", roomType: "", roomRental: "", hasAircon: false });
+  const [form, setForm] = useState({
+    roomCode: "",
+    propertyCode: "",
+    roomType: "",
+    roomRental: "",
+    hasAircon: false,
+    isCarpark: false,
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -121,6 +128,14 @@ export default function NewRoomClient() {
               onChange={(e) => setForm({ ...form, hasAircon: e.target.checked })}
             />
             ❄️ 有冷气
+          </label>
+          <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={form.isCarpark}
+              onChange={(e) => setForm({ ...form, isCarpark: e.target.checked })}
+            />
+            🅿️ 这是车位专用 (不是房间，只租车位)
           </label>
 
           <button type="submit" disabled={submitting} className="btn-primary w-full">

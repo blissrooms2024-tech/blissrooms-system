@@ -140,6 +140,9 @@ model Room {
   roomRental     Decimal    @db.Decimal(10, 2)
   carparkRental  Decimal    @default(0) @db.Decimal(10, 2)
   hasAircon      Boolean    @default(false)
+  /// True for a standalone carpark slot (not a livable room) — lets a tenant rent just a
+  /// parking spot on its own contract, reusing the same Room/Contract machinery.
+  isCarpark      Boolean    @default(false)
   status         RoomStatus @default(VACANT)
   currentTenantId String?
   currentTenant   User?      @relation("RoomCurrentTenant", fields: [currentTenantId], references: [id])

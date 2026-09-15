@@ -38,6 +38,8 @@ const createSchema = z.object({
   landlord: z.string().trim().optional().default(""),
   managementFeeRate: z.coerce.number().min(0).max(1).optional(),
   notes: z.string().trim().optional().default(""),
+  roomCount: z.coerce.number().int().min(0).max(200).optional().default(0),
+  carparkCount: z.coerce.number().int().min(0).max(200).optional().default(0),
 });
 
 export async function POST(req: NextRequest) {
@@ -56,7 +58,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "这个楼盘代号已经有人用了" }, { status: 409 });
   }
 
-  await prisma.property.create({
+  const property = await prisma.property.create({
     data: {
       propertyCode: d.propertyCode,
       name: d.name,
@@ -68,5 +70,36 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ success: true, message: `✅ 楼盘已建: ${d.propertyCode} (${d.name})` });
+  // Auto-fill rooms ({code}-01..N) and standalone carpark slots ({code}-CP01..M) — Admin
+  // fills in rent/type details per room afterward via the room edit modal.
+  for (let i = 1; i <= d.roomCount; i++) {
+    await prisma.room.create({
+      data: {
+        roomCode: `${d.propertyCode}-${String(i).padStart(2, "0")}`,
+        propertyId: property.id,
+        propertyName: d.name,
+        roomRental: 0,
+        status: "VACANT",
+      },
+    });
+  }
+  for (let i = 1; i <= d.carparkCount; i++) {
+    await prisma.room.create({
+      data: {
+        roomCode: `${d.propertyCode}-CP${String(i).padStart(2, "0")}`,
+        propertyId: property.id,
+        propertyName: d.name,
+        roomType: "Carpark",
+        roomRental: 0,
+        isCarpark: true,
+        status: "VACANT",
+      },
+    });
+  }
+
+  const extra =
+    d.roomCount || d.carparkCount
+      ? ` (自动加了 ${d.roomCount} 间房${d.carparkCount ? ` + ${d.carparkCount} 个车位` : ""})`
+      : "";
+  return NextResponse.json({ success: true, message: `✅ 楼盘已建: ${d.propertyCode} (${d.name})${extra}` });
 }
