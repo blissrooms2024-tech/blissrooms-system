@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { Role } from "@/generated/prisma/enums";
+import { prisma } from "@/lib/prisma";
 
 export const SESSION_COOKIE = "brs_session";
 export const SESSION_TTL_SECONDS = 60 * 60 * 6; // 6 hours — matches original CacheService session TTL
@@ -37,12 +38,21 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   }
 }
 
-/** Server Components / Route Handlers / Server Actions only (reads the cookie jar). */
+/** Server Components / Route Handlers / Server Actions only (reads the cookie jar).
+ * Re-checks the user still exists and is ACTIVE on every call — a valid JWT alone isn't
+ * enough, otherwise a deleted/disabled account (including one wiped via the danger-zone
+ * reset) keeps working for the rest of its 6-hour token lifetime. */
 export async function getCurrentUser(): Promise<SessionPayload | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  return verifySessionToken(token);
+  const payload = await verifySessionToken(token);
+  if (!payload) return null;
+
+  const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { status: true } });
+  if (!user || user.status !== "ACTIVE") return null;
+
+  return payload;
 }
 
 export async function setSessionCookie(token: string) {

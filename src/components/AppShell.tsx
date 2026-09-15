@@ -123,6 +123,12 @@ export default function AppShell({
           >
             改密码
           </button>
+          <Link
+            href="/profile"
+            className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"
+          >
+            我的资料
+          </Link>
           <button
             onClick={logout}
             className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"

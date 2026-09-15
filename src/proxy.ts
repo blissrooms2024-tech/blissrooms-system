@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { SESSION_COOKIE, type SessionPayload } from "@/lib/auth/session";
 import { ROLE_HOME } from "@/lib/roleHome";
+import { prisma } from "@/lib/prisma";
 
 // Next.js 16 renamed `middleware.ts` -> `proxy.ts` and `middleware()` -> `proxy()`.
 
@@ -43,7 +44,16 @@ async function verify(token: string): Promise<SessionPayload | null> {
     const secret = process.env.AUTH_SECRET;
     if (!secret) return null;
     const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-    return payload as unknown as SessionPayload;
+    const session = payload as unknown as SessionPayload;
+
+    // A valid signature alone isn't enough — re-check the account still exists and is
+    // ACTIVE, otherwise a deleted/disabled user (including one wiped via the danger-zone
+    // reset) keeps browsing for the rest of their 6-hour token lifetime. Proxy runs on the
+    // Node.js runtime by default in Next.js 16, so a real Prisma query here is fine.
+    const user = await prisma.user.findUnique({ where: { id: session.sub }, select: { status: true } });
+    if (!user || user.status !== "ACTIVE") return null;
+
+    return session;
   } catch {
     return null;
   }
@@ -63,16 +73,21 @@ export async function proxy(req: NextRequest) {
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await verify(token) : null;
+  const staleToken = !!token && !session;
 
   const isGuestPath = GUEST_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   if (isGuestPath) {
     if (session) return NextResponse.redirect(new URL(ROLE_HOME[session.role] ?? "/login", req.url));
-    return NextResponse.next();
+    const res = NextResponse.next();
+    if (staleToken) res.cookies.delete(SESSION_COOKIE);
+    return res;
   }
 
   if (!session) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    const res = NextResponse.redirect(new URL("/login", req.url));
+    if (staleToken) res.cookies.delete(SESSION_COOKIE);
+    return res;
   }
 
   if (pathname === "/") {
