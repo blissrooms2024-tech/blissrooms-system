@@ -1,0 +1,127 @@
+"use client";
+
+import { useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useToast } from "@/components/Toast";
+
+const emptyForm = { propertyCode: "", name: "", address: "", region: "", landlord: "", managementFeeRate: "" };
+
+export default function NewUnitClient() {
+  const router = useRouter();
+  const toast = useToast();
+  const [form, setForm] = useState(emptyForm);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function addProperty(e: FormEvent) {
+    e.preventDefault();
+    if (!form.propertyCode.trim()) {
+      toast.warning("楼盘代号一定要填");
+      return;
+    }
+    if (!form.name.trim()) {
+      toast.warning("楼盘名字一定要填");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/properties", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          managementFeeRate: form.managementFeeRate ? Number(form.managementFeeRate) / 100 : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        router.push("/units");
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger("系统出错，请稍后再试");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="mb-3.5 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-brand">➕ 加新楼盘 (Unit)</h3>
+          <Link href="/units" className="text-sm text-gray-500 hover:underline">
+            ← 返回楼盘清单
+          </Link>
+        </div>
+
+        <form onSubmit={addProperty} className="space-y-5">
+          <section>
+            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">基本资料</h4>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="楼盘代号 (Unit Code，例: MMB)">
+                <input
+                  className="input uppercase"
+                  value={form.propertyCode}
+                  onChange={(e) => setForm({ ...form, propertyCode: e.target.value })}
+                  placeholder="例: MMB"
+                />
+              </Field>
+              <Field label="楼盘名字">
+                <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </Field>
+              <Field label="地址">
+                <input
+                  className="input"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                />
+              </Field>
+              <Field label="地区">
+                <input className="input" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} />
+              </Field>
+            </div>
+          </section>
+
+          <section>
+            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">管理资料</h4>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Landlord (帮人管理才填)">
+                <input
+                  className="input"
+                  value={form.landlord}
+                  onChange={(e) => setForm({ ...form, landlord: e.target.value })}
+                  placeholder="留空 = 自己名下"
+                />
+              </Field>
+              <Field label="管理费 % (例10)">
+                <input
+                  type="number"
+                  step="0.1"
+                  className="input"
+                  value={form.managementFeeRate}
+                  onChange={(e) => setForm({ ...form, managementFeeRate: e.target.value })}
+                />
+              </Field>
+            </div>
+          </section>
+
+          <button type="submit" disabled={submitting} className="btn-primary w-full">
+            {submitting ? "建立中..." : "建立楼盘"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm text-gray-600">{label}</label>
+      {children}
+    </div>
+  );
+}

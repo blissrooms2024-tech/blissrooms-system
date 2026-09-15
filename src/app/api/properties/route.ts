@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-import { newId } from "@/lib/id";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -32,6 +31,7 @@ export async function GET() {
 }
 
 const createSchema = z.object({
+  propertyCode: z.string().trim().min(1).toUpperCase(),
   name: z.string().trim().min(1),
   address: z.string().trim().optional().default(""),
   region: z.string().trim().optional().default(""),
@@ -47,13 +47,18 @@ export async function POST(req: NextRequest) {
   }
   const parsed = createSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ success: false, message: "楼盘名字一定要填" }, { status: 400 });
+    return NextResponse.json({ success: false, message: "楼盘代号和名字一定要填" }, { status: 400 });
   }
   const d = parsed.data;
 
+  const existing = await prisma.property.findUnique({ where: { propertyCode: d.propertyCode } });
+  if (existing) {
+    return NextResponse.json({ success: false, message: "这个楼盘代号已经有人用了" }, { status: 409 });
+  }
+
   await prisma.property.create({
     data: {
-      propertyCode: await newId("PPT"),
+      propertyCode: d.propertyCode,
       name: d.name,
       address: d.address || null,
       region: d.region || null,
@@ -63,5 +68,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ success: true, message: `✅ 楼盘已建: ${d.name}` });
+  return NextResponse.json({ success: true, message: `✅ 楼盘已建: ${d.propertyCode} (${d.name})` });
 }

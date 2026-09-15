@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -18,15 +18,13 @@ interface PropertyRow {
   roomCount: number;
 }
 
-const emptyForm = { name: "", address: "", region: "", landlord: "", managementFeeRate: "", notes: "" };
-
 export default function UnitsClient({ role }: { role: string }) {
   const toast = useToast();
   const [properties, setProperties] = useState<PropertyRow[] | null>(null);
   const [error, setError] = useState("");
-  const [form, setForm] = useState(emptyForm);
   const [editingProperty, setEditingProperty] = useState<PropertyRow | null>(null);
   const [deletingProperty, setDeletingProperty] = useState<PropertyRow | null>(null);
+  const [search, setSearch] = useState("");
   const canEdit = role === "ADMIN";
 
   async function load() {
@@ -50,30 +48,6 @@ export default function UnitsClient({ role }: { role: string }) {
     load();
   }, []);
 
-  async function addProperty(e: FormEvent) {
-    e.preventDefault();
-    if (!form.name.trim()) {
-      toast.warning("楼盘名字一定要填");
-      return;
-    }
-    const res = await fetch("/api/properties", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        managementFeeRate: form.managementFeeRate ? Number(form.managementFeeRate) / 100 : undefined,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      toast.success(data.message);
-      setForm(emptyForm);
-      load();
-    } else {
-      toast.danger(data.message);
-    }
-  }
-
   async function confirmDeleteProperty() {
     if (!deletingProperty) return;
     const res = await fetch(`/api/properties/${deletingProperty.propertyCode}`, { method: "DELETE" });
@@ -87,47 +61,34 @@ export default function UnitsClient({ role }: { role: string }) {
     setDeletingProperty(null);
   }
 
+  const q = search.trim().toLowerCase();
+  const filteredProperties =
+    properties?.filter((p) => {
+      if (!q) return true;
+      return (
+        p.propertyCode.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q) ||
+        (p.landlord ?? "").toLowerCase().includes(q)
+      );
+    }) ?? [];
+
   return (
     <div className="space-y-4">
-      {canEdit && (
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3.5 text-base font-semibold text-brand">➕ 加新楼盘 (Unit)</h3>
-          <form onSubmit={addProperty} className="flex flex-wrap items-end gap-2.5">
-            <Field label="楼盘名字">
-              <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </Field>
-            <Field label="地址">
-              <input className="input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-            </Field>
-            <Field label="地区">
-              <input className="input" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} />
-            </Field>
-            <Field label="Landlord (帮人管理才填)">
-              <input
-                className="input"
-                value={form.landlord}
-                onChange={(e) => setForm({ ...form, landlord: e.target.value })}
-                placeholder="留空 = 自己名下"
-              />
-            </Field>
-            <Field label="管理费 % (例10)">
-              <input
-                type="number"
-                step="0.1"
-                className="input"
-                value={form.managementFeeRate}
-                onChange={(e) => setForm({ ...form, managementFeeRate: e.target.value })}
-              />
-            </Field>
-            <button type="submit" className="btn-primary">
-              建立
-            </button>
-          </form>
-        </div>
-      )}
-
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">🏢 楼盘清单</h3>
+        <div className="mb-3.5 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-brand">🏢 楼盘清单</h3>
+          {canEdit && (
+            <Link href="/units/new" className="btn-primary text-sm">
+              ➕ 加新楼盘
+            </Link>
+          )}
+        </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 搜楼盘号 / 名字 / Landlord..."
+          className="input mb-3.5 max-w-xs"
+        />
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!properties && !error && <div className="text-sm text-gray-500">载入中...</div>}
         {properties && (
@@ -144,14 +105,14 @@ export default function UnitsClient({ role }: { role: string }) {
                 </tr>
               </thead>
               <tbody>
-                {properties.length === 0 && (
+                {filteredProperties.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-6 text-center text-gray-400">
-                      还没有楼盘
+                      {q ? "没有符合条件的楼盘" : "还没有楼盘"}
                     </td>
                   </tr>
                 )}
-                {properties.map((p) => (
+                {filteredProperties.map((p) => (
                   <tr key={p.propertyCode} className="border-b border-gray-100">
                     <Td>
                       <b>{p.propertyCode}</b>
@@ -218,14 +179,6 @@ export default function UnitsClient({ role }: { role: string }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-[150px] flex-1">
-      <label className="mb-1.5 block text-sm text-gray-600">{label}</label>
-      {children}
-    </div>
-  );
-}
 function Th({ children }: { children: React.ReactNode }) {
   return <th className="whitespace-nowrap px-2.5 py-2 font-semibold">{children}</th>;
 }

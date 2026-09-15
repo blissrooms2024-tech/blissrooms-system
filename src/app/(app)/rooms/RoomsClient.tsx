@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ROOM_STATUS_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
@@ -21,10 +21,6 @@ interface Room {
   notes: string | null;
   photoLink: string | null;
 }
-interface PropertyOption {
-  propertyCode: string;
-  name: string;
-}
 
 const STATUS_BADGE: Record<string, string> = {
   VACANT: "bg-green-50 text-green-700",
@@ -36,11 +32,10 @@ const STATUS_BADGE: Record<string, string> = {
 export default function RoomsClient({ role }: { role: string }) {
   const toast = useToast();
   const [rooms, setRooms] = useState<Room[] | null>(null);
-  const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ roomCode: "", propertyCode: "", roomType: "", roomRental: "", hasAircon: false });
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null);
+  const [search, setSearch] = useState("");
 
   async function loadRooms() {
     setError("");
@@ -57,39 +52,11 @@ export default function RoomsClient({ role }: { role: string }) {
     }
   }
 
-  async function loadProperties() {
-    const res = await fetch("/api/properties");
-    const data = await res.json();
-    if (data.success) setProperties(data.properties);
-  }
-
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRooms();
-    loadProperties();
   }, []);
-
-  async function addRoom(e: FormEvent) {
-    e.preventDefault();
-    if (!form.roomCode || !form.propertyCode) {
-      toast.warning("Room Code 和楼盘一定要选");
-      return;
-    }
-    const res = await fetch("/api/rooms", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (data.success) {
-      toast.success(data.message);
-      setForm({ roomCode: "", propertyCode: "", roomType: "", roomRental: "", hasAircon: false });
-      loadRooms();
-    } else {
-      toast.danger(data.message);
-    }
-  }
 
   async function changeStatus(roomCode: string, status: string) {
     const res = await fetch(`/api/rooms/${roomCode}`, {
@@ -129,75 +96,34 @@ export default function RoomsClient({ role }: { role: string }) {
   const canEdit = role === "ADMIN";
   const title = role === "AGENT" ? "空房清单 (做 Sales 用)" : "房间清单";
 
+  const q = search.trim().toLowerCase();
+  const filteredRooms = rooms?.filter((r) => {
+    if (!q) return true;
+    return (
+      r.roomCode.toLowerCase().includes(q) ||
+      r.propertyName.toLowerCase().includes(q) ||
+      (r.propertyCode ?? "").toLowerCase().includes(q) ||
+      (r.roomType ?? "").toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="space-y-4">
-      {canEdit && (
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3.5 text-base font-semibold text-brand">➕ 加新房间</h3>
-          <form onSubmit={addRoom} className="flex flex-wrap items-end gap-2.5">
-            <Field label="Room Code">
-              <input
-                value={form.roomCode}
-                onChange={(e) => setForm({ ...form, roomCode: e.target.value })}
-                className="input"
-              />
-            </Field>
-            <Field label="楼盘 Unit">
-              <select
-                value={form.propertyCode}
-                onChange={(e) => setForm({ ...form, propertyCode: e.target.value })}
-                className="input"
-              >
-                <option value="">-- 选楼盘 --</option>
-                {properties.map((p) => (
-                  <option key={p.propertyCode} value={p.propertyCode}>
-                    {p.propertyCode} ({p.name})
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="类型">
-              <input
-                value={form.roomType}
-                onChange={(e) => setForm({ ...form, roomType: e.target.value })}
-                placeholder="Master/Single"
-                className="input"
-              />
-            </Field>
-            <Field label="房租 RM">
-              <input
-                type="number"
-                value={form.roomRental}
-                onChange={(e) => setForm({ ...form, roomRental: e.target.value })}
-                className="input"
-              />
-            </Field>
-            <label className="mb-1.5 flex cursor-pointer items-center gap-1.5 self-end pb-2.5 text-sm text-gray-600">
-              <input
-                type="checkbox"
-                checked={form.hasAircon}
-                onChange={(e) => setForm({ ...form, hasAircon: e.target.checked })}
-              />
-              ❄️ 有冷气
-            </label>
-            <button type="submit" className="btn-primary">
-              加入
-            </button>
-          </form>
-          {properties.length === 0 && (
-            <div className="mt-2.5 text-sm text-gray-500">
-              还没有楼盘, 先去{" "}
-              <Link href="/units" className="text-brand underline">
-                楼盘管理
-              </Link>{" "}
-              建一个
-            </div>
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
+          <h3 className="text-base font-semibold text-brand">{title}</h3>
+          {canEdit && (
+            <Link href="/rooms/new" className="btn-primary text-sm">
+              ➕ 加新房间
+            </Link>
           )}
         </div>
-      )}
-
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">{title}</h3>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 搜 Room Code / 楼盘名字 / 类型..."
+          className="input mb-3.5 max-w-xs"
+        />
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!rooms && !error && <div className="text-sm text-gray-500">载入中...</div>}
         {rooms && (
@@ -217,14 +143,14 @@ export default function RoomsClient({ role }: { role: string }) {
                 </tr>
               </thead>
               <tbody>
-                {rooms.length === 0 && (
+                {filteredRooms!.length === 0 && (
                   <tr>
                     <td colSpan={canEdit ? 9 : 7} className="py-6 text-center text-gray-400">
-                      暂时没有房间
+                      {q ? "没有符合条件的房间" : "暂时没有房间"}
                     </td>
                   </tr>
                 )}
-                {rooms.map((r) => (
+                {filteredRooms!.map((r) => (
                   <tr key={r.roomCode} className="border-b border-gray-100">
                     <Td>
                       <b>{r.roomCode}</b>
@@ -336,14 +262,6 @@ export default function RoomsClient({ role }: { role: string }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-[130px] flex-1">
-      <label className="mb-1.5 block text-sm text-gray-600">{label}</label>
-      {children}
-    </div>
-  );
-}
 function Th({ children }: { children: React.ReactNode }) {
   return <th className="whitespace-nowrap px-2.5 py-2 font-semibold">{children}</th>;
 }

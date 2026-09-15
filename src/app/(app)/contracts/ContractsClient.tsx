@@ -44,6 +44,7 @@ export default function ContractsClient({ role }: { role: string }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [warningFor, setWarningFor] = useState<Contract | null>(null);
   const [terminating, setTerminating] = useState<Contract | null>(null);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -98,6 +99,18 @@ export default function ContractsClient({ role }: { role: string }) {
 
   const canCreate = role === "AGENT" || role === "ADMIN";
 
+  const q = search.trim().toLowerCase();
+  const filteredContracts =
+    contracts?.filter((c) => {
+      if (!q) return true;
+      return (
+        c.contractCode.toLowerCase().includes(q) ||
+        (c.room?.roomCode ?? "").toLowerCase().includes(q) ||
+        c.tenantName.toLowerCase().includes(q) ||
+        c.agentName.toLowerCase().includes(q)
+      );
+    }) ?? null;
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
@@ -109,12 +122,18 @@ export default function ContractsClient({ role }: { role: string }) {
             </Link>
           )}
         </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 搜合同号 / 房间 / 租客 / Agent..."
+          className="input mb-3.5 max-w-xs"
+        />
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!contracts && !error && <div className="text-sm text-gray-500">载入中...</div>}
         {contracts && contracts.length > 0 && (
           <div className="mb-1.5 text-xs text-gray-400 sm:hidden">👉 表格可以左右滑动，查看「收款」等操作按钮</div>
         )}
-        {contracts && (
+        {filteredContracts && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -131,14 +150,14 @@ export default function ContractsClient({ role }: { role: string }) {
                 </tr>
               </thead>
               <tbody>
-                {contracts.length === 0 && (
+                {filteredContracts.length === 0 && (
                   <tr>
                     <td colSpan={9} className="py-6 text-center text-gray-400">
-                      还没有合同
+                      {q ? "没有符合条件的合同" : "还没有合同"}
                     </td>
                   </tr>
                 )}
-                {contracts.map((c) => (
+                {filteredContracts.map((c) => (
                   <tr key={c.contractCode} className="border-b border-gray-100 align-top">
                     <Td className="sticky left-0 z-[1] bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                       <b>{c.contractCode}</b>
