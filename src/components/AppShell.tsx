@@ -65,8 +65,9 @@ export default function AppShell({
   }, [user.role, pathname, mtceHref]);
 
   const menu = MENUS[user.role] ?? [];
+  const menuWithProfile = [...menu, { href: "/profile", label: "👤 我的资料" }];
 
-  const sidebarLinks = menu.map((m) => {
+  const sidebarLinks = menuWithProfile.map((m) => {
     const active = pathname === m.href || pathname.startsWith(m.href + "/");
     const isMaintenance = m.href === mtceHref;
     return (
@@ -123,12 +124,6 @@ export default function AppShell({
           >
             改密码
           </button>
-          <Link
-            href="/profile"
-            className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"
-          >
-            我的资料
-          </Link>
           <button
             onClick={logout}
             className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"

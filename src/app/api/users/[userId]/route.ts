@@ -72,6 +72,10 @@ export async function PATCH(
   }
   const d = parsed.data;
 
+  if (d.status === "DISABLED" && u.id === admin.sub) {
+    return NextResponse.json({ success: false, message: "不能停用自己的账号" }, { status: 400 });
+  }
+
   const data: Record<string, unknown> = {
     name: d.name ?? u.name,
     phone: d.phone ?? u.phone,

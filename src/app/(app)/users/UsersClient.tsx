@@ -68,6 +68,22 @@ export default function UsersClient() {
     }
   }
 
+  async function toggleStatus(userCode: string, currentStatus: string) {
+    const nextStatus = currentStatus === "DISABLED" ? "ACTIVE" : "DISABLED";
+    const res = await fetch(`/api/users/${userCode}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast.success(nextStatus === "DISABLED" ? "🚫 账号已停用" : "✅ 账号已启用");
+      load();
+    } else {
+      toast.danger(data.message);
+    }
+  }
+
   async function openEdit(userCode: string) {
     const res = await fetch(`/api/users/${userCode}`);
     const data = await res.json();
@@ -158,6 +174,18 @@ export default function UsersClient() {
                         {!u.verified && (
                           <button onClick={() => sendVerify(u.userCode)} className="btn-soft px-2.5 py-1 text-xs">
                             发送验证
+                          </button>
+                        )}
+                        {u.status !== "PENDING" && (
+                          <button
+                            onClick={() => toggleStatus(u.userCode, u.status)}
+                            className={
+                              u.status === "DISABLED"
+                                ? "rounded-lg bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-100"
+                                : "rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                            }
+                          >
+                            {u.status === "DISABLED" ? "✅启用" : "🚫停用"}
                           </button>
                         )}
                         <button onClick={() => openEdit(u.userCode)} className="btn-primary px-2.5 py-1 text-xs">
