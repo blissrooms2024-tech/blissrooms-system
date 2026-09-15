@@ -16,7 +16,18 @@ interface UserRow {
   verified: boolean;
 }
 
-const emptyForm = { name: "", email: "", role: "AGENT", phone: "", ic: "", password: "1234", commRate: "0.5" };
+const emptyForm = {
+  name: "",
+  email: "",
+  role: "AGENT",
+  phone: "",
+  ic: "",
+  password: "1234",
+  commRate: "0.5",
+  bankName: "",
+  bankAccountName: "",
+  bankAccountNumber: "",
+};
 
 export default function UsersClient() {
   const toast = useToast();
@@ -136,6 +147,28 @@ export default function UsersClient() {
               className="input"
               value={form.commRate}
               onChange={(e) => setForm({ ...form, commRate: e.target.value })}
+            />
+          </Field>
+          <Field label="银行名称">
+            <input
+              className="input"
+              placeholder="例: Maybank"
+              value={form.bankName}
+              onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+            />
+          </Field>
+          <Field label="户口名">
+            <input
+              className="input"
+              value={form.bankAccountName}
+              onChange={(e) => setForm({ ...form, bankAccountName: e.target.value })}
+            />
+          </Field>
+          <Field label="户口号码">
+            <input
+              className="input"
+              value={form.bankAccountNumber}
+              onChange={(e) => setForm({ ...form, bankAccountNumber: e.target.value })}
             />
           </Field>
           <button type="submit" className="btn-primary">

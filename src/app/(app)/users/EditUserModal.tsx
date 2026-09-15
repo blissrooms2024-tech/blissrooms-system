@@ -13,6 +13,9 @@ export interface EditableUser {
   phone: string | null;
   ic: string | null;
   commRate: number | null;
+  bankName: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
   status: string;
 }
 
@@ -34,6 +37,9 @@ export default function EditUserModal({
     role: user.role,
     status: user.status,
     commRate: user.commRate ?? "",
+    bankName: user.bankName || "",
+    bankAccountName: user.bankAccountName || "",
+    bankAccountNumber: user.bankAccountNumber || "",
     newPassword: "",
   });
   const [loading, setLoading] = useState(false);
@@ -109,6 +115,30 @@ export default function EditUserModal({
             className="input"
             value={form.commRate}
             onChange={(e) => setForm({ ...form, commRate: e.target.value === "" ? "" : Number(e.target.value) })}
+          />
+        </Field>
+      </div>
+      <div className="mt-2.5 flex flex-wrap gap-2.5">
+        <Field label="银行名称">
+          <input
+            className="input"
+            placeholder="例: Maybank"
+            value={form.bankName}
+            onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+          />
+        </Field>
+        <Field label="户口名">
+          <input
+            className="input"
+            value={form.bankAccountName}
+            onChange={(e) => setForm({ ...form, bankAccountName: e.target.value })}
+          />
+        </Field>
+        <Field label="户口号码">
+          <input
+            className="input"
+            value={form.bankAccountNumber}
+            onChange={(e) => setForm({ ...form, bankAccountNumber: e.target.value })}
           />
         </Field>
       </div>

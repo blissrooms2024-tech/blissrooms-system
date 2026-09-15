@@ -36,6 +36,9 @@ const createSchema = z.object({
   ic: z.string().trim().optional().default(""),
   password: z.string().trim().optional().default("1234"),
   commRate: z.coerce.number().optional(),
+  bankName: z.string().trim().optional().default(""),
+  bankAccountName: z.string().trim().optional().default(""),
+  bankAccountNumber: z.string().trim().optional().default(""),
 });
 
 export async function POST(req: NextRequest) {
@@ -65,6 +68,9 @@ export async function POST(req: NextRequest) {
       phone: d.phone,
       ic: d.ic,
       commRate: d.role === "AGENT" ? d.commRate || RULES.DEFAULT_COMM_RATE : null,
+      bankName: d.bankName || null,
+      bankAccountName: d.bankAccountName || null,
+      bankAccountNumber: d.bankAccountNumber || null,
       status: "ACTIVE",
     },
   });

@@ -90,6 +90,10 @@ model User {
   phone        String?
   ic           String?
   commRate     Decimal?   @db.Decimal(6, 4)
+  /// Bank details for paying out commissions (agents) or wages (in-house workers).
+  bankName          String?
+  bankAccountName   String?
+  bankAccountNumber String?
   status       UserStatus @default(ACTIVE)
   verified     Boolean    @default(false)
   verifyToken  String?

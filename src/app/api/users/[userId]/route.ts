@@ -31,6 +31,9 @@ export async function GET(
       phone: u.phone,
       ic: u.ic,
       commRate: u.commRate ? Number(u.commRate) : null,
+      bankName: u.bankName,
+      bankAccountName: u.bankAccountName,
+      bankAccountNumber: u.bankAccountNumber,
       status: u.status,
     },
   });
@@ -44,6 +47,9 @@ const editSchema = z.object({
   role: z.enum(["BOSS", "ADMIN", "AGENT", "TENANT", "WORKER"]).optional(),
   status: z.enum(["ACTIVE", "DISABLED"]).optional(),
   commRate: z.coerce.number().optional(),
+  bankName: z.string().trim().optional(),
+  bankAccountName: z.string().trim().optional(),
+  bankAccountNumber: z.string().trim().optional(),
   newPassword: z.string().trim().min(4).optional().or(z.literal("")),
 });
 
@@ -72,6 +78,9 @@ export async function PATCH(
     status: d.status ?? u.status,
   };
   if (d.commRate !== undefined) data.commRate = d.commRate;
+  if (d.bankName !== undefined) data.bankName = d.bankName || null;
+  if (d.bankAccountName !== undefined) data.bankAccountName = d.bankAccountName || null;
+  if (d.bankAccountNumber !== undefined) data.bankAccountNumber = d.bankAccountNumber || null;
   if (d.newPassword) data.passwordHash = await hashPassword(d.newPassword);
 
   if (d.email && d.email !== u.email) {
