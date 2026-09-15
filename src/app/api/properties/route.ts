@@ -9,16 +9,21 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "没有权限" }, { status: 403 });
   }
 
-  const properties = await prisma.property.findMany({
-    orderBy: { name: "asc" },
-    include: { _count: { select: { rooms: true } } },
-  });
+  const properties = await prisma.property.findMany({ orderBy: { name: "asc" } });
 
+  // Room count and carpark count are tracked separately — a property's "房间数" must not
+  // include its carpark slots, since those are a different kind of rentable unit.
+  const roomGroups = await prisma.room.groupBy({
+    by: ["propertyId"],
+    where: { isCarpark: false },
+    _count: { _all: true },
+  });
   const carparkGroups = await prisma.room.groupBy({
     by: ["propertyId"],
     where: { isCarpark: true },
     _count: { _all: true },
   });
+  const roomCountByPropertyId = new Map(roomGroups.map((g) => [g.propertyId, g._count._all]));
   const carparkCountByPropertyId = new Map(carparkGroups.map((g) => [g.propertyId, g._count._all]));
 
   return NextResponse.json({
@@ -32,7 +37,7 @@ export async function GET() {
       managementFeeRate: p.managementFeeRate ? Number(p.managementFeeRate) : null,
       status: p.status,
       notes: p.notes,
-      roomCount: p._count.rooms,
+      roomCount: roomCountByPropertyId.get(p.id) ?? 0,
       carparkCount: carparkCountByPropertyId.get(p.id) ?? 0,
     })),
   });

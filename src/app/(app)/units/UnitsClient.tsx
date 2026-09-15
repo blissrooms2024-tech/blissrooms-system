@@ -100,6 +100,7 @@ export default function UnitsClient({ role }: { role: string }) {
                   <Th>楼盘号</Th>
                   <Th>名字</Th>
                   <Th>房间数</Th>
+                  <Th>车位数</Th>
                   <Th>Landlord</Th>
                   <Th>管理费</Th>
                   <Th>操作</Th>
@@ -108,7 +109,7 @@ export default function UnitsClient({ role }: { role: string }) {
               <tbody>
                 {filteredProperties.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-gray-400">
+                    <td colSpan={7} className="py-6 text-center text-gray-400">
                       {q ? "没有符合条件的楼盘" : "还没有楼盘"}
                     </td>
                   </tr>
@@ -122,6 +123,7 @@ export default function UnitsClient({ role }: { role: string }) {
                     </Td>
                     <Td>{p.name}</Td>
                     <Td>{p.roomCount}</Td>
+                    <Td>{p.carparkCount}</Td>
                     <Td>
                       {p.landlord ? (
                         <span className="rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-semibold text-brand">

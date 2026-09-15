@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import { ROOM_TYPE_OPTIONS } from "@/lib/config";
+
+const isPresetType = (t: string) => (ROOM_TYPE_OPTIONS as readonly string[]).includes(t);
 
 export interface EditableRoom {
   roomCode: string;
@@ -26,7 +29,9 @@ export default function RoomEditModal({
 }) {
   const toast = useToast();
   const [roomCode, setRoomCode] = useState(room.roomCode);
-  const [roomType, setRoomType] = useState(room.roomType ?? "");
+  const [roomType, setRoomType] = useState(room.roomType && isPresetType(room.roomType) ? room.roomType : "");
+  const [customType, setCustomType] = useState(room.roomType && !isPresetType(room.roomType) ? room.roomType : "");
+  const [useCustomType, setUseCustomType] = useState(!!room.roomType && !isPresetType(room.roomType));
   const [roomRental, setRoomRental] = useState(String(room.roomRental));
   const [carparkRental, setCarparkRental] = useState(String(room.carparkRental));
   const [hasAircon, setHasAircon] = useState(room.hasAircon);
@@ -43,7 +48,7 @@ export default function RoomEditModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           roomCode,
-          roomType,
+          roomType: useCustomType ? customType : roomType,
           roomRental: Number(roomRental) || 0,
           carparkRental: Number(carparkRental) || 0,
           hasAircon,
@@ -82,7 +87,34 @@ export default function RoomEditModal({
         </div>
         <div>
           <label className="mb-1.5 block text-sm text-gray-600">类型</label>
-          <input value={roomType} onChange={(e) => setRoomType(e.target.value)} className="input" placeholder="Master/Single" />
+          <select
+            value={useCustomType ? "__custom__" : roomType}
+            onChange={(e) => {
+              if (e.target.value === "__custom__") {
+                setUseCustomType(true);
+              } else {
+                setUseCustomType(false);
+                setRoomType(e.target.value);
+              }
+            }}
+            className="input"
+          >
+            <option value="">-- 选类型 --</option>
+            {ROOM_TYPE_OPTIONS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+            <option value="__custom__">其他 (自己填)</option>
+          </select>
+          {useCustomType && (
+            <input
+              value={customType}
+              onChange={(e) => setCustomType(e.target.value)}
+              className="input mt-2"
+              placeholder="自己填类型"
+            />
+          )}
         </div>
         <div className="flex gap-3">
           <div className="flex-1">

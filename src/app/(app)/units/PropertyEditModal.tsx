@@ -36,7 +36,7 @@ export default function PropertyEditModal({
   );
   const [status, setStatus] = useState(property.status ?? "Active");
   const [notes, setNotes] = useState(property.notes ?? "");
-  const [roomCount, setRoomCount] = useState(String(property.roomCount - property.carparkCount));
+  const [roomCount, setRoomCount] = useState(String(property.roomCount));
   const [carparkCount, setCarparkCount] = useState(String(property.carparkCount));
   const [saving, setSaving] = useState(false);
 

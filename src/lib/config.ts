@@ -65,6 +65,16 @@ export const ROOM_STATUS_LABELS: Record<string, string> = {
   MAINTENANCE: "维修中",
 };
 
+export const ROOM_TYPE_OPTIONS = [
+  "Studio Room",
+  "Master Room",
+  "Medium Balcony Room",
+  "Medium Room",
+  "Single Room",
+  "Single Room (Partition)",
+  "Medium Room (Partition)",
+] as const;
+
 export const CONTRACT_STATUS_LABELS: Record<string, string> = {
   DRAFT: "草稿",
   PENDING_APPROVE: "等批",

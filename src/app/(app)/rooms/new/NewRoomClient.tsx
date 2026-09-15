@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { ROOM_TYPE_OPTIONS } from "@/lib/config";
 
 interface PropertyOption {
   propertyCode: string;
@@ -22,6 +23,8 @@ export default function NewRoomClient() {
     hasAircon: false,
     isCarpark: false,
   });
+  const [useCustomType, setUseCustomType] = useState(false);
+  const [customType, setCustomType] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -43,7 +46,7 @@ export default function NewRoomClient() {
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, roomType: useCustomType ? customType : form.roomType }),
       });
       const data = await res.json();
       if (data.success) {
@@ -104,12 +107,34 @@ export default function NewRoomClient() {
               </select>
             </Field>
             <Field label="类型">
-              <input
-                value={form.roomType}
-                onChange={(e) => setForm({ ...form, roomType: e.target.value })}
-                placeholder="Master/Single"
+              <select
+                value={useCustomType ? "__custom__" : form.roomType}
+                onChange={(e) => {
+                  if (e.target.value === "__custom__") {
+                    setUseCustomType(true);
+                  } else {
+                    setUseCustomType(false);
+                    setForm({ ...form, roomType: e.target.value });
+                  }
+                }}
                 className="input"
-              />
+              >
+                <option value="">-- 选类型 --</option>
+                {ROOM_TYPE_OPTIONS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+                <option value="__custom__">其他 (自己填)</option>
+              </select>
+              {useCustomType && (
+                <input
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                  className="input mt-2"
+                  placeholder="自己填类型"
+                />
+              )}
             </Field>
             <Field label="房租 RM">
               <input
