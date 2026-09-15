@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ROLE_LABELS, USER_STATUS_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -16,24 +17,10 @@ interface UserRow {
   verified: boolean;
 }
 
-const emptyForm = {
-  name: "",
-  email: "",
-  role: "AGENT",
-  phone: "",
-  ic: "",
-  password: "1234",
-  commRate: "0.5",
-  bankName: "",
-  bankAccountName: "",
-  bankAccountNumber: "",
-};
-
 export default function UsersClient() {
   const toast = useToast();
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [error, setError] = useState("");
-  const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState<EditableUser | null>(null);
   const [deleting, setDeleting] = useState<UserRow | null>(null);
 
@@ -54,27 +41,6 @@ export default function UsersClient() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
-
-  async function addUser(e: FormEvent) {
-    e.preventDefault();
-    if (!form.name || !form.email) {
-      toast.warning("姓名和 Email 一定要填");
-      return;
-    }
-    const res = await fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (data.success) {
-      toast.success(data.message);
-      setForm(emptyForm);
-      load();
-    } else {
-      toast.danger(data.message);
-    }
-  }
 
   async function sendVerify(userCode: string) {
     const res = await fetch(`/api/users/${userCode}/send-verify`, { method: "POST" });
@@ -124,76 +90,12 @@ export default function UsersClient() {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">➕ 加新用户</h3>
-        <form onSubmit={addUser} className="flex flex-wrap items-end gap-2.5">
-          <Field label="姓名">
-            <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </Field>
-          <Field label="Email">
-            <input
-              type="email"
-              className="input"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-          </Field>
-          <Field label="角色">
-            <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="电话">
-            <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          </Field>
-          <Field label="IC">
-            <input className="input" value={form.ic} onChange={(e) => setForm({ ...form, ic: e.target.value })} />
-          </Field>
-          <Field label="初始密码">
-            <input className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          </Field>
-          <Field label="佣金率(例0.5)">
-            <input
-              type="number"
-              step="0.01"
-              className="input"
-              value={form.commRate}
-              onChange={(e) => setForm({ ...form, commRate: e.target.value })}
-            />
-          </Field>
-          <Field label="银行名称">
-            <input
-              className="input"
-              placeholder="例: Maybank"
-              value={form.bankName}
-              onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-            />
-          </Field>
-          <Field label="户口名">
-            <input
-              className="input"
-              value={form.bankAccountName}
-              onChange={(e) => setForm({ ...form, bankAccountName: e.target.value })}
-            />
-          </Field>
-          <Field label="户口号码">
-            <input
-              className="input"
-              value={form.bankAccountNumber}
-              onChange={(e) => setForm({ ...form, bankAccountNumber: e.target.value })}
-            />
-          </Field>
-          <button type="submit" className="btn-primary">
-            建立
-          </button>
-        </form>
-      </div>
-
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">👥 用户清单</h3>
+        <div className="mb-3.5 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-brand">👥 用户清单</h3>
+          <Link href="/users/new" className="btn-primary text-sm">
+            ➕ 加新用户
+          </Link>
+        </div>
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!users && !error && <div className="text-sm text-gray-500">载入中...</div>}
         {users && (
@@ -288,15 +190,6 @@ export default function UsersClient() {
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
       />
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-[130px] flex-1">
-      <label className="mb-1.5 block text-sm text-gray-600">{label}</label>
-      {children}
     </div>
   );
 }
