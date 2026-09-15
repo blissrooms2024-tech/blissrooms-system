@@ -25,6 +25,7 @@ const GUEST_ONLY_PATHS = ["/login", "/reset-password"];
 const ROLE_GUARDS: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/dashboard", roles: ["BOSS", "ADMIN"] },
   { prefix: "/users", roles: ["ADMIN"] },
+  { prefix: "/danger-zone", roles: ["ADMIN"] },
   { prefix: "/my-tenancy", roles: ["TENANT"] },
   { prefix: "/my-bills", roles: ["TENANT"] },
   { prefix: "/my-aircon", roles: ["TENANT"] },
