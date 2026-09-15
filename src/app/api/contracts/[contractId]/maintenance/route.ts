@@ -10,7 +10,8 @@ import { notifyAdminsMaintenanceSubmitted } from "@/lib/mail";
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
   if (user.role === "AGENT" && contract.agentId === user.sub) return true;
-  if (user.role === "TENANT" && contract.tenantId === user.sub) return true;
+  // Not gated on role === "TENANT": an Agent can also be the tenant on their own contract.
+  if (contract.tenantId === user.sub) return true;
   return false;
 }
 
@@ -47,9 +48,7 @@ export async function POST(
   { params }: { params: Promise<{ contractId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "TENANT") {
-    return NextResponse.json({ success: false, message: "只有租客本人可以提交报修" }, { status: 403 });
-  }
+  if (!user) return NextResponse.json({ success: false, message: "请重新登录" }, { status: 401 });
   const { contractId } = await params;
   const c = await prisma.contract.findUnique({ where: { contractCode: contractId } });
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });

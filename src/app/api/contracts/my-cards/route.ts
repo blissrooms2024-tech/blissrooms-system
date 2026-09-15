@@ -5,7 +5,9 @@ import { getCurrentUser } from "@/lib/auth/session";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "请重新登录" }, { status: 401 });
-  if (user.role !== "TENANT") {
+  // Not restricted to role === "TENANT": an Agent can also be the tenant on their own contract,
+  // the query below is already scoped to their own tenantId either way.
+  if (user.role !== "TENANT" && user.role !== "AGENT") {
     return NextResponse.json({ success: false, message: "只有租客可以看" }, { status: 403 });
   }
 

@@ -6,7 +6,9 @@ import { getCurrentUser } from "@/lib/auth/session";
  * 报修 link — cheap enough to poll from AppShell on every navigation. */
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "TENANT") {
+  // Not restricted to role === "TENANT": an Agent can also be the tenant on their own contract,
+  // the queries below are already scoped to their own tenantId either way.
+  if (!user || (user.role !== "TENANT" && user.role !== "AGENT")) {
     return NextResponse.json({ success: false, message: "只有租客可以看" }, { status: 403 });
   }
 

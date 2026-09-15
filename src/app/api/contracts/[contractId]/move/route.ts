@@ -124,7 +124,7 @@ export async function POST(
   if (!isTenant && user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "没有权限" }, { status: 403 });
   }
-  if (type === "MOVE_IN" && user.role === "TENANT" && (await depositOutstanding(c.id, c.securityDeposit)) > 0) {
+  if (type === "MOVE_IN" && isTenant && (await depositOutstanding(c.id, c.securityDeposit)) > 0) {
     return NextResponse.json(
       { success: false, message: "请先缴清押金 (Deposit) 才能填写 Move-in Form" },
       { status: 403 }
@@ -152,7 +152,7 @@ export async function POST(
     orderBy: { id: "asc" },
   });
   const latest = existing.length ? existing[existing.length - 1] : null;
-  if (user.role === "TENANT" && latest?.locked) {
+  if (isTenant && latest?.locked) {
     return NextResponse.json(
       { success: false, message: "表单已提交并锁定, 如需修改请联系 Admin 重新开放" },
       { status: 403 }
@@ -175,7 +175,7 @@ export async function POST(
     // Tenant submissions lock the form until Admin reopens it; Admin's own edits leave the
     // lock state untouched (so Admin editing on the tenant's behalf doesn't accidentally
     // relock/unlock anything).
-    ...(user.role === "TENANT" ? { locked: true } : {}),
+    ...(isTenant ? { locked: true } : {}),
   };
 
   if (existing.length) {

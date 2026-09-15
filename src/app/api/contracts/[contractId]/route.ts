@@ -7,7 +7,8 @@ import { contractEditSchema } from "@/lib/schemas/contract";
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
   if (user.role === "AGENT" && contract.agentId === user.sub) return true;
-  if (user.role === "TENANT" && contract.tenantId === user.sub) return true;
+  // Not gated on role === "TENANT": an Agent can also be the tenant on their own contract.
+  if (contract.tenantId === user.sub) return true;
   return false;
 }
 

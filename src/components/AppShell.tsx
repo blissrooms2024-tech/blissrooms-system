@@ -19,9 +19,11 @@ export interface CurrentUser {
 
 export default function AppShell({
   user,
+  isAlsoTenant = false,
   children,
 }: {
   user: CurrentUser;
+  isAlsoTenant?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -65,7 +67,8 @@ export default function AppShell({
   }, [user.role, pathname, mtceHref]);
 
   const menu = MENUS[user.role] ?? [];
-  const menuWithProfile = [...menu, { href: "/profile", label: "👤 我的资料" }];
+  const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT] : menu;
+  const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料" }];
 
   const sidebarLinks = menuWithProfile.map((m) => {
     const active = pathname === m.href || pathname.startsWith(m.href + "/");
