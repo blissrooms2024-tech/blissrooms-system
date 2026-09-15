@@ -13,6 +13,8 @@ export interface EditableProperty {
   managementFeeRate: number | null;
   status: string | null;
   notes: string | null;
+  roomCount: number;
+  carparkCount: number;
 }
 
 export default function PropertyEditModal({
@@ -34,8 +36,8 @@ export default function PropertyEditModal({
   );
   const [status, setStatus] = useState(property.status ?? "Active");
   const [notes, setNotes] = useState(property.notes ?? "");
-  const [addRoomCount, setAddRoomCount] = useState("0");
-  const [addCarparkCount, setAddCarparkCount] = useState("0");
+  const [roomCount, setRoomCount] = useState(String(property.roomCount - property.carparkCount));
+  const [carparkCount, setCarparkCount] = useState(String(property.carparkCount));
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -56,8 +58,8 @@ export default function PropertyEditModal({
           managementFeeRate: managementFeeRate ? Number(managementFeeRate) / 100 : undefined,
           status,
           notes,
-          addRoomCount: Number(addRoomCount) || 0,
-          addCarparkCount: Number(addCarparkCount) || 0,
+          roomCount: Number(roomCount) || 0,
+          carparkCount: Number(carparkCount) || 0,
         }),
       });
       const data = await res.json();
@@ -123,28 +125,28 @@ export default function PropertyEditModal({
         </div>
         <div className="flex gap-3 rounded-lg bg-gray-50 p-3">
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">➕ 加房间数量</label>
+            <label className="mb-1.5 block text-sm text-gray-600">房间数量</label>
             <input
               type="number"
               min="0"
-              value={addRoomCount}
-              onChange={(e) => setAddRoomCount(e.target.value)}
+              value={roomCount}
+              onChange={(e) => setRoomCount(e.target.value)}
               className="input"
             />
           </div>
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">➕ 加车位数量</label>
+            <label className="mb-1.5 block text-sm text-gray-600">车位数量</label>
             <input
               type="number"
               min="0"
-              value={addCarparkCount}
-              onChange={(e) => setAddCarparkCount(e.target.value)}
+              value={carparkCount}
+              onChange={(e) => setCarparkCount(e.target.value)}
               className="input"
             />
           </div>
         </div>
         <p className="-mt-2 text-xs text-gray-400">
-          填了数字保存后，会自动加新的房间/车位，接着现有的编号继续 (不影响现有房间)
+          数字改大了保存后，会自动加新的房间/车位，接着现有的编号继续；改小不会删除现有房间
         </p>
         <button onClick={save} disabled={saving} className="btn-primary w-full">
           {saving ? "保存中..." : "保存"}

@@ -47,8 +47,8 @@ const editSchema = z.object({
   managementFeeRate: z.coerce.number().min(0).max(1).optional(),
   status: z.string().trim().optional().default("Active"),
   notes: z.string().trim().optional().default(""),
-  addRoomCount: z.coerce.number().int().min(0).max(200).optional().default(0),
-  addCarparkCount: z.coerce.number().int().min(0).max(200).optional().default(0),
+  roomCount: z.coerce.number().int().min(0).max(200).optional(),
+  carparkCount: z.coerce.number().int().min(0).max(200).optional(),
 });
 
 function escapeRegExp(s: string) {
@@ -110,40 +110,52 @@ export async function PATCH(
     });
   }
 
-  if (d.addRoomCount > 0) {
-    const start = await nextSuffixNum(existing.id, propertyCode, false);
-    for (let i = 0; i < d.addRoomCount; i++) {
-      await prisma.room.create({
-        data: {
-          roomCode: `${propertyCode}-${String(start + i).padStart(2, "0")}`,
-          propertyId: existing.id,
-          propertyName: d.name,
-          roomRental: 0,
-          status: "VACANT",
-        },
-      });
+  let addedRooms = 0;
+  let addedCarparks = 0;
+
+  if (d.roomCount !== undefined) {
+    const currentCount = await prisma.room.count({ where: { propertyId: existing.id, isCarpark: false } });
+    addedRooms = Math.max(0, d.roomCount - currentCount);
+    if (addedRooms > 0) {
+      const start = await nextSuffixNum(existing.id, propertyCode, false);
+      for (let i = 0; i < addedRooms; i++) {
+        await prisma.room.create({
+          data: {
+            roomCode: `${propertyCode}-${String(start + i).padStart(2, "0")}`,
+            propertyId: existing.id,
+            propertyName: d.name,
+            roomRental: 0,
+            status: "VACANT",
+          },
+        });
+      }
     }
   }
-  if (d.addCarparkCount > 0) {
-    const start = await nextSuffixNum(existing.id, propertyCode, true);
-    for (let i = 0; i < d.addCarparkCount; i++) {
-      await prisma.room.create({
-        data: {
-          roomCode: `${propertyCode}-CP${String(start + i).padStart(2, "0")}`,
-          propertyId: existing.id,
-          propertyName: d.name,
-          roomType: "Carpark",
-          roomRental: 0,
-          isCarpark: true,
-          status: "VACANT",
-        },
-      });
+
+  if (d.carparkCount !== undefined) {
+    const currentCount = await prisma.room.count({ where: { propertyId: existing.id, isCarpark: true } });
+    addedCarparks = Math.max(0, d.carparkCount - currentCount);
+    if (addedCarparks > 0) {
+      const start = await nextSuffixNum(existing.id, propertyCode, true);
+      for (let i = 0; i < addedCarparks; i++) {
+        await prisma.room.create({
+          data: {
+            roomCode: `${propertyCode}-CP${String(start + i).padStart(2, "0")}`,
+            propertyId: existing.id,
+            propertyName: d.name,
+            roomType: "Carpark",
+            roomRental: 0,
+            isCarpark: true,
+            status: "VACANT",
+          },
+        });
+      }
     }
   }
 
   const extra =
-    d.addRoomCount || d.addCarparkCount
-      ? ` (新增了 ${d.addRoomCount} 间房${d.addCarparkCount ? ` + ${d.addCarparkCount} 个车位` : ""})`
+    addedRooms || addedCarparks
+      ? ` (新增了 ${addedRooms} 间房${addedCarparks ? ` + ${addedCarparks} 个车位` : ""})`
       : "";
   return NextResponse.json({ success: true, message: `✅ 楼盘已更新: ${d.name}${extra}` });
 }

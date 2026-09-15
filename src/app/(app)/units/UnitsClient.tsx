@@ -16,6 +16,7 @@ interface PropertyRow {
   status: string | null;
   notes: string | null;
   roomCount: number;
+  carparkCount: number;
 }
 
 export default function UnitsClient({ role }: { role: string }) {

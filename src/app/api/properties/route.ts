@@ -14,6 +14,13 @@ export async function GET() {
     include: { _count: { select: { rooms: true } } },
   });
 
+  const carparkGroups = await prisma.room.groupBy({
+    by: ["propertyId"],
+    where: { isCarpark: true },
+    _count: { _all: true },
+  });
+  const carparkCountByPropertyId = new Map(carparkGroups.map((g) => [g.propertyId, g._count._all]));
+
   return NextResponse.json({
     success: true,
     properties: properties.map((p) => ({
@@ -26,6 +33,7 @@ export async function GET() {
       status: p.status,
       notes: p.notes,
       roomCount: p._count.rooms,
+      carparkCount: carparkCountByPropertyId.get(p.id) ?? 0,
     })),
   });
 }
