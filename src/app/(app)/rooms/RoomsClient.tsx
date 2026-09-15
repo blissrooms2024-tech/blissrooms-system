@@ -97,6 +97,7 @@ export default function RoomsClient({ role }: { role: string }) {
 
   const canEdit = role === "ADMIN";
   const title = role === "AGENT" ? "空房清单 (做 Sales 用)" : "房间清单";
+  const rentalOf = (r: Room) => (r.isCarpark ? r.carparkRental : r.roomRental);
 
   const q = search.trim().toLowerCase();
   const filteredRooms = rooms?.filter((r) => {
@@ -161,7 +162,7 @@ export default function RoomsClient({ role }: { role: string }) {
                   </span>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-                  <span>RM{r.roomRental}</span>
+                  <span>RM{rentalOf(r)}</span>
                   {r.hasAircon && <span>❄️ 有冷气</span>}
                   {r.photoLink && (
                     <a href={r.photoLink} target="_blank" rel="noopener noreferrer" className="text-brand underline">
@@ -210,7 +211,7 @@ export default function RoomsClient({ role }: { role: string }) {
                   <Th>Room Code</Th>
                   <Th>楼盘 Unit</Th>
                   <Th>类型</Th>
-                  <Th>房租</Th>
+                  <Th>租金</Th>
                   <Th>冷气</Th>
                   <Th>照片</Th>
                   <Th>状态</Th>
@@ -248,7 +249,7 @@ export default function RoomsClient({ role }: { role: string }) {
                       )}
                     </Td>
                     <Td>{r.roomType}</Td>
-                    <Td>RM{r.roomRental}</Td>
+                    <Td>RM{rentalOf(r)}</Td>
                     <Td>
                       {canEdit ? (
                         <button
