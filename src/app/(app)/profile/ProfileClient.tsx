@@ -100,7 +100,9 @@ export default function ProfileClient() {
         </section>
 
         <section>
-          <h4 className="mb-2.5 text-sm font-semibold text-gray-500">银行资料 (佣金/工钱用)</h4>
+          <h4 className="mb-2.5 text-sm font-semibold text-gray-500">
+            银行资料 {readOnly.role === "TENANT" ? "(退还押金用)" : "(佣金/工钱用)"}
+          </h4>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="银行名称">
               <input
