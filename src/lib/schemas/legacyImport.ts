@@ -1,11 +1,36 @@
 import { z } from "zod";
 
 // People fill spreadsheets with "-", "–", "—", "N/A" etc. to mean "no value" — treat those
-// the same as a genuinely blank cell instead of failing to coerce them into a number.
-const BLANK_MARKERS = new Set(["-", "–", "—", "n/a", "na", "nil", "none", "x"]);
+// the same as a genuinely blank cell instead of failing to coerce them into a number. "RENEWAL"
+// shows up in the Move-in Date column for tenants who are just renewing (no real new move-in
+// date on record) — same idea, treat it as blank rather than an invalid date.
+const BLANK_MARKERS = new Set(["-", "–", "—", "n/a", "na", "nil", "none", "x", "renewal"]);
 function blankAware(v: unknown) {
   if (typeof v === "string" && BLANK_MARKERS.has(v.trim().toLowerCase())) return "";
   return v;
+}
+
+// Parses a date string as day-first (matching this system's DD/MM/YYYY convention) instead of
+// handing it to `new Date()` directly — for a slash/dash-separated numeric date like "1/8/2026",
+// native parsing assumes MM/DD/YYYY and would silently read it as 8 Jan instead of 1 Aug, only
+// erroring when the day happens to exceed 12. Falls back to native parsing for forms native
+// Date already parses unambiguously, like "2-Aug-2026" (a named month can't be misread as a day).
+// Returns an Invalid Date (never throws/undefined) on failure so the caller can tell "bad
+// date string" apart from "field was blank" the same way `new Date(v)` used to.
+function parseLegacyDate(v: string): Date {
+  const dmy = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(v);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const month = Number(dmy[2]);
+    const year = Number(dmy[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return new Date(NaN);
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+  const ymd = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(v);
+  if (ymd) {
+    return new Date(Date.UTC(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3])));
+  }
+  return new Date(v);
 }
 
 const optDate = z.preprocess(
@@ -14,8 +39,10 @@ const optDate = z.preprocess(
     .string()
     .trim()
     .optional()
-    .transform((v) => (v ? new Date(v) : undefined))
-    .refine((d) => d === undefined || !isNaN(d.getTime()), { message: "日期格式不对，要用 YYYY-MM-DD" })
+    .transform((v) => (v ? parseLegacyDate(v) : undefined))
+    .refine((d) => d === undefined || !isNaN(d.getTime()), {
+      message: "日期格式不对，要用 DD/MM/YYYY 或 YYYY-MM-DD",
+    })
 );
 
 const optNumber = z.preprocess(blankAware, z.coerce.number().min(0).optional().default(0));
