@@ -101,7 +101,7 @@ export default function ContractActions({
   type Item = { key: string; label: string; color: string; onClick: () => void; primary?: boolean };
   const items: Item[] = [];
 
-  if (role === "ADMIN") {
+  if (role === "ADMIN" || role === "AGENT") {
     items.push({ key: "pay", label: "💰 收款", color: "bg-amber-500", onClick: () => setPaying(true), primary: true });
   }
   if (role === "AGENT" && !c.agentSignature && (c.status === "PENDING_SIGN" || c.status === "ACTIVE")) {
@@ -175,6 +175,7 @@ export default function ContractActions({
         <PaymentModal
           contractCode={c.contractCode}
           tenantName={c.tenantName}
+          role={role}
           onClose={() => setPaying(false)}
           onChanged={onChanged}
         />

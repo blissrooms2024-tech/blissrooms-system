@@ -91,12 +91,15 @@ export async function POST(
   { params }: { params: Promise<{ contractId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以记收款" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "AGENT")) {
+    return NextResponse.json({ success: false, message: "只有 Admin 或负责的 Agent 可以记收款" }, { status: 403 });
   }
   const { contractId } = await params;
   const c = await prisma.contract.findUnique({ where: { contractCode: contractId } });
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
+  if (user.role === "AGENT" && c.agentId !== user.sub) {
+    return NextResponse.json({ success: false, message: "只能帮自己负责的合同记收款" }, { status: 403 });
+  }
 
   const parsed = addSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

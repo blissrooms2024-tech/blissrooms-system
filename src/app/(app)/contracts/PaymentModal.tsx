@@ -44,11 +44,13 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 export default function PaymentModal({
   contractCode,
   tenantName,
+  role,
   onClose,
   onChanged,
 }: {
   contractCode: string;
   tenantName: string;
+  role: string;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -236,7 +238,7 @@ export default function PaymentModal({
       )}
 
       <div className="rounded-lg bg-gray-50 p-3.5">
-        <b className="text-sm">➕ 记一笔新收款 (Admin 直接确认已收)</b>
+        <b className="text-sm">➕ 记一笔新收款 (直接确认已收, 不用再审核)</b>
         <div className="mt-2 flex flex-wrap items-end gap-2.5">
           <div className="min-w-[130px] flex-1">
             <label className="mb-1.5 block text-sm text-gray-600">项目</label>
@@ -291,6 +293,7 @@ export default function PaymentModal({
         </div>
       </div>
 
+      {role === "ADMIN" && (
       <div className="mt-3.5 rounded-lg bg-violet-50 p-3.5">
         <b className="text-sm">🧾 开新账单 (租客要上传水单, Admin 审核后才算已付)</b>
         <div className="mt-2 flex flex-wrap items-end gap-2.5">
@@ -352,6 +355,7 @@ export default function PaymentModal({
         </div>
         {!hasAircon && <div className="mt-1.5 text-xs text-gray-500">这间房没有冷气，冷气账单不会出现在选项里</div>}
       </div>
+      )}
 
       {bills.length > 0 && (
         <>
@@ -392,7 +396,9 @@ export default function PaymentModal({
                               🧾 查看水单
                             </button>
                           )}
-                          {rejectingId === b.id ? (
+                          {role !== "ADMIN" ? (
+                            <span className="text-xs text-gray-400">等 Admin 审核</span>
+                          ) : rejectingId === b.id ? (
                             <div className="flex flex-col gap-1.5">
                               <input
                                 className="input text-xs"
@@ -436,7 +442,7 @@ export default function PaymentModal({
                           )}
                         </div>
                       )}
-                      {b.status !== "PENDING_REVIEW" && b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED") && (
+                      {role === "ADMIN" && b.status !== "PENDING_REVIEW" && b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED") && (
                         <button
                           onClick={() => waiveLateFee(b.id)}
                           className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
@@ -444,7 +450,8 @@ export default function PaymentModal({
                           🗑️ 撤销罚款
                         </button>
                       )}
-                      {b.status !== "PENDING_REVIEW" && !(b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED")) && (
+                      {b.status !== "PENDING_REVIEW" &&
+                        !(role === "ADMIN" && b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED")) && (
                         <span className="text-xs text-gray-400">等租客上传</span>
                       )}
                     </td>
