@@ -155,13 +155,13 @@ export default function UnitsClient({ role }: { role: string }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th>楼盘号</Th>
+                  <Th className="sticky left-0 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">楼盘号</Th>
                   <Th>名字</Th>
                   <Th>房间数</Th>
                   <Th>车位数</Th>
                   <Th>Landlord</Th>
                   <Th>管理费</Th>
-                  <Th className="sticky right-0 bg-gray-50 shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">操作</Th>
+                  <Th>操作</Th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +174,7 @@ export default function UnitsClient({ role }: { role: string }) {
                 )}
                 {filteredProperties.map((p) => (
                   <tr key={p.propertyCode} className="border-b border-gray-100">
-                    <Td>
+                    <Td className="sticky left-0 bg-white shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">
                       <Link href={`/units/${p.propertyCode}`} className="font-semibold text-brand hover:underline">
                         {p.propertyCode}
                       </Link>
@@ -192,7 +192,7 @@ export default function UnitsClient({ role }: { role: string }) {
                       )}
                     </Td>
                     <Td>{p.landlord && p.managementFeeRate ? `${(p.managementFeeRate * 100).toFixed(1)}%` : "-"}</Td>
-                    <Td className="sticky right-0 bg-white shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">
+                    <Td>
                       <div className="flex items-center gap-1.5">
                         <Link href={`/units/${p.propertyCode}`} className="btn-soft px-2.5 py-1 text-xs">
                           📊 月报

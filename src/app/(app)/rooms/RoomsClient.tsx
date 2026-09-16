@@ -214,7 +214,7 @@ export default function RoomsClient({ role }: { role: string }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th>Room Code</Th>
+                  <Th className="sticky left-0 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">Room Code</Th>
                   <Th>楼盘 Unit</Th>
                   <Th>类型</Th>
                   <Th>租金</Th>
@@ -222,7 +222,7 @@ export default function RoomsClient({ role }: { role: string }) {
                   <Th>照片</Th>
                   <Th>状态</Th>
                   {canEdit && <Th>改状态</Th>}
-                  {canEdit && <Th className="sticky right-0 bg-gray-50 shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">操作</Th>}
+                  {canEdit && <Th>操作</Th>}
                 </tr>
               </thead>
               <tbody>
@@ -235,7 +235,7 @@ export default function RoomsClient({ role }: { role: string }) {
                 )}
                 {filteredRooms!.map((r) => (
                   <tr key={r.roomCode} className="border-b border-gray-100">
-                    <Td>
+                    <Td className="sticky left-0 bg-white shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">
                       <Link href={`/rooms/${r.roomCode}`} className="font-semibold text-brand hover:underline">
                         {r.roomCode}
                       </Link>
@@ -313,7 +313,7 @@ export default function RoomsClient({ role }: { role: string }) {
                       </Td>
                     )}
                     {canEdit && (
-                      <Td className="sticky right-0 bg-white shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">
+                      <Td>
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
