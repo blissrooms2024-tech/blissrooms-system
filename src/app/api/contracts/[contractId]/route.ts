@@ -23,7 +23,7 @@ export async function GET(
   const { contractId } = await params;
   const contract = await prisma.contract.findUnique({
     where: { contractCode: contractId },
-    include: { room: true, agent: { select: { ic: true } } },
+    include: { room: true, carparkRoom: { select: { roomCode: true, propertyName: true, carparkLotNumber: true } }, agent: { select: { ic: true } } },
   });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (!canView(user, contract)) {
@@ -83,9 +83,26 @@ export async function PATCH(
   const total =
     d.roomRental + d.securityDeposit + d.utilitiesDeposit + d.accessCardDeposit + d.adminFee + d.carparkRental;
 
+  const newCarparkRoom = d.carparkRoomCode
+    ? await prisma.room.findUnique({ where: { roomCode: d.carparkRoomCode } })
+    : null;
+  if (d.carparkRoomCode) {
+    if (!newCarparkRoom || !newCarparkRoom.isCarpark) {
+      return NextResponse.json({ success: false, message: "找不到这个车位" }, { status: 404 });
+    }
+    if (newCarparkRoom.id !== contract.carparkRoomId && newCarparkRoom.status !== "VACANT") {
+      return NextResponse.json(
+        { success: false, message: `这个车位不是空的 (${newCarparkRoom.status}), 不能分配` },
+        { status: 409 }
+      );
+    }
+  }
+  const carparkRoomChanged = (newCarparkRoom?.id ?? null) !== (contract.carparkRoomId ?? null);
+
   await prisma.contract.update({
     where: { contractCode: contractId },
     data: {
+      carparkRoomId: newCarparkRoom?.id ?? null,
       tenantName: d.tenantName,
       tenantIc: d.tenantIc,
       moveInDate: d.moveInDate,
@@ -116,6 +133,27 @@ export async function PATCH(
     },
   });
 
+  if (carparkRoomChanged) {
+    if (contract.carparkRoomId) {
+      const oldCarparkRoom = await prisma.room.findUnique({ where: { id: contract.carparkRoomId } });
+      if (oldCarparkRoom?.currentContractId === contractId) {
+        await prisma.room.update({
+          where: { id: contract.carparkRoomId },
+          data: { status: "VACANT", currentContractId: null, currentTenantId: null },
+        });
+      }
+    }
+    if (newCarparkRoom) {
+      await prisma.room.update({
+        where: { id: newCarparkRoom.id },
+        data:
+          contract.status === "ACTIVE"
+            ? { status: "OCCUPIED", currentContractId: contractId, currentTenantId: contract.tenantId }
+            : { status: "RESERVED", currentContractId: contractId },
+      });
+    }
+  }
+
   return NextResponse.json({ success: true, message: `✅ 合同已更新: ${contractId}` });
 }
 
@@ -128,12 +166,21 @@ export async function DELETE(
     return NextResponse.json({ success: false, message: "只有 Admin 可以删" }, { status: 403 });
   }
   const { contractId } = await params;
-  const contract = await prisma.contract.findUnique({ where: { contractCode: contractId }, include: { room: true } });
+  const contract = await prisma.contract.findUnique({
+    where: { contractCode: contractId },
+    include: { room: true, carparkRoom: true },
+  });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
 
   if (contract.room.currentContractId === contractId && contract.room.status !== "OCCUPIED") {
     await prisma.room.update({
       where: { id: contract.roomId },
+      data: { status: "VACANT", currentContractId: null },
+    });
+  }
+  if (contract.carparkRoom && contract.carparkRoom.currentContractId === contractId && contract.carparkRoom.status !== "OCCUPIED") {
+    await prisma.room.update({
+      where: { id: contract.carparkRoom.id },
       data: { status: "VACANT", currentContractId: null },
     });
   }

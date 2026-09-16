@@ -163,6 +163,23 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      let carparkRoom = null;
+      if (d.carparkRoomCode) {
+        if (d.carparkRoomCode === d.roomCode) {
+          results.push({ row: rowNum, status: "error", message: "车位不能跟主房间是同一间" });
+          continue;
+        }
+        carparkRoom = await prisma.room.findUnique({ where: { roomCode: d.carparkRoomCode } });
+        if (!carparkRoom || !carparkRoom.isCarpark) {
+          results.push({ row: rowNum, status: "error", message: `找不到车位 ${d.carparkRoomCode}` });
+          continue;
+        }
+        if (carparkRoom.currentTenantId) {
+          results.push({ row: rowNum, status: "error", message: `车位 ${d.carparkRoomCode} 已经有租客了，不能重复导入` });
+          continue;
+        }
+      }
+
       let tenant = await prisma.user.findFirst({ where: { role: "TENANT", ic: d.tenantIc } });
       if (!tenant) {
         const emailTaken = await prisma.user.findUnique({ where: { email: d.email } });
@@ -209,6 +226,7 @@ export async function POST(req: NextRequest) {
           data: {
             contractCode,
             roomId: room.id,
+            carparkRoomId: carparkRoom?.id,
             propertyAddress: room.property?.address || room.propertyName,
             tenantId: tenant.id,
             tenantName: d.tenantName,
@@ -249,6 +267,14 @@ export async function POST(req: NextRequest) {
           where: { id: room.id },
           data: { status: "OCCUPIED", currentContractId: contractCode, currentTenantId: tenant.id },
         }),
+        ...(carparkRoom
+          ? [
+              prisma.room.update({
+                where: { id: carparkRoom.id },
+                data: { status: "OCCUPIED", currentContractId: contractCode, currentTenantId: tenant.id },
+              }),
+            ]
+          : []),
       ]);
 
       imported++;

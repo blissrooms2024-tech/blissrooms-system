@@ -8,6 +8,7 @@ const optDate = z
 
 export const contractFormSchema = z.object({
   roomCode: z.string().trim().min(1),
+  carparkRoomCode: z.string().trim().optional().default(""), // optional linked carpark Room
   agentId: z.string().trim().optional(), // userCode, admin-only override
   tenantCode: z.string().trim().min(1), // userCode of a pre-created tenant profile
   moveInDate: optDate,

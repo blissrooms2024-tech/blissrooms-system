@@ -80,6 +80,12 @@ export async function POST(
       where: { id: c2.roomId },
       data: { status: "OCCUPIED", currentTenantId: c2.tenantId },
     });
+    if (c2.carparkRoomId) {
+      await prisma.room.update({
+        where: { id: c2.carparkRoomId },
+        data: { status: "OCCUPIED", currentTenantId: c2.tenantId },
+      });
+    }
     message += " | 🎉 双方已签, 合同生效, 房间转为已出租";
   }
 

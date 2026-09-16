@@ -23,42 +23,53 @@ export default function EditContractModal({
   const [utils, setUtils] = useState({ electric: false, aircond: false, dryer: false });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [vacantCarparks, setVacantCarparks] = useState<{ roomCode: string; propertyName: string }[]>([]);
 
   useEffect(() => {
-    fetch(`/api/contracts/${contractCode}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.success) {
-          setMessage(data.message);
-          return;
-        }
-        const c = data.contract;
-        setForm({
-          tenantName: c.tenantName || "",
-          tenantIc: c.tenantIc || "",
-          moveInDate: dv(c.moveInDate),
-          commencementDate: dv(c.commencementDate),
-          expiredDate: dv(c.expiredDate),
-          tenureMonths: c.tenureMonths ? String(c.tenureMonths) : "",
-          roomRental: String(c.roomRental ?? 0),
-          carparkRental: String(c.carparkRental ?? 0),
-          securityDeposit: String(c.securityDeposit ?? 0),
-          utilitiesDeposit: String(c.utilitiesDeposit ?? 0),
-          accessCardDeposit: String(c.accessCardDeposit ?? 0),
-          adminFee: String(c.adminFee ?? 0),
-          remarks: c.remarks || "",
-          nationality: c.nationality || "",
-          contactNumber: c.contactNumber || "",
-          email: c.email || "",
-          occupation: c.occupation || "",
-          company: c.company || "",
-          carPlate: c.carPlate || "",
-          emergencyName: c.emergencyName || "",
-          emergencyContact: c.emergencyContact || "",
-          emergencyRelationship: c.emergencyRelationship || "",
-        });
-        setUtils({ electric: !!c.utilElectric, aircond: !!c.utilAircond, dryer: !!c.utilDryer });
+    Promise.all([
+      fetch(`/api/contracts/${contractCode}`).then((r) => r.json()),
+      fetch("/api/contracts/page-data").then((r) => r.json()),
+    ]).then(([data, pageData]) => {
+      if (!data.success) {
+        setMessage(data.message);
+        return;
+      }
+      const c = data.contract;
+      setForm({
+        tenantName: c.tenantName || "",
+        tenantIc: c.tenantIc || "",
+        moveInDate: dv(c.moveInDate),
+        commencementDate: dv(c.commencementDate),
+        expiredDate: dv(c.expiredDate),
+        tenureMonths: c.tenureMonths ? String(c.tenureMonths) : "",
+        roomRental: String(c.roomRental ?? 0),
+        carparkRental: String(c.carparkRental ?? 0),
+        carparkRoomCode: c.carparkRoom?.roomCode || "",
+        securityDeposit: String(c.securityDeposit ?? 0),
+        utilitiesDeposit: String(c.utilitiesDeposit ?? 0),
+        accessCardDeposit: String(c.accessCardDeposit ?? 0),
+        adminFee: String(c.adminFee ?? 0),
+        remarks: c.remarks || "",
+        nationality: c.nationality || "",
+        contactNumber: c.contactNumber || "",
+        email: c.email || "",
+        occupation: c.occupation || "",
+        company: c.company || "",
+        carPlate: c.carPlate || "",
+        emergencyName: c.emergencyName || "",
+        emergencyContact: c.emergencyContact || "",
+        emergencyRelationship: c.emergencyRelationship || "",
       });
+      setUtils({ electric: !!c.utilElectric, aircond: !!c.utilAircond, dryer: !!c.utilDryer });
+
+      const carparks: { roomCode: string; propertyName: string }[] = pageData.success ? pageData.vacantCarparks : [];
+      // The contract's own already-assigned carpark isn't globally "vacant" anymore, but it
+      // still needs to appear in the dropdown so Admin can see/keep the current selection.
+      if (c.carparkRoom && !carparks.some((r) => r.roomCode === c.carparkRoom.roomCode)) {
+        carparks.push({ roomCode: c.carparkRoom.roomCode, propertyName: c.carparkRoom.propertyName });
+      }
+      setVacantCarparks(carparks);
+    });
   }, [contractCode]);
 
   function set(key: string, value: string) {
@@ -160,6 +171,16 @@ export default function EditContractModal({
             </Field>
             <Field label="车位 RM">
               <input type="number" className="input" value={form.carparkRental} onChange={(e) => set("carparkRental", e.target.value)} />
+            </Field>
+            <Field label="选车位 (可选)">
+              <select className="input" value={form.carparkRoomCode} onChange={(e) => set("carparkRoomCode", e.target.value)}>
+                <option value="">-- 没有车位 --</option>
+                {vacantCarparks.map((r) => (
+                  <option key={r.roomCode} value={r.roomCode}>
+                    {r.roomCode} ({r.propertyName})
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="押金 Security">
               <input type="number" className="input" value={form.securityDeposit} onChange={(e) => set("securityDeposit", e.target.value)} />

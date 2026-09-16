@@ -60,6 +60,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "找不到这个租客资料，请先建租客资料再选" }, { status: 404 });
   }
 
+  if (d.carparkRoomCode && d.carparkRoomCode === d.roomCode) {
+    return NextResponse.json({ success: false, message: "车位不能跟主房间是同一间" }, { status: 400 });
+  }
+  const carparkRoom = d.carparkRoomCode
+    ? await prisma.room.findUnique({ where: { roomCode: d.carparkRoomCode } })
+    : null;
+  if (d.carparkRoomCode) {
+    if (!carparkRoom || !carparkRoom.isCarpark) {
+      return NextResponse.json({ success: false, message: "找不到这个车位" }, { status: 404 });
+    }
+    if (carparkRoom.status !== "VACANT") {
+      return NextResponse.json(
+        { success: false, message: `这个车位不是空的 (${carparkRoom.status}), 不能分配` },
+        { status: 409 }
+      );
+    }
+  }
+
   let agentId = user.sub;
   let agentName = user.name;
   if (user.role === "ADMIN" && d.agentId) {
@@ -80,6 +98,7 @@ export async function POST(req: NextRequest) {
     data: {
       contractCode: await newId("CT"),
       roomId: room.id,
+      carparkRoomId: carparkRoom?.id,
       // Property's actual street address — falls back to the property name only if no
       // address was ever entered for it, so contracts never print the unit name as if it
       // were an address.
@@ -125,6 +144,12 @@ export async function POST(req: NextRequest) {
     where: { roomCode: d.roomCode },
     data: { status: "RESERVED", currentContractId: contract.contractCode },
   });
+  if (carparkRoom) {
+    await prisma.room.update({
+      where: { id: carparkRoom.id },
+      data: { status: "RESERVED", currentContractId: contract.contractCode },
+    });
+  }
 
   const utils = [d.utilElectric && "Electric", d.utilAircond && "Aircond", d.utilDryer && "Dryer"].filter(Boolean);
   const utilMsg = utils.length ? ` | 水电: ${utils.join(", ")}` : " | 水电: 无勾选";

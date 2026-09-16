@@ -8,6 +8,7 @@ import ContractForm from "../ContractForm";
 export default function NewContractClient({ role }: { role: string }) {
   const router = useRouter();
   const [vacant, setVacant] = useState<{ roomCode: string; propertyName: string }[]>([]);
+  const [vacantCarparks, setVacantCarparks] = useState<{ roomCode: string; propertyName: string }[]>([]);
   const [agents, setAgents] = useState<{ userCode: string; name: string }[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -17,6 +18,7 @@ export default function NewContractClient({ role }: { role: string }) {
       .then((data) => {
         if (!data.success) return;
         setVacant(data.vacant);
+        setVacantCarparks(data.vacantCarparks);
         setAgents(data.agents);
       })
       .finally(() => setLoaded(true));
@@ -33,6 +35,7 @@ export default function NewContractClient({ role }: { role: string }) {
         <ContractForm
           role={role}
           vacantRooms={vacant}
+          vacantCarparks={vacantCarparks}
           agents={agents}
           onCreated={() => router.push("/contracts")}
         />

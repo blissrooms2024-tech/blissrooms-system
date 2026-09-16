@@ -161,7 +161,8 @@ model Room {
   /// Google Drive folder/album link with room photos, so Agents can view them without a native upload.
   photoLink      String?
 
-  contracts Contract[]
+  contracts        Contract[] @relation("ContractMainRoom")
+  carparkContracts Contract[] @relation("ContractCarparkRoom")
 
   createdAt DateTime @default(now())
 
@@ -172,8 +173,15 @@ model Contract {
   id               String         @id @default(cuid())
   contractCode     String         @unique
   roomId           String
-  room             Room           @relation(fields: [roomId], references: [id])
+  room             Room           @relation("ContractMainRoom", fields: [roomId], references: [id])
   propertyAddress  String?
+
+  /// Optional separate carpark slot linked to this contract (e.g. a living-room tenant who
+  /// also rents/gets a parking bay) — distinct from roomId, which can itself be a carpark-only
+  /// contract (isCarpark room rented on its own). Keeps that carpark Room's status/currentTenantId
+  /// in sync the same way roomId does, so the carpark shows as occupied, not just a fee line.
+  carparkRoomId String?
+  carparkRoom   Room?   @relation("ContractCarparkRoom", fields: [carparkRoomId], references: [id])
 
   tenantId   String?
   tenant     User?   @relation("ContractTenant", fields: [tenantId], references: [id])

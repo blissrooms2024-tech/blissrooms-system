@@ -20,7 +20,7 @@ export async function GET(
   if (!room) return NextResponse.json({ success: false, message: "找不到这间房" }, { status: 404 });
 
   const contracts = await prisma.contract.findMany({
-    where: { roomId: room.id },
+    where: { OR: [{ roomId: room.id }, { carparkRoomId: room.id }] },
     orderBy: { createdAt: "desc" },
   });
 
@@ -140,7 +140,9 @@ export async function DELETE(
     return NextResponse.json({ success: false, message: "找不到这间房" }, { status: 404 });
   }
 
-  const contractCount = await prisma.contract.count({ where: { roomId: existing.id } });
+  const contractCount = await prisma.contract.count({
+    where: { OR: [{ roomId: existing.id }, { carparkRoomId: existing.id }] },
+  });
   if (contractCount > 0 || existing.currentTenantId) {
     return NextResponse.json(
       { success: false, message: "这间房有关联的合同记录，不能删除" },

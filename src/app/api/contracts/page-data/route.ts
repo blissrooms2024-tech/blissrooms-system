@@ -24,7 +24,10 @@ export async function GET() {
       include: { room: { select: { roomCode: true } } },
     }),
     prisma.payment.groupBy({ by: ["contractId"], where: { status: "Paid" }, _sum: { amountPaid: true } }),
-    prisma.room.findMany({ where: { status: "VACANT" }, select: { roomCode: true, propertyName: true } }),
+    prisma.room.findMany({
+      where: { status: "VACANT" },
+      select: { roomCode: true, propertyName: true, isCarpark: true },
+    }),
     user.role === "ADMIN"
       ? prisma.user.findMany({
           where: { role: "AGENT", status: "ACTIVE" },
@@ -46,5 +49,14 @@ export async function GET() {
     return serialize({ ...c, _paid: paid, _outstanding: outstanding, _rentEscalated: escalatedSet.has(c.id) });
   });
 
-  return NextResponse.json({ success: true, contracts: list, vacant: vacantRooms, agents });
+  return NextResponse.json({
+    success: true,
+    contracts: list,
+    // "vacant" is every vacant room including carparks — a carpark can itself be the main
+    // room on a carpark-only contract. "vacantCarparks" is only carparks, for the separate
+    // optional carpark-add-on picker on a non-carpark contract.
+    vacant: vacantRooms,
+    vacantCarparks: vacantRooms.filter((r) => r.isCarpark),
+    agents,
+  });
 }

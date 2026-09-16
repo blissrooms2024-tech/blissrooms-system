@@ -16,6 +16,7 @@ interface Agent {
 
 const initialForm = {
   roomCode: "",
+  carparkRoomCode: "",
   agentId: "",
   moveInDate: "",
   commencementDate: "",
@@ -42,11 +43,13 @@ const initialForm = {
 export default function ContractForm({
   role,
   vacantRooms,
+  vacantCarparks,
   agents,
   onCreated,
 }: {
   role: string;
   vacantRooms: VacantRoom[];
+  vacantCarparks: VacantRoom[];
   agents: Agent[];
   onCreated: () => void;
 }) {
@@ -186,6 +189,16 @@ export default function ContractForm({
           </Field>
           <Field label="车位 RM">
             <input type="number" className="input" value={form.carparkRental} onChange={(e) => set("carparkRental", e.target.value)} />
+          </Field>
+          <Field label="选车位 (可选，免费也可以选)">
+            <select className="input" value={form.carparkRoomCode} onChange={(e) => set("carparkRoomCode", e.target.value)}>
+              <option value="">-- 没有车位 --</option>
+              {vacantCarparks.map((r) => (
+                <option key={r.roomCode} value={r.roomCode}>
+                  {r.roomCode} ({r.propertyName})
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="押金 Security">
             <input type="number" className="input" value={form.securityDeposit} onChange={(e) => set("securityDeposit", e.target.value)} />

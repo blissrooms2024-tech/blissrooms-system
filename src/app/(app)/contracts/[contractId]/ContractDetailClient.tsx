@@ -8,6 +8,7 @@ import ContractActions, { type ActionableContract } from "../ContractActions";
 
 interface ContractDetail extends ActionableContract {
   room: { roomCode: string; propertyCode: string | null; propertyName: string };
+  carparkRoom: { roomCode: string; propertyName: string; carparkLotNumber: string | null } | null;
   propertyAddress: string | null;
   tenantIc: string | null;
   moveInDate: string | null;
@@ -100,6 +101,16 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
             </Link>
           </Info>
           <Info label="楼盘地址">{c.propertyAddress || c.room.propertyName}</Info>
+          <Info label="车位">
+            {c.carparkRoom ? (
+              <Link href={`/rooms/${c.carparkRoom.roomCode}`} className="text-brand hover:underline">
+                {c.carparkRoom.roomCode}
+                {c.carparkRoom.carparkLotNumber ? ` (${c.carparkRoom.carparkLotNumber})` : ""}
+              </Link>
+            ) : (
+              "-"
+            )}
+          </Info>
           <Info label="Agent">{c.agentName}</Info>
           <Info label="Move-in 日期">{fmtDate(c.moveInDate)}</Info>
           <Info label="租约开始日">{fmtDate(c.commencementDate)}</Info>

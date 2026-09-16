@@ -55,6 +55,7 @@ export const legacyImportRowSchema = z.object({
   utilElectric: ynFlag,
   agentCode: z.string().trim().optional().default(""),
   remarks: z.string().trim().optional().default(""),
+  carparkRoomCode: z.string().trim().optional().default(""),
 });
 
 export type LegacyImportRow = z.infer<typeof legacyImportRowSchema>;
@@ -88,4 +89,5 @@ export const LEGACY_IMPORT_COLUMNS: (keyof LegacyImportRow)[] = [
   "utilElectric",
   "agentCode",
   "remarks",
+  "carparkRoomCode",
 ];

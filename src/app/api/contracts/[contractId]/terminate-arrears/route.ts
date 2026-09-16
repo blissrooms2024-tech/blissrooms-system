@@ -18,7 +18,10 @@ export async function POST(
     return NextResponse.json({ success: false, message: "只有 Admin 可以终止合同" }, { status: 403 });
   }
   const { contractId } = await params;
-  const contract = await prisma.contract.findUnique({ where: { contractCode: contractId }, include: { room: true, tenant: true } });
+  const contract = await prisma.contract.findUnique({
+    where: { contractCode: contractId },
+    include: { room: true, carparkRoom: true, tenant: true },
+  });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (contract.status === "TERMINATED" || contract.status === "MOVED_OUT") {
     return NextResponse.json({ success: false, message: "这张合同已经结束了" }, { status: 409 });
@@ -50,6 +53,12 @@ export async function POST(
   if (contract.room.currentContractId === contract.contractCode) {
     await prisma.room.update({
       where: { id: contract.roomId },
+      data: { status: "VACANT", currentContractId: null },
+    });
+  }
+  if (contract.carparkRoom && contract.carparkRoom.currentContractId === contract.contractCode) {
+    await prisma.room.update({
+      where: { id: contract.carparkRoom.id },
       data: { status: "VACANT", currentContractId: null },
     });
   }
