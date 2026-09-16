@@ -23,6 +23,66 @@ function cellToString(value: ExcelJS.CellValue): string {
   return String(value).trim();
 }
 
+// Minimal RFC4180-ish CSV parser: handles quoted fields, embedded commas/newlines, and "" as
+// an escaped quote inside a quoted field. Good enough for a data-entry template, not a general
+// CSV library.
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+  const n = text.length;
+  while (i < n) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i++;
+        continue;
+      }
+      field += c;
+      i++;
+      continue;
+    }
+    if (c === '"') {
+      inQuotes = true;
+      i++;
+      continue;
+    }
+    if (c === ",") {
+      row.push(field);
+      field = "";
+      i++;
+      continue;
+    }
+    if (c === "\r") {
+      i++;
+      continue;
+    }
+    if (c === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      i++;
+      continue;
+    }
+    field += c;
+    i++;
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
@@ -35,27 +95,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "请上传 Excel 文件" }, { status: 400 });
   }
 
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = new ExcelJS.Workbook();
-  try {
-    await workbook.xlsx.load(arrayBuffer);
-  } catch {
-    return NextResponse.json({ success: false, message: "读不到这个 Excel 文件，请确认是 .xlsx 格式" }, { status: 400 });
-  }
+  const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
+  let dataRows: string[][];
 
-  const sheet = workbook.getWorksheet(SHEET_NAME) ?? workbook.worksheets[0];
-  if (!sheet) {
-    return NextResponse.json({ success: false, message: `找不到 "${SHEET_NAME}" 这个 sheet` }, { status: 400 });
+  if (isCsv) {
+    let text = await file.text();
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // strip BOM
+    const allRows = parseCsv(text).filter((r) => r.some((c) => c.trim() !== ""));
+    dataRows = allRows.slice(1); // drop header row
+  } else {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.load(arrayBuffer);
+    } catch {
+      return NextResponse.json(
+        { success: false, message: "读不到这个文件，请确认是 .xlsx 或 .csv 格式" },
+        { status: 400 }
+      );
+    }
+    const sheet = workbook.getWorksheet(SHEET_NAME) ?? workbook.worksheets[0];
+    if (!sheet) {
+      return NextResponse.json({ success: false, message: `找不到 "${SHEET_NAME}" 这个 sheet` }, { status: 400 });
+    }
+    dataRows = [];
+    for (let rowNum = 2; rowNum <= sheet.rowCount; rowNum++) {
+      const row = sheet.getRow(rowNum);
+      dataRows.push(LEGACY_IMPORT_COLUMNS.map((_, idx) => cellToString(row.getCell(idx + 1).value)));
+    }
   }
 
   const results: RowResult[] = [];
   let imported = 0;
 
-  for (let rowNum = 2; rowNum <= sheet.rowCount; rowNum++) {
-    const row = sheet.getRow(rowNum);
+  for (let i = 0; i < dataRows.length; i++) {
+    const rowNum = i + 2; // +2: 1-indexed, plus the header row
+    const cells = dataRows[i];
     const raw: Record<string, string> = {};
     LEGACY_IMPORT_COLUMNS.forEach((key, idx) => {
-      raw[key] = cellToString(row.getCell(idx + 1).value);
+      raw[key] = (cells[idx] ?? "").trim();
     });
 
     const isBlank = Object.values(raw).every((v) => !v);

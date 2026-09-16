@@ -73,7 +73,7 @@ export default function ImportLegacyClient() {
         </div>
 
         <div className="mb-3.5 rounded-lg bg-brand-light/40 p-3.5 text-sm text-gray-600">
-          上传按模板填好的 Excel (.xlsx)，系统会自动帮每一行建租客账号(如果还没有)+合同，
+          上传按模板填好的 Excel (.xlsx) 或 CSV (.csv)，系统会自动帮每一行建租客账号(如果还没有)+合同，
           合同直接设为「生效中」，不需要再走线上签名。上传后旧合同的 PDF 文件还需要到每张合同的详情页个别上传。
         </div>
 
@@ -81,7 +81,7 @@ export default function ImportLegacyClient() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx"
+            accept=".xlsx,.csv"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="input flex-1"
           />
