@@ -59,7 +59,7 @@ export async function GET(
 const patchSchema = z
   .object({
     roomCode: z.string().trim().min(1).toUpperCase().optional(),
-    status: z.enum(["VACANT", "OCCUPIED", "RESERVED", "MAINTENANCE"]).optional(),
+    status: z.enum(["VACANT", "OCCUPIED", "RESERVED", "MAINTENANCE", "STORE"]).optional(),
     hasAircon: z.boolean().optional(),
     isCarpark: z.boolean().optional(),
     roomType: z.string().trim().optional(),

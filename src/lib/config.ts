@@ -63,6 +63,7 @@ export const ROOM_STATUS_LABELS: Record<string, string> = {
   OCCUPIED: "已出租",
   RESERVED: "已订",
   MAINTENANCE: "维修中",
+  STORE: "储藏室",
 };
 
 export const ROOM_TYPE_OPTIONS = [

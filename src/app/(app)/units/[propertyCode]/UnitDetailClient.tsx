@@ -27,6 +27,7 @@ const STATUS_BADGE: Record<string, string> = {
   OCCUPIED: "bg-red-50 text-red-700",
   RESERVED: "bg-yellow-50 text-yellow-800",
   MAINTENANCE: "bg-gray-100 text-gray-600",
+  STORE: "bg-indigo-50 text-indigo-700",
 };
 
 export default function UnitDetailClient({ propertyCode }: { propertyCode: string }) {

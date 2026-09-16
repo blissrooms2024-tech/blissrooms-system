@@ -8,13 +8,15 @@ export default async function DashboardPage() {
   if (session.role !== "BOSS" && session.role !== "ADMIN") redirect("/rooms");
 
   const rooms = await prisma.room.groupBy({ by: ["status", "isCarpark"], _count: true });
-  const roomCounts: Record<string, number> = { VACANT: 0, OCCUPIED: 0, RESERVED: 0, MAINTENANCE: 0 };
-  const carparkCounts: Record<string, number> = { VACANT: 0, OCCUPIED: 0, RESERVED: 0, MAINTENANCE: 0 };
+  const roomCounts: Record<string, number> = { VACANT: 0, OCCUPIED: 0, RESERVED: 0, MAINTENANCE: 0, STORE: 0 };
+  const carparkCounts: Record<string, number> = { VACANT: 0, OCCUPIED: 0, RESERVED: 0, MAINTENANCE: 0, STORE: 0 };
   for (const r of rooms) {
     const target = r.isCarpark ? carparkCounts : roomCounts;
     target[r.status] = r._count;
   }
 
+  // STORE rooms aren't rentable, so they're shown as their own box and left out of the
+  // occupancy total/rate — otherwise they'd silently drag the occupancy rate down.
   function buildBoxes(counts: Record<string, number>) {
     const total = counts.VACANT + counts.OCCUPIED + counts.RESERVED + counts.MAINTENANCE;
     const rate = total ? Math.round((counts.OCCUPIED / total) * 100) : 0;
@@ -23,6 +25,7 @@ export default async function DashboardPage() {
       { n: counts.OCCUPIED, l: "已出租" },
       { n: counts.RESERVED, l: "已订" },
       { n: counts.MAINTENANCE, l: "维修中" },
+      { n: counts.STORE, l: "储藏室" },
       { n: `${rate}%`, l: "出租率" },
     ];
   }

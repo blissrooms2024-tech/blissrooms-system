@@ -31,6 +31,8 @@ enum RoomStatus {
   OCCUPIED
   RESERVED
   MAINTENANCE
+  /// Used as storage/junk space, not available for rent — excluded from occupancy stats.
+  STORE
 }
 
 enum ContractStatus {
