@@ -89,6 +89,7 @@ export async function GET() {
       emergencyName: c.emergencyName,
       emergencyContact: c.emergencyContact,
       emergencyRelationship: c.emergencyRelationship,
+      pdfLink: c.pdfLink,
     };
   });
 

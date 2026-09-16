@@ -11,6 +11,7 @@ import ICUploadModal from "./ICUploadModal";
 import MoveFormModal from "./MoveFormModal";
 import PaymentModal from "./PaymentModal";
 import WarningLetterModal from "./WarningLetterModal";
+import ContractPdfModal from "./ContractPdfModal";
 
 interface Contract {
   contractCode: string;
@@ -44,6 +45,7 @@ export default function ContractsClient({ role }: { role: string }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [warningFor, setWarningFor] = useState<Contract | null>(null);
   const [terminating, setTerminating] = useState<Contract | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
@@ -209,6 +211,11 @@ export default function ContractsClient({ role }: { role: string }) {
                             🪪 查看IC
                           </ActionBtn>
                         )}
+                        {role === "ADMIN" && (
+                          <ActionBtn color="bg-teal-600" onClick={() => setUploadingPdf(c.contractCode)}>
+                            📎 旧合同 PDF
+                          </ActionBtn>
+                        )}
                         {role === "AGENT" && !c.agentSignature && (c.status === "PENDING_SIGN" || c.status === "ACTIVE") && (
                           <ActionBtn color="bg-pink-600" onClick={() => setSigning(c.contractCode)}>
                             ✍️ 签名
@@ -267,6 +274,9 @@ export default function ContractsClient({ role }: { role: string }) {
       )}
       {icUploading && (
         <ICUploadModal contractCode={icUploading} readOnly onClose={() => setIcUploading(null)} onUploaded={load} />
+      )}
+      {uploadingPdf && (
+        <ContractPdfModal contractCode={uploadingPdf} onClose={() => setUploadingPdf(null)} onUploaded={load} />
       )}
       {moveForm && (
         <MoveFormModal

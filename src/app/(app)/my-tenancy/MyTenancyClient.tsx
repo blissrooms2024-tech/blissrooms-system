@@ -24,6 +24,7 @@ interface Card {
   emergencyName: string | null;
   emergencyContact: string | null;
   emergencyRelationship: string | null;
+  pdfLink: string | null;
 }
 
 function Pill({ tone, children }: { tone: "done" | "wait" | "lock" | "due"; children: React.ReactNode }) {
@@ -97,6 +98,20 @@ export default function MyTenancyClient() {
                   </Link>
                 }
               />
+
+              {c.pdfLink && (
+                <Row
+                  icon="📎"
+                  name="旧合同 PDF"
+                  desc="Admin 上传的签名版扫描件"
+                  status={<Pill tone="done">✅ 已上传</Pill>}
+                  action={
+                    <a href={c.pdfLink} target="_blank" rel="noopener noreferrer" className="btn-soft px-3.5 py-1.5 text-xs">
+                      查看 / 下载
+                    </a>
+                  }
+                />
+              )}
 
               <Row
                 icon="✍️"
