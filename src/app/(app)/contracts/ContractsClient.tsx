@@ -114,13 +114,20 @@ export default function ContractsClient({ role }: { role: string }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <div className="mb-3.5 flex items-center justify-between">
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
           <h3 className="text-base font-semibold text-brand">合同清单</h3>
-          {canCreate && (
-            <Link href="/contracts/new" className="btn-primary text-sm">
-              📝 开新合同
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            {role === "ADMIN" && (
+              <Link href="/contracts/import" className="btn-soft text-sm">
+                📥 导入旧合同
+              </Link>
+            )}
+            {canCreate && (
+              <Link href="/contracts/new" className="btn-primary text-sm">
+                📝 开新合同
+              </Link>
+            )}
+          </div>
         </div>
         <input
           value={search}

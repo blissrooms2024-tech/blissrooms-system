@@ -1,0 +1,193 @@
+import { NextRequest, NextResponse } from "next/server";
+import ExcelJS from "exceljs";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth/session";
+import { hashPassword } from "@/lib/auth/password";
+import { newId } from "@/lib/id";
+import { legacyImportRowSchema, LEGACY_IMPORT_COLUMNS } from "@/lib/schemas/legacyImport";
+
+const SHEET_NAME = "旧合同导入";
+const EXAMPLE_EMAIL = "demo@example.com";
+
+interface RowResult {
+  row: number;
+  status: "imported" | "skipped" | "error";
+  message: string;
+}
+
+function cellToString(value: ExcelJS.CellValue): string {
+  if (value === null || value === undefined) return "";
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === "object" && "text" in value) return String((value as { text: unknown }).text ?? "");
+  if (typeof value === "object" && "result" in value) return String((value as { result: unknown }).result ?? "");
+  return String(value).trim();
+}
+
+export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    return NextResponse.json({ success: false, message: "只有 Admin 可以导入旧合同" }, { status: 403 });
+  }
+
+  const form = await req.formData().catch(() => null);
+  const file = form?.get("file");
+  if (!file || !(file instanceof File)) {
+    return NextResponse.json({ success: false, message: "请上传 Excel 文件" }, { status: 400 });
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.load(arrayBuffer);
+  } catch {
+    return NextResponse.json({ success: false, message: "读不到这个 Excel 文件，请确认是 .xlsx 格式" }, { status: 400 });
+  }
+
+  const sheet = workbook.getWorksheet(SHEET_NAME) ?? workbook.worksheets[0];
+  if (!sheet) {
+    return NextResponse.json({ success: false, message: `找不到 "${SHEET_NAME}" 这个 sheet` }, { status: 400 });
+  }
+
+  const results: RowResult[] = [];
+  let imported = 0;
+
+  for (let rowNum = 2; rowNum <= sheet.rowCount; rowNum++) {
+    const row = sheet.getRow(rowNum);
+    const raw: Record<string, string> = {};
+    LEGACY_IMPORT_COLUMNS.forEach((key, idx) => {
+      raw[key] = cellToString(row.getCell(idx + 1).value);
+    });
+
+    const isBlank = Object.values(raw).every((v) => !v);
+    if (isBlank) continue;
+
+    if (raw.email.toLowerCase() === EXAMPLE_EMAIL) {
+      results.push({ row: rowNum, status: "skipped", message: "示范数据行，已跳过" });
+      continue;
+    }
+
+    const parsed = legacyImportRowSchema.safeParse(raw);
+    if (!parsed.success) {
+      const msg = parsed.error.issues.map((i) => i.message).join("; ");
+      results.push({ row: rowNum, status: "error", message: msg });
+      continue;
+    }
+    const d = parsed.data;
+
+    try {
+      const room = await prisma.room.findUnique({ where: { roomCode: d.roomCode } });
+      if (!room) {
+        results.push({ row: rowNum, status: "error", message: `找不到房间 ${d.roomCode}` });
+        continue;
+      }
+      if (room.currentTenantId) {
+        results.push({ row: rowNum, status: "error", message: `${d.roomCode} 已经有租客了，不能重复导入` });
+        continue;
+      }
+
+      let tenant = await prisma.user.findFirst({ where: { role: "TENANT", ic: d.tenantIc } });
+      if (!tenant) {
+        const emailTaken = await prisma.user.findUnique({ where: { email: d.email } });
+        if (emailTaken) {
+          results.push({
+            row: rowNum,
+            status: "error",
+            message: `Email ${d.email} 已经有账号了 (${emailTaken.name})，但 IC 对不上，请检查资料`,
+          });
+          continue;
+        }
+        const icDigits = d.tenantIc.replace(/\D/g, "");
+        const pw = icDigits.length >= 4 ? icDigits.slice(-4) : "1234";
+        tenant = await prisma.user.create({
+          data: {
+            userCode: await newId("U"),
+            name: d.tenantName,
+            email: d.email,
+            passwordHash: await hashPassword(pw),
+            role: "TENANT",
+            phone: d.phone,
+            ic: d.tenantIc,
+            status: "ACTIVE",
+          },
+        });
+      }
+
+      let agentId = user.sub;
+      let agentName = user.name;
+      if (d.agentCode) {
+        const agent = await prisma.user.findUnique({ where: { userCode: d.agentCode } });
+        if (agent) {
+          agentId = agent.id;
+          agentName = agent.name;
+        }
+      }
+
+      const total =
+        d.roomRental + d.securityDeposit + d.utilitiesDeposit + d.accessCardDeposit + d.adminFee + d.carparkRental;
+      const contractCode = await newId("CT");
+
+      await prisma.$transaction([
+        prisma.contract.create({
+          data: {
+            contractCode,
+            roomId: room.id,
+            propertyAddress: room.propertyName,
+            tenantId: tenant.id,
+            tenantName: d.tenantName,
+            tenantIc: d.tenantIc,
+            agentId,
+            agentName,
+            moveInDate: d.moveInDate,
+            commencementDate: d.commencementDate,
+            expiredDate: d.expiredDate,
+            tenureMonths: d.tenureMonths,
+            roomRental: d.roomRental,
+            carparkRental: d.carparkRental,
+            securityDeposit: d.securityDeposit,
+            utilitiesDeposit: d.utilitiesDeposit,
+            earnestDeposit: d.roomRental,
+            accessCardDeposit: d.accessCardDeposit,
+            adminFee: d.adminFee,
+            totalOutstanding: total,
+            status: "ACTIVE",
+            commStatus: "Pending",
+            createdBy: user.name,
+            remarks: d.remarks ? `${d.remarks} (旧合同导入)` : "旧合同导入",
+            nationality: d.nationality,
+            contactNumber: d.phone,
+            email: d.email,
+            occupation: d.occupation,
+            company: d.company,
+            carPlate: d.carPlate,
+            emergencyName: d.emergencyName,
+            emergencyContact: d.emergencyContact,
+            emergencyRelationship: d.emergencyRelationship,
+            utilDryer: d.utilDryer,
+            utilAircond: d.utilAircond,
+            utilElectric: d.utilElectric,
+          },
+        }),
+        prisma.room.update({
+          where: { id: room.id },
+          data: { status: "OCCUPIED", currentContractId: contractCode, currentTenantId: tenant.id },
+        }),
+      ]);
+
+      imported++;
+      results.push({ row: rowNum, status: "imported", message: `✅ ${contractCode} (${d.tenantName} · ${d.roomCode})` });
+    } catch (e) {
+      results.push({
+        row: rowNum,
+        status: "error",
+        message: "系统出错: " + (e instanceof Error ? e.message : String(e)),
+      });
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    imported,
+    total: results.length,
+    results,
+  });
+}
