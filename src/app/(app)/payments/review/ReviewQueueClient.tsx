@@ -146,7 +146,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
               )}
               <div className="min-w-[220px] flex-1">
                 <div className="text-sm font-semibold">
-                  <Link href={`/contracts`} className="text-brand hover:underline">
+                  <Link href={`/contracts/${p.contractCode}`} className="text-brand hover:underline">
                     {p.contractCode}
                   </Link>{" "}
                   · {p.roomCode} · {p.tenantName}

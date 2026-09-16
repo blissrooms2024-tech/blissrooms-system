@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   }
   const d = parsed.data;
 
-  const room = await prisma.room.findUnique({ where: { roomCode: d.roomCode } });
+  const room = await prisma.room.findUnique({ where: { roomCode: d.roomCode }, include: { property: true } });
   if (!room) return NextResponse.json({ success: false, message: "找不到这间房" }, { status: 404 });
   if (room.status !== "VACANT") {
     return NextResponse.json(
@@ -80,7 +80,10 @@ export async function POST(req: NextRequest) {
     data: {
       contractCode: await newId("CT"),
       roomId: room.id,
-      propertyAddress: room.propertyName,
+      // Property's actual street address — falls back to the property name only if no
+      // address was ever entered for it, so contracts never print the unit name as if it
+      // were an address.
+      propertyAddress: room.property?.address || room.propertyName,
       tenantId: tenant.id,
       tenantName: tenant.name,
       tenantIc: tenant.ic,

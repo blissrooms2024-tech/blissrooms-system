@@ -205,7 +205,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                       🧾 {r.requestCode} · 收到日期 {r.createdAt.slice(0, 10)}
                     </div>
                     <div className="text-sm font-semibold">
-                      <Link href="/contracts" className="text-brand hover:underline">
+                      <Link href={`/contracts/${r.contractCode}`} className="text-brand hover:underline">
                         {r.contractCode}
                       </Link>{" "}
                       · {r.roomCode} · {r.tenantName}

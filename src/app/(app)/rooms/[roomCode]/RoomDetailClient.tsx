@@ -129,7 +129,7 @@ export default function RoomDetailClient({ roomCode }: { roomCode: string }) {
             {contracts.map((c) => (
               <div key={c.contractCode} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-50 py-2 text-sm last:border-none">
                 <div>
-                  <Link href="/contracts" className="font-semibold text-brand hover:underline">
+                  <Link href={`/contracts/${c.contractCode}`} className="font-semibold text-brand hover:underline">
                     {c.contractCode}
                   </Link>{" "}
                   · {c.tenantName} · {c.agentName}

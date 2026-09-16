@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
     const d = parsed.data;
 
     try {
-      const room = await prisma.room.findUnique({ where: { roomCode: d.roomCode } });
+      const room = await prisma.room.findUnique({ where: { roomCode: d.roomCode }, include: { property: true } });
       if (!room) {
         results.push({ row: rowNum, status: "error", message: `找不到房间 ${d.roomCode}` });
         continue;
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
           data: {
             contractCode,
             roomId: room.id,
-            propertyAddress: room.propertyName,
+            propertyAddress: room.property?.address || room.propertyName,
             tenantId: tenant.id,
             tenantName: d.tenantName,
             tenantIc: d.tenantIc,

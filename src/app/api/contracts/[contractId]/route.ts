@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, type SessionPayload } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
 import { contractEditSchema } from "@/lib/schemas/contract";
+import { RENT_ARREARS } from "@/lib/config";
 
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
@@ -29,10 +30,33 @@ export async function GET(
     return NextResponse.json({ success: false, message: "没有权限查看这张合同" }, { status: 403 });
   }
 
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
+
+  const [paidAgg, escalatedBill] = await Promise.all([
+    prisma.payment.aggregate({
+      where: { contractId: contract.id, status: "Paid" },
+      _sum: { amountPaid: true },
+    }),
+    prisma.payment.findFirst({
+      where: { contractId: contract.id, type: "RENTAL", status: "PENDING", dueDate: { lte: escalationCutoff } },
+      select: { id: true },
+    }),
+  ]);
+  const paid = Number(paidAgg._sum.amountPaid ?? 0);
+  const outstanding = Math.max(Number(contract.totalOutstanding) - paid, 0);
+
   const { agent, ...rest } = contract;
   return NextResponse.json({
     success: true,
-    contract: serialize({ ...rest, agentIc: agent.ic }),
+    contract: serialize({
+      ...rest,
+      agentIc: agent.ic,
+      _paid: paid,
+      _outstanding: outstanding,
+      _rentEscalated: !!escalatedBill,
+    }),
   });
 }
 
@@ -47,8 +71,8 @@ export async function PATCH(
   const { contractId } = await params;
   const contract = await prisma.contract.findUnique({ where: { contractCode: contractId } });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
-  if (contract.status !== "DRAFT" && contract.status !== "PENDING_APPROVE") {
-    return NextResponse.json({ success: false, message: "这合同已经批准/生效, 不能再改了" }, { status: 409 });
+  if (contract.status === "TERMINATED" || contract.status === "MOVED_OUT") {
+    return NextResponse.json({ success: false, message: "这合同已经终止/搬出, 不能再改了" }, { status: 409 });
   }
 
   const parsed = contractEditSchema.safeParse(await req.json().catch(() => null));
