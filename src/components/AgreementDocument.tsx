@@ -465,7 +465,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <tr>
       <td>{label}</td>
-      <td style={{ textAlign: "right", width: 120 }}>{value}</td>
+      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{value}</td>
     </tr>
   );
 }
