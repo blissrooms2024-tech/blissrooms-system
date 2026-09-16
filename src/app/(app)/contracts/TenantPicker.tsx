@@ -130,7 +130,7 @@ export default function TenantPicker({
           onClick={() => setCreating(true)}
           className="mt-1.5 text-xs font-semibold text-brand underline hover:text-brand-dark"
         >
-          + 找不到？新建租客资料
+          找不到？点击这里，创建新租客资料。
         </button>
       ) : (
         <div className="mt-2 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
