@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CONTRACT_STATUS_LABELS } from "@/lib/config";
 import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
+import TenantInfoEditModal from "./TenantInfoEditModal";
 
 interface Card {
   contractCode: string;
@@ -14,6 +15,15 @@ interface Card {
   tenantSigned: boolean;
   hasICFront: boolean;
   hasICBack: boolean;
+  nationality: string | null;
+  contactNumber: string | null;
+  email: string | null;
+  occupation: string | null;
+  company: string | null;
+  carPlate: string | null;
+  emergencyName: string | null;
+  emergencyContact: string | null;
+  emergencyRelationship: string | null;
 }
 
 function Pill({ tone, children }: { tone: "done" | "wait" | "lock" | "due"; children: React.ReactNode }) {
@@ -31,6 +41,7 @@ export default function MyTenancyClient() {
   const [error, setError] = useState("");
   const [signing, setSigning] = useState<string | null>(null);
   const [icUploading, setIcUploading] = useState<string | null>(null);
+  const [editingInfo, setEditingInfo] = useState<Card | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -129,6 +140,18 @@ export default function MyTenancyClient() {
                   </button>
                 }
               />
+
+              <Row
+                icon="📇"
+                name="个人资料 Personal Info"
+                desc="国籍/职业/公司/车牌/紧急联络人"
+                status={null}
+                action={
+                  <button onClick={() => setEditingInfo(c)} className="btn-soft px-3.5 py-1.5 text-xs">
+                    ✏️ 编辑
+                  </button>
+                }
+              />
             </div>
           </div>
         );
@@ -139,6 +162,14 @@ export default function MyTenancyClient() {
       )}
       {icUploading && (
         <ICUploadModal contractCode={icUploading} onClose={() => setIcUploading(null)} onUploaded={load} />
+      )}
+      {editingInfo && (
+        <TenantInfoEditModal
+          contractCode={editingInfo.contractCode}
+          info={editingInfo}
+          onClose={() => setEditingInfo(null)}
+          onSaved={load}
+        />
       )}
     </div>
   );

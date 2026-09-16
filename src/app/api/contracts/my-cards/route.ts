@@ -80,6 +80,15 @@ export async function GET() {
       unpaidBillCount: unpaidBillCount.get(c.id) ?? 0,
       openMaintenanceCount: openMaintenanceCount.get(c.id) ?? 0,
       daysToExpiry,
+      nationality: c.nationality,
+      contactNumber: c.contactNumber,
+      email: c.email,
+      occupation: c.occupation,
+      company: c.company,
+      carPlate: c.carPlate,
+      emergencyName: c.emergencyName,
+      emergencyContact: c.emergencyContact,
+      emergencyRelationship: c.emergencyRelationship,
     };
   });
 
