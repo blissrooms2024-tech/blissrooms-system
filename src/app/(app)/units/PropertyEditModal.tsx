@@ -11,11 +11,14 @@ export interface EditableProperty {
   region: string | null;
   landlord: string | null;
   managementFeeRate: number | null;
+  ownerRentalAmount: number | null;
   status: string | null;
   notes: string | null;
   roomCount: number;
   carparkCount: number;
 }
+
+type DealType = "OWN" | "MANAGED" | "MASTER_LEASE";
 
 export default function PropertyEditModal({
   property,
@@ -33,6 +36,12 @@ export default function PropertyEditModal({
   const [landlord, setLandlord] = useState(property.landlord ?? "");
   const [managementFeeRate, setManagementFeeRate] = useState(
     property.managementFeeRate ? String(property.managementFeeRate * 100) : ""
+  );
+  const [ownerRentalAmount, setOwnerRentalAmount] = useState(
+    property.ownerRentalAmount !== null ? String(property.ownerRentalAmount) : ""
+  );
+  const [dealType, setDealType] = useState<DealType>(
+    property.ownerRentalAmount !== null ? "MASTER_LEASE" : property.managementFeeRate ? "MANAGED" : "OWN"
   );
   const [status, setStatus] = useState(property.status ?? "Active");
   const [notes, setNotes] = useState(property.notes ?? "");
@@ -54,8 +63,9 @@ export default function PropertyEditModal({
           name,
           address,
           region,
-          landlord,
-          managementFeeRate: managementFeeRate ? Number(managementFeeRate) / 100 : undefined,
+          landlord: dealType === "OWN" ? "" : landlord,
+          managementFeeRate: dealType === "MANAGED" && managementFeeRate ? Number(managementFeeRate) / 100 : undefined,
+          ownerRentalAmount: dealType === "MASTER_LEASE" && ownerRentalAmount ? Number(ownerRentalAmount) : undefined,
           status,
           notes,
           roomCount: Number(roomCount) || 0,
@@ -94,24 +104,60 @@ export default function PropertyEditModal({
           <input value={region} onChange={(e) => setRegion(e.target.value)} className="input" />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">Landlord (帮人管理才填)</label>
-          <input
-            value={landlord}
-            onChange={(e) => setLandlord(e.target.value)}
-            className="input"
-            placeholder="留空 = 自己名下"
-          />
+          <label className="mb-1.5 block text-sm text-gray-600">楼盘性质</label>
+          <div className="grid grid-cols-1 gap-2">
+            {(
+              [
+                { v: "OWN", l: "自己名下" },
+                { v: "MANAGED", l: "帮人管理 (收管理费%)" },
+                { v: "MASTER_LEASE", l: "跟 Owner 租 (付固定租金)" },
+              ] as { v: DealType; l: string }[]
+            ).map((opt) => (
+              <label
+                key={opt.v}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                  dealType === opt.v ? "border-brand bg-brand-light/40 font-semibold text-brand" : "border-gray-200 text-gray-600"
+                }`}
+              >
+                <input type="radio" name="dealType" checked={dealType === opt.v} onChange={() => setDealType(opt.v)} />
+                {opt.l}
+              </label>
+            ))}
+          </div>
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm text-gray-600">管理费 % (例10)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={managementFeeRate}
-            onChange={(e) => setManagementFeeRate(e.target.value)}
-            className="input"
-          />
-        </div>
+        {dealType !== "OWN" && (
+          <>
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">
+                {dealType === "MASTER_LEASE" ? "Owner (业主)" : "Landlord"}
+              </label>
+              <input value={landlord} onChange={(e) => setLandlord(e.target.value)} className="input" />
+            </div>
+            {dealType === "MANAGED" ? (
+              <div>
+                <label className="mb-1.5 block text-sm text-gray-600">管理费 % (例10)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={managementFeeRate}
+                  onChange={(e) => setManagementFeeRate(e.target.value)}
+                  className="input"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="mb-1.5 block text-sm text-gray-600">每月付 Owner 租金 RM</label>
+                <input
+                  type="number"
+                  step="1"
+                  value={ownerRentalAmount}
+                  onChange={(e) => setOwnerRentalAmount(e.target.value)}
+                  className="input"
+                />
+              </div>
+            )}
+          </>
+        )}
         <div>
           <label className="mb-1.5 block text-sm text-gray-600">状态</label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="input">

@@ -12,14 +12,18 @@ const emptyForm = {
   region: "",
   landlord: "",
   managementFeeRate: "",
+  ownerRentalAmount: "",
   roomCount: "",
   carparkCount: "",
 };
+
+type DealType = "OWN" | "MANAGED" | "MASTER_LEASE";
 
 export default function NewUnitClient() {
   const router = useRouter();
   const toast = useToast();
   const [form, setForm] = useState(emptyForm);
+  const [dealType, setDealType] = useState<DealType>("OWN");
   const [submitting, setSubmitting] = useState(false);
 
   async function addProperty(e: FormEvent) {
@@ -39,7 +43,10 @@ export default function NewUnitClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          managementFeeRate: form.managementFeeRate ? Number(form.managementFeeRate) / 100 : undefined,
+          managementFeeRate:
+            dealType === "MANAGED" && form.managementFeeRate ? Number(form.managementFeeRate) / 100 : undefined,
+          ownerRentalAmount:
+            dealType === "MASTER_LEASE" && form.ownerRentalAmount ? Number(form.ownerRentalAmount) : undefined,
           roomCount: form.roomCount || 0,
           carparkCount: form.carparkCount || 0,
         }),
@@ -97,26 +104,63 @@ export default function NewUnitClient() {
           </section>
 
           <section>
-            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">管理资料</h4>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Landlord (帮人管理才填)">
-                <input
-                  className="input"
-                  value={form.landlord}
-                  onChange={(e) => setForm({ ...form, landlord: e.target.value })}
-                  placeholder="留空 = 自己名下"
-                />
-              </Field>
-              <Field label="管理费 % (例10)">
-                <input
-                  type="number"
-                  step="0.1"
-                  className="input"
-                  value={form.managementFeeRate}
-                  onChange={(e) => setForm({ ...form, managementFeeRate: e.target.value })}
-                />
-              </Field>
+            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">楼盘性质</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {(
+                [
+                  { v: "OWN", l: "自己名下" },
+                  { v: "MANAGED", l: "帮人管理 (收管理费%)" },
+                  { v: "MASTER_LEASE", l: "跟 Owner 租 (付固定租金)" },
+                ] as { v: DealType; l: string }[]
+              ).map((opt) => (
+                <label
+                  key={opt.v}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm ${
+                    dealType === opt.v ? "border-brand bg-brand-light/40 font-semibold text-brand" : "border-gray-200 text-gray-600"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="dealType"
+                    checked={dealType === opt.v}
+                    onChange={() => setDealType(opt.v)}
+                  />
+                  {opt.l}
+                </label>
+              ))}
             </div>
+            {dealType !== "OWN" && (
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label={dealType === "MASTER_LEASE" ? "Owner (业主)" : "Landlord"}>
+                  <input
+                    className="input"
+                    value={form.landlord}
+                    onChange={(e) => setForm({ ...form, landlord: e.target.value })}
+                  />
+                </Field>
+                {dealType === "MANAGED" ? (
+                  <Field label="管理费 % (例10)">
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="input"
+                      value={form.managementFeeRate}
+                      onChange={(e) => setForm({ ...form, managementFeeRate: e.target.value })}
+                    />
+                  </Field>
+                ) : (
+                  <Field label="每月付 Owner 租金 RM">
+                    <input
+                      type="number"
+                      step="1"
+                      className="input"
+                      value={form.ownerRentalAmount}
+                      onChange={(e) => setForm({ ...form, ownerRentalAmount: e.target.value })}
+                    />
+                  </Field>
+                )}
+              </div>
+            )}
           </section>
 
           <section>

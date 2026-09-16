@@ -65,8 +65,11 @@ export async function GET(
   }
 
   const feeRate = property.managementFeeRate ? Number(property.managementFeeRate) : 0;
-  const managementFee = property.landlord ? total * feeRate : 0;
-  const netToLandlord = property.landlord ? total - managementFee : null;
+  const managementFee = property.managementFeeRate ? total * feeRate : 0;
+  const netToLandlord = property.managementFeeRate ? total - managementFee : null;
+
+  const ownerRentalAmount = property.ownerRentalAmount ? Number(property.ownerRentalAmount) : null;
+  const netProfit = ownerRentalAmount !== null ? total - ownerRentalAmount : null;
 
   return NextResponse.json({
     success: true,
@@ -75,7 +78,8 @@ export async function GET(
       name: property.name,
       address: property.address,
       landlord: property.landlord,
-      managementFeeRate: property.landlord ? feeRate : null,
+      managementFeeRate: property.managementFeeRate ? feeRate : null,
+      ownerRentalAmount,
     },
     month: monthParam,
     rooms: Array.from(byRoom.values()),
@@ -83,5 +87,6 @@ export async function GET(
     total,
     managementFee,
     netToLandlord,
+    netProfit,
   });
 }

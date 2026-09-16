@@ -13,6 +13,7 @@ interface PropertyRow {
   region: string | null;
   landlord: string | null;
   managementFeeRate: number | null;
+  ownerRentalAmount: number | null;
   status: string | null;
   notes: string | null;
   roomCount: number;
@@ -119,8 +120,11 @@ export default function UnitsClient({ role }: { role: string }) {
                   ) : (
                     <span className="text-gray-400">自己名下</span>
                   )}
-                  {p.landlord && p.managementFeeRate && (
+                  {p.managementFeeRate && (
                     <span className="text-gray-500">{(p.managementFeeRate * 100).toFixed(1)}% 管理费</span>
+                  )}
+                  {p.ownerRentalAmount !== null && (
+                    <span className="text-gray-500">RM{p.ownerRentalAmount} 租金(付Owner)</span>
                   )}
                 </div>
                 <div className="mt-2.5 flex gap-1.5">
@@ -159,8 +163,8 @@ export default function UnitsClient({ role }: { role: string }) {
                   <Th>名字</Th>
                   <Th>房间数</Th>
                   <Th>车位数</Th>
-                  <Th>Landlord</Th>
-                  <Th>管理费</Th>
+                  <Th>Landlord / Owner</Th>
+                  <Th>费用</Th>
                   <Th>操作</Th>
                 </tr>
               </thead>
@@ -191,7 +195,13 @@ export default function UnitsClient({ role }: { role: string }) {
                         <span className="text-gray-400">自己名下</span>
                       )}
                     </Td>
-                    <Td>{p.landlord && p.managementFeeRate ? `${(p.managementFeeRate * 100).toFixed(1)}%` : "-"}</Td>
+                    <Td>
+                      {p.managementFeeRate
+                        ? `${(p.managementFeeRate * 100).toFixed(1)}% 管理费`
+                        : p.ownerRentalAmount !== null
+                          ? `RM${p.ownerRentalAmount} 租金(付Owner)`
+                          : "-"}
+                    </Td>
                     <Td>
                       <div className="flex items-center gap-1.5">
                         <Link href={`/units/${p.propertyCode}`} className="btn-soft px-2.5 py-1 text-xs">

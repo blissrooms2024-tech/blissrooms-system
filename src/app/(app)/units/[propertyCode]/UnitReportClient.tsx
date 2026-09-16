@@ -11,6 +11,7 @@ interface Property {
   address: string | null;
   landlord: string | null;
   managementFeeRate: number | null;
+  ownerRentalAmount: number | null;
 }
 interface RoomRow {
   roomCode: string;
@@ -26,6 +27,7 @@ interface Report {
   total: number;
   managementFee: number;
   netToLandlord: number | null;
+  netProfit: number | null;
 }
 
 function currentMonth() {
@@ -112,7 +114,7 @@ export default function UnitReportClient({ propertyCode }: { propertyCode: strin
             </div>
             {report.property.landlord && (
               <div className="mt-1 text-sm text-gray-500">
-                Landlord: {report.property.landlord} · 月报月份: {report.month}
+                {report.property.ownerRentalAmount !== null ? "Owner" : "Landlord"}: {report.property.landlord} · 月报月份: {report.month}
               </div>
             )}
             {!report.property.landlord && <div className="mt-1 text-sm text-gray-500">月报月份: {report.month}</div>}
@@ -161,17 +163,29 @@ export default function UnitReportClient({ propertyCode }: { propertyCode: strin
               <span className="text-gray-600">本月总收</span>
               <b>{fmtMoney(report.total)}</b>
             </div>
-            {report.property.landlord && (
+            {report.property.managementFeeRate !== null && (
               <>
                 <div className="flex w-full max-w-xs justify-between">
                   <span className="text-gray-600">
-                    管理费 ({report.property.managementFeeRate ? (report.property.managementFeeRate * 100).toFixed(1) : 0}%)
+                    管理费 ({(report.property.managementFeeRate * 100).toFixed(1)}%)
                   </span>
                   <span>- {fmtMoney(report.managementFee)}</span>
                 </div>
                 <div className="flex w-full max-w-xs justify-between border-t border-gray-200 pt-2 text-base">
                   <span className="font-semibold text-brand">应付 Landlord 净额</span>
                   <b className="text-brand">{fmtMoney(report.netToLandlord ?? 0)}</b>
+                </div>
+              </>
+            )}
+            {report.property.ownerRentalAmount !== null && (
+              <>
+                <div className="flex w-full max-w-xs justify-between">
+                  <span className="text-gray-600">付 Owner 租金</span>
+                  <span>- {fmtMoney(report.property.ownerRentalAmount)}</span>
+                </div>
+                <div className="flex w-full max-w-xs justify-between border-t border-gray-200 pt-2 text-base">
+                  <span className="font-semibold text-brand">本月净利</span>
+                  <b className="text-brand">{fmtMoney(report.netProfit ?? 0)}</b>
                 </div>
               </>
             )}

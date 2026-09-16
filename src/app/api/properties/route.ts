@@ -35,6 +35,7 @@ export async function GET() {
       region: p.region,
       landlord: p.landlord,
       managementFeeRate: p.managementFeeRate ? Number(p.managementFeeRate) : null,
+      ownerRentalAmount: p.ownerRentalAmount ? Number(p.ownerRentalAmount) : null,
       status: p.status,
       notes: p.notes,
       roomCount: roomCountByPropertyId.get(p.id) ?? 0,
@@ -50,6 +51,7 @@ const createSchema = z.object({
   region: z.string().trim().optional().default(""),
   landlord: z.string().trim().optional().default(""),
   managementFeeRate: z.coerce.number().min(0).max(1).optional(),
+  ownerRentalAmount: z.coerce.number().min(0).optional(),
   notes: z.string().trim().optional().default(""),
   roomCount: z.coerce.number().int().min(0).max(200).optional().default(0),
   carparkCount: z.coerce.number().int().min(0).max(200).optional().default(0),
@@ -78,7 +80,10 @@ export async function POST(req: NextRequest) {
       address: d.address || null,
       region: d.region || null,
       landlord: d.landlord || null,
-      managementFeeRate: d.managementFeeRate ?? null,
+      // A unit is either managed-for-a-landlord-% or leased-from-owner-for-fixed-rent,
+      // never both — owner rental (if given) wins.
+      managementFeeRate: d.ownerRentalAmount ? null : d.managementFeeRate ?? null,
+      ownerRentalAmount: d.ownerRentalAmount ?? null,
       notes: d.notes || null,
     },
   });

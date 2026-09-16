@@ -125,6 +125,11 @@ model Property {
   /// % of monthly collections Bliss Rooms keeps as management fee when landlord is set
   /// (e.g. 0.10 = 10%). Irrelevant for units Bliss Rooms owns outright (landlord blank).
   managementFeeRate Decimal? @db.Decimal(6, 4)
+  /// Fixed monthly rent Bliss Rooms pays the owner under a master-lease arrangement (Bliss
+  /// Rooms rents the whole unit from the owner, then sub-lets rooms) — mutually exclusive
+  /// with managementFeeRate; a unit is either managed-for-a-landlord-% or leased-from-owner,
+  /// never both.
+  ownerRentalAmount Decimal? @db.Decimal(10, 2)
   status       String?  @default("Active")
   notes        String?
   rooms        Room[]

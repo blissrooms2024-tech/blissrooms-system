@@ -17,6 +17,7 @@ interface PropertyDetail {
   region: string | null;
   landlord: string | null;
   managementFeeRate: number | null;
+  ownerRentalAmount: number | null;
   status: string | null;
   notes: string | null;
   rooms: RoomRow[];
@@ -66,9 +67,15 @@ export default function UnitDetailClient({ propertyCode }: { propertyCode: strin
         <Info label="楼盘号">{property.propertyCode}</Info>
         <Info label="地址">{property.address || "-"}</Info>
         <Info label="地区">{property.region || "-"}</Info>
-        <Info label="Landlord">{property.landlord || "自己名下"}</Info>
-        <Info label="管理费">
-          {property.landlord && property.managementFeeRate ? `${(property.managementFeeRate * 100).toFixed(1)}%` : "-"}
+        <Info label={property.ownerRentalAmount !== null ? "Owner" : "Landlord"}>
+          {property.landlord || "自己名下"}
+        </Info>
+        <Info label={property.ownerRentalAmount !== null ? "付 Owner 租金" : "管理费"}>
+          {property.ownerRentalAmount !== null
+            ? `RM${property.ownerRentalAmount}`
+            : property.managementFeeRate
+              ? `${(property.managementFeeRate * 100).toFixed(1)}%`
+              : "-"}
         </Info>
         <Info label="状态">{property.status || "-"}</Info>
       </div>
