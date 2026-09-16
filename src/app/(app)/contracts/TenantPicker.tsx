@@ -14,9 +14,11 @@ export interface TenantOption {
 export default function TenantPicker({
   value,
   onChange,
+  error,
 }: {
   value: TenantOption | null;
   onChange: (tenant: TenantOption | null) => void;
+  error?: boolean;
 }) {
   const toast = useToast();
   const [q, setQ] = useState("");
@@ -92,7 +94,7 @@ export default function TenantPicker({
   return (
     <div className="relative">
       <input
-        className="input"
+        className={`input ${error ? "border-red-500 ring-1 ring-red-500" : ""}`}
         placeholder="输入 IC / 姓名 / Email 搜索租客"
         value={q}
         onChange={(e) => setQ(e.target.value)}

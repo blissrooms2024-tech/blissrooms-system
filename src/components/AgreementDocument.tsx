@@ -157,10 +157,11 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
       <table>
         <tbody>
           <Row label="Advance Rental for one month" value={fmtMoney(c.roomRental)} />
+          <Row label="Car Park Rental" value={fmtMoney(c.carparkRental)} />
           <Row label="Security Deposit" value={fmtMoney(c.securityDeposit)} />
           <Row label="Utility Deposit (Electricity, Water & Sewerage)" value={fmtMoney(c.utilitiesDeposit)} />
           <Row label="Admin Fee (Non-refundable)" value={fmtMoney(c.adminFee)} />
-          <Row label="Access Card & Car Park Deposit" value={fmtMoney(c.accessCardDeposit)} />
+          <Row label="Access Card Deposit" value={fmtMoney(c.accessCardDeposit)} />
           <tr>
             <td>
               <b>Total Outstanding to be paid before handover of keys</b>

@@ -58,9 +58,11 @@ export default function ContractForm({
   const [tenant, setTenant] = useState<TenantOption | null>(null);
   const [utils, setUtils] = useState({ electric: false, aircond: false, dryer: false });
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ roomCode?: boolean; tenant?: boolean }>({});
 
   function selectTenant(t: TenantOption | null) {
     setTenant(t);
+    if (t) setErrors((e) => ({ ...e, tenant: false }));
     if (t) {
       setForm((f) => ({
         ...f,
@@ -72,6 +74,7 @@ export default function ContractForm({
 
   function set<K extends keyof typeof initialForm>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+    if (key === "roomCode" && value) setErrors((e) => ({ ...e, roomCode: false }));
   }
 
   function onDateChange(field: "commencementDate" | "expiredDate" | "tenureMonths", value: string) {
@@ -88,6 +91,7 @@ export default function ContractForm({
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!form.roomCode || !tenant) {
+      setErrors({ roomCode: !form.roomCode, tenant: !tenant });
       toast.warning("房间和租客一定要选");
       return;
     }
@@ -127,7 +131,11 @@ export default function ContractForm({
       <form onSubmit={submit} className="space-y-2.5">
         <Row>
           <Field label="选空房">
-            <select className="input" value={form.roomCode} onChange={(e) => set("roomCode", e.target.value)}>
+            <select
+              className={`input ${errors.roomCode ? "border-red-500 ring-1 ring-red-500" : ""}`}
+              value={form.roomCode}
+              onChange={(e) => set("roomCode", e.target.value)}
+            >
               <option value="">-- 选房间 --</option>
               {vacantRooms.map((r) => (
                 <option key={r.roomCode} value={r.roomCode}>
@@ -149,7 +157,7 @@ export default function ContractForm({
             </Field>
           )}
           <Field label="租客" wide>
-            <TenantPicker value={tenant} onChange={selectTenant} />
+            <TenantPicker value={tenant} onChange={selectTenant} error={errors.tenant} />
           </Field>
         </Row>
 
