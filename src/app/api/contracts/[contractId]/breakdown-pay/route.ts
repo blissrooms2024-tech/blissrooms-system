@@ -12,6 +12,8 @@ const schema = z.object({
   item: z.enum(BREAKDOWN_ITEMS),
   amount: z.coerce.number().positive(),
   dataUrl: z.string().min(1),
+  paidDate: z.string().trim().optional(),
+  method: z.string().trim().optional().default(""),
 });
 
 /** Tenant self-initiates payment on a move-in-package item (deposit/utilities/admin fee/
@@ -36,7 +38,7 @@ export async function POST(
   if (!parsed.success) {
     return NextResponse.json({ success: false, message: "请填金额并选图片" }, { status: 400 });
   }
-  const { item, amount, dataUrl } = parsed.data;
+  const { item, amount, dataUrl, paidDate, method } = parsed.data;
 
   const due: Record<string, number> = {
     DEPOSIT: Number(c.securityDeposit),
@@ -73,7 +75,8 @@ export async function POST(
         type: item,
         amountDue: amount,
         amountPaid: amount,
-        paidDate: new Date(),
+        paidDate: paidDate ? new Date(paidDate) : new Date(),
+        method: method || null,
         status: "PENDING_REVIEW",
         receiptLink: url,
         recordedBy: user.name,

@@ -29,6 +29,8 @@ export default function BreakdownPayModal({
 }) {
   const toast = useToast();
   const [amount, setAmount] = useState(String(outstanding));
+  const [paidDate, setPaidDate] = useState(new Date().toISOString().slice(0, 10));
+  const [method, setMethod] = useState("Bank Transfer");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,7 +54,7 @@ export default function BreakdownPayModal({
       const res = await fetch(`/api/contracts/${contractCode}/breakdown-pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item, amount: amt, dataUrl }),
+        body: JSON.stringify({ item, amount: amt, dataUrl, paidDate, method }),
       });
       const data = await res.json();
       if (data.success) {
@@ -79,6 +81,12 @@ export default function BreakdownPayModal({
       </p>
       <div className="space-y-3">
         <div>
+          <label className="mb-1.5 block text-sm text-gray-600">项目</label>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm text-gray-700">
+            {PAYMENT_TYPE_LABELS[item] ?? item}
+          </div>
+        </div>
+        <div>
           <label className="mb-1.5 block text-sm text-gray-600">金额 RM</label>
           <input
             type="number"
@@ -88,6 +96,23 @@ export default function BreakdownPayModal({
             onChange={(e) => setAmount(e.target.value)}
             className="input"
           />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">付款日期</label>
+          <input
+            type="date"
+            value={paidDate}
+            onChange={(e) => setPaidDate(e.target.value)}
+            className="input"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">付款方式</label>
+          <select value={method} onChange={(e) => setMethod(e.target.value)} className="input">
+            <option>Bank Transfer</option>
+            <option>Cash</option>
+            <option>Cheque</option>
+          </select>
         </div>
         <div>
           <label className="mb-1.5 block text-sm text-gray-600">付款证明</label>
