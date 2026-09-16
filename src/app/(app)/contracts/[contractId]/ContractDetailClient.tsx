@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 import ContractActions, { type ActionableContract } from "../ContractActions";
 
 interface ContractDetail extends ActionableContract {
@@ -42,10 +43,6 @@ interface ContractDetail extends ActionableContract {
 function fmt(v: number | null) {
   return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
 }
-function fmtDate(v: string | null) {
-  return v ? v.slice(0, 10) : "-";
-}
-
 export default function ContractDetailClient({ contractId, role }: { contractId: string; role: string }) {
   const [contract, setContract] = useState<ContractDetail | null>(null);
   const [error, setError] = useState("");

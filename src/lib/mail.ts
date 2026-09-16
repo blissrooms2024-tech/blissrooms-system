@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
+import { fmtDate } from "@/lib/format";
 
 // English labels for email content — the in-app UI stays Chinese (see lib/config.ts), but
 // all outbound email is English-only.
@@ -136,7 +137,7 @@ export async function notifyTenantBillCreated(tenant: { name: string; email: str
     `<p>Hi ${tenant.name},</p>
      <p>You have a new bill. Please pay and upload your payment slip as soon as possible:</p>
      <p><b>${typeLabel(bill.type)}</b> · RM${bill.amountDue}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
-     <p>Due date: ${bill.dueDate ? bill.dueDate.slice(0, 10) : "-"}</p>
+     <p>Due date: ${fmtDate(bill.dueDate)}</p>
      <p style="color:#c0392b;">A late payment penalty of RM30/day applies if the slip isn't uploaded by the due date.</p>
      <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Upload Slip</a></p>`
   );

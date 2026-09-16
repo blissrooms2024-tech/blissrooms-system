@@ -5,6 +5,7 @@ import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 
 interface Breakdown {
   item: string;
@@ -31,10 +32,6 @@ interface PaymentRow {
 function fmt(v: number) {
   return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
 }
-function fmtDate(v: string | null) {
-  return v ? v.slice(0, 10) : "-";
-}
-
 const PAY_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"];
 const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "OTHER"];
 

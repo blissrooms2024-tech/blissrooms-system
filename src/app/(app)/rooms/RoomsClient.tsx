@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ROOM_STATUS_LABELS } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import RoomEditModal from "./RoomEditModal";
@@ -165,7 +166,7 @@ export default function RoomsClient({ role }: { role: string }) {
                 </div>
                 {r.expiringSoonDate && (
                   <div className="mt-1.5 text-xs font-semibold text-orange-600">
-                    ⏰ 快到期: {r.expiringSoonDate.slice(0, 10)}
+                    ⏰ 快到期: {fmtDate(r.expiringSoonDate)}
                   </div>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
@@ -294,7 +295,7 @@ export default function RoomsClient({ role }: { role: string }) {
                       </span>
                       {r.expiringSoonDate && (
                         <div className="mt-1 text-xs font-semibold text-orange-600">
-                          ⏰ {r.expiringSoonDate.slice(0, 10)}
+                          ⏰ {fmtDate(r.expiringSoonDate)}
                         </div>
                       )}
                     </Td>

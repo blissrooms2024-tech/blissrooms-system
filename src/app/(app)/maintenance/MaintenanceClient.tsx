@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { MAINTENANCE_STATUS_LABELS } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 
 interface MaintenanceRow {
   requestCode: string;
@@ -45,14 +46,14 @@ const NEXT_ACTION: Record<string, { status: string; label: string; color: string
 function buildSteps(r: MaintenanceRow): TimelineStep[] {
   if (r.status === "CANCELLED") {
     return [
-      { label: "已提交", sublabel: r.createdAt.slice(0, 10), state: "done" },
+      { label: "已提交", sublabel: fmtDate(r.createdAt), state: "done" },
       { label: "已取消", sublabel: r.adminNote ?? undefined, state: "rejected" },
     ];
   }
   const currentIndex = FLOW.indexOf(r.status);
   return FLOW.map((s, i) => ({
     label: MAINTENANCE_STATUS_LABELS[s],
-    sublabel: i === 0 ? r.createdAt.slice(0, 10) : undefined,
+    sublabel: i === 0 ? fmtDate(r.createdAt) : undefined,
     state: i < currentIndex || (i === currentIndex && s === "COMPLETED") ? "done" : i === currentIndex ? "active" : "pending",
   }));
 }
@@ -202,7 +203,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-[220px] flex-1">
                     <div className="text-xs text-gray-400">
-                      🧾 {r.requestCode} · 收到日期 {r.createdAt.slice(0, 10)}
+                      🧾 {r.requestCode} · 收到日期 {fmtDate(r.createdAt)}
                     </div>
                     <div className="text-sm font-semibold">
                       <Link href={`/contracts/${r.contractCode}`} className="text-brand hover:underline">
@@ -392,7 +393,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                   <b>{r.contractCode}</b> · {r.roomCode} · {r.title}
                   {r.assignedTo && <span className="text-gray-400"> · {r.assignedTo}</span>}
                   {r.cost != null && <span className="text-gray-500"> · {fmt(r.cost)}</span>}
-                  <span className="text-gray-400"> · {(r.resolvedAt ?? r.createdAt).slice(0, 10)}</span>
+                  <span className="text-gray-400"> · {fmtDate(r.resolvedAt ?? r.createdAt)}</span>
                 </div>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${

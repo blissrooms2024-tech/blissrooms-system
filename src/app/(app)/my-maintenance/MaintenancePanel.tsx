@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, FormEvent } from "react";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
+import { fmtDate } from "@/lib/format";
 
 interface MaintenanceRow {
   requestCode: string;
@@ -29,15 +30,15 @@ const FLOW_LABELS: Record<string, string> = {
 function buildSteps(r: MaintenanceRow): TimelineStep[] {
   if (r.status === "CANCELLED") {
     return [
-      { label: "已提交", sublabel: r.createdAt.slice(0, 10), state: "done" },
+      { label: "已提交", sublabel: fmtDate(r.createdAt), state: "done" },
       { label: "已取消", sublabel: r.adminNote ?? undefined, state: "rejected" },
     ];
   }
   const currentIndex = FLOW.indexOf(r.status);
   return FLOW.map((s, i) => {
     let sublabel: string | undefined;
-    if (i === 0) sublabel = r.createdAt.slice(0, 10);
-    else if (i === currentIndex && s === "COMPLETED") sublabel = r.resolvedAt?.slice(0, 10) ?? undefined;
+    if (i === 0) sublabel = fmtDate(r.createdAt);
+    else if (i === currentIndex && s === "COMPLETED") sublabel = r.resolvedAt ? fmtDate(r.resolvedAt) : undefined;
     else if (s === "ACKNOWLEDGED" && i > currentIndex) sublabel = "预计3天内受理";
     else if (s === "IN_PROGRESS" && i === currentIndex) sublabel = "处理中需要时间，请耐心等待";
     return {
@@ -174,7 +175,7 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
                 <b className="text-sm">{r.title}</b>
                 {r.description && <div className="text-xs text-gray-500">{r.description}</div>}
               </div>
-              <span className="whitespace-nowrap text-xs text-gray-400">收到日期 {r.createdAt.slice(0, 10)}</span>
+              <span className="whitespace-nowrap text-xs text-gray-400">收到日期 {fmtDate(r.createdAt)}</span>
             </div>
             {r.photos.length > 0 && (
               <div className="mb-2 flex gap-2">

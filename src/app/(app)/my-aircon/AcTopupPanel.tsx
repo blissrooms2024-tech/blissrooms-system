@@ -5,6 +5,7 @@ import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { COMPANY } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 
 interface AcPayment {
   id: string;
@@ -20,9 +21,6 @@ interface AcPayment {
 
 function fmt(v: number) {
   return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
-function fmtDate(v: string | null) {
-  return v ? v.slice(0, 10) : "-";
 }
 function monthOf(v: string | null) {
   return v ? v.slice(0, 7) : "未知月份";
@@ -49,7 +47,7 @@ function buildAcSteps(p: AcPayment): TimelineStep[] {
   return [
     {
       label: "已提交",
-      sublabel: p.paidDate ? p.paidDate.slice(0, 10) : undefined,
+      sublabel: p.paidDate ? fmtDate(p.paidDate) : undefined,
       state: currentIndex >= 1 ? "done" : "active",
     },
     {

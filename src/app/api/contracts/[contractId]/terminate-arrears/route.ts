@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { RENT_ARREARS } from "@/lib/config";
 import { notifyTenantContractTerminated } from "@/lib/mail";
+import { fmtDate } from "@/lib/format";
 
 /** Admin manually confirms ending a contract for rent arrears — sets it TERMINATED, frees the
  * room, and records that the deposit is forfeited. This is deliberately a manual, explicit
@@ -36,7 +37,7 @@ export async function POST(
     );
   }
 
-  const note = `[系统] ${new Date().toISOString().slice(0, 10)} 因房租逾期超过 ${RENT_ARREARS.ESCALATION_DAYS} 天未缴, Admin (${user.name}) 终止合同, 押金没收。`;
+  const note = `[系统] ${fmtDate(new Date().toISOString())} 因房租逾期超过 ${RENT_ARREARS.ESCALATION_DAYS} 天未缴, Admin (${user.name}) 终止合同, 押金没收。`;
 
   await prisma.contract.update({
     where: { contractCode: contractId },

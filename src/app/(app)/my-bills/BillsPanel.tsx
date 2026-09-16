@@ -5,6 +5,7 @@ import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 import BreakdownPayModal from "./BreakdownPayModal";
 
 interface BreakdownRow {
@@ -32,9 +33,6 @@ interface PaymentRow {
 function fmt(v: number) {
   return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
 }
-function fmtDate(v: string | null) {
-  return v ? v.slice(0, 10) : "-";
-}
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -59,7 +57,7 @@ function buildBillSteps(b: PaymentRow): TimelineStep[] {
     { label: "账单已开", state: 0 < currentIndex ? "done" : currentIndex === 0 ? "active" : "pending" },
     {
       label: "已上传水单",
-      sublabel: b.paidDate ? b.paidDate.slice(0, 10) : undefined,
+      sublabel: b.paidDate ? fmtDate(b.paidDate) : undefined,
       state: 1 < currentIndex ? "done" : currentIndex === 1 ? "active" : "pending",
     },
     { label: "已批准", state: currentIndex === 2 ? "done" : "pending" },

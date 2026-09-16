@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { fmtDate } from "@/lib/format";
 
 const TEMPLATES = [
   {
@@ -130,7 +131,7 @@ export default function WarningLetterModal({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="text-xs text-gray-400">
-                  {l.createdAt.slice(0, 10)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
+                  {fmtDate(l.createdAt)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
                 </div>
                 <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{l.message}</div>
               </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ROOM_STATUS_LABELS, CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 
 interface RoomDetail {
   roomCode: string;
@@ -135,7 +136,7 @@ export default function RoomDetailClient({ roomCode }: { roomCode: string }) {
                   · {c.tenantName} · {c.agentName}
                   {(c.moveInDate || c.expiredDate) && (
                     <div className="text-xs text-gray-400">
-                      {c.moveInDate?.slice(0, 10) ?? "-"} ~ {c.expiredDate?.slice(0, 10) ?? "-"}
+                      {fmtDate(c.moveInDate)} ~ {fmtDate(c.expiredDate)}
                     </div>
                   )}
                 </div>
