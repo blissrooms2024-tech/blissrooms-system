@@ -1,11 +1,24 @@
 import { z } from "zod";
 
-const optDate = z
-  .string()
-  .trim()
-  .optional()
-  .transform((v) => (v ? new Date(v) : undefined))
-  .refine((d) => d === undefined || !isNaN(d.getTime()), { message: "日期格式不对，要用 YYYY-MM-DD" });
+// People fill spreadsheets with "-", "–", "—", "N/A" etc. to mean "no value" — treat those
+// the same as a genuinely blank cell instead of failing to coerce them into a number.
+const BLANK_MARKERS = new Set(["-", "–", "—", "n/a", "na", "nil", "none", "x"]);
+function blankAware(v: unknown) {
+  if (typeof v === "string" && BLANK_MARKERS.has(v.trim().toLowerCase())) return "";
+  return v;
+}
+
+const optDate = z.preprocess(
+  blankAware,
+  z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v ? new Date(v) : undefined))
+    .refine((d) => d === undefined || !isNaN(d.getTime()), { message: "日期格式不对，要用 YYYY-MM-DD" })
+);
+
+const optNumber = z.preprocess(blankAware, z.coerce.number().min(0).optional().default(0));
 
 const ynFlag = z
   .string()
@@ -23,13 +36,13 @@ export const legacyImportRowSchema = z.object({
   moveInDate: optDate,
   commencementDate: optDate,
   expiredDate: optDate,
-  tenureMonths: z.coerce.number().optional(),
-  roomRental: z.coerce.number().min(0, "房租一定要填"),
-  carparkRental: z.coerce.number().min(0).optional().default(0),
-  securityDeposit: z.coerce.number().min(0).optional().default(0),
-  utilitiesDeposit: z.coerce.number().min(0).optional().default(0),
-  accessCardDeposit: z.coerce.number().min(0).optional().default(0),
-  adminFee: z.coerce.number().min(0).optional().default(0),
+  tenureMonths: z.preprocess(blankAware, z.coerce.number().optional()),
+  roomRental: z.preprocess(blankAware, z.coerce.number().min(0, "房租一定要填")),
+  carparkRental: optNumber,
+  securityDeposit: optNumber,
+  utilitiesDeposit: optNumber,
+  accessCardDeposit: optNumber,
+  adminFee: optNumber,
   nationality: z.string().trim().optional().default(""),
   occupation: z.string().trim().optional().default(""),
   company: z.string().trim().optional().default(""),
