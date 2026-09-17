@@ -16,8 +16,8 @@ const TEMPLATES = [
     text: "Based on an on-site inspection / feedback from other residents, your conduct has violated the House Rules. Please correct this immediately, or the contract may be terminated.",
   },
   {
-    label: "长期未上传水单",
-    text: "You have an outstanding bill with no payment slip uploaded for an extended period. Please submit it within 3 days, or a late payment penalty will apply.",
+    label: "长期未上传交易单",
+    text: "You have an outstanding bill with no transaction slip uploaded for an extended period. Please submit it within 3 days, or a late payment penalty will apply.",
   },
 ];
 
@@ -113,13 +113,13 @@ export default function WarningLetterModal({
       </div>
 
       <textarea
-        className="input mt-2.5 h-24"
+        className="input mt-2.5 h-24 resize-y"
         placeholder="警告内容..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
 
-      <button onClick={send} disabled={sending} className="btn-primary mt-3">
+      <button onClick={send} disabled={sending} className="btn-primary mt-3 block">
         {sending ? "发送中..." : "发送警告信"}
       </button>
 

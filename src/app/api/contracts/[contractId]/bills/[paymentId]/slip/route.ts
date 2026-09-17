@@ -20,7 +20,7 @@ export async function POST(
   const c = await prisma.contract.findUnique({ where: { contractCode: contractId } });
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (c.tenantId !== user.sub) {
-    return NextResponse.json({ success: false, message: "只有这张合同的租客本人可以上传水单" }, { status: 403 });
+    return NextResponse.json({ success: false, message: "只有这张合同的租客本人可以上传交易单" }, { status: 403 });
   }
 
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
@@ -63,7 +63,7 @@ export async function POST(
       user.name
     );
 
-    return NextResponse.json({ success: true, message: "✅ 水单已上传，等 Admin 审核" });
+    return NextResponse.json({ success: true, message: "✅ 交易单已上传，等 Admin 审核" });
   } catch (e) {
     return NextResponse.json(
       { success: false, message: "上传失败: " + (e instanceof Error ? e.message : String(e)) },

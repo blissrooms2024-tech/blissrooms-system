@@ -9,7 +9,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/units", label: "🏢 楼盘" },
     { href: "/rooms", label: "🏠 房间" },
     { href: "/contracts", label: "📄 合同" },
-    { href: "/payments/review", label: "🧾 水单审核" },
+    { href: "/payments/review", label: "🧾 交易单审核" },
     { href: "/maintenance", label: "🔧 报修" },
   ],
   ADMIN: [
@@ -17,7 +17,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/units", label: "🏢 楼盘" },
     { href: "/rooms", label: "🏠 房间" },
     { href: "/contracts", label: "📄 合同" },
-    { href: "/payments/review", label: "🧾 水单审核" },
+    { href: "/payments/review", label: "🧾 交易单审核" },
     { href: "/payments/bulk", label: "📢 批量开账单" },
     { href: "/maintenance", label: "🔧 报修" },
     { href: "/users", label: "👥 用户" },

@@ -89,7 +89,7 @@ export async function POST(
       user.name
     );
 
-    return NextResponse.json({ success: true, message: "✅ 水单已上传，等 Admin 审核" });
+    return NextResponse.json({ success: true, message: "✅ 交易单已上传，等 Admin 审核" });
   } catch (e) {
     return NextResponse.json(
       { success: false, message: "上传失败: " + (e instanceof Error ? e.message : String(e)) },

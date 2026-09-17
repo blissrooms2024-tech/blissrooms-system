@@ -121,8 +121,8 @@ export async function notifyAdminsSlipUploaded(bill: BillInfo, tenantName: strin
   const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
   const link = `${APP_URL}/payments/review`;
   const html = wrap(
-    "New Slip Pending Review",
-    `<p>${tenantName} uploaded a payment slip that needs review:</p>
+    "New Transaction Slip Pending Review",
+    `<p>${tenantName} uploaded a transaction slip that needs review:</p>
      <p><b>${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type)} · RM${bill.amountPaid}</p>
      <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Review</a></p>`
   );
@@ -135,11 +135,11 @@ export async function notifyTenantBillCreated(tenant: { name: string; email: str
   const html = wrap(
     "New Bill",
     `<p>Hi ${tenant.name},</p>
-     <p>You have a new bill. Please pay and upload your payment slip as soon as possible:</p>
+     <p>You have a new bill. Please pay and upload your transaction slip as soon as possible:</p>
      <p><b>${typeLabel(bill.type)}</b> · RM${bill.amountDue}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
      <p>Due date: ${fmtDate(bill.dueDate)}</p>
-     <p style="color:#c0392b;">A late payment penalty of RM30/day applies if the slip isn't uploaded by the due date.</p>
-     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Upload Slip</a></p>`
+     <p style="color:#c0392b;">A late payment penalty of RM30/day applies if the transaction slip isn't uploaded by the due date.</p>
+     <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Upload Transaction Slip</a></p>`
   );
   return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type)} RM${bill.amountDue}`, html, "BillCreated", bill.paymentCode, triggeredBy);
 }
@@ -157,7 +157,7 @@ export async function notifyTenantBillReviewed(
     `Bill ${approved ? "Approved" : "Rejected"}`,
     `<p>Hi ${tenant.name},</p>
      <p>Your bill <b>${typeLabel(bill.type)} RM${bill.amountPaid}</b> has been ${label}.</p>
-     ${!approved ? `<p style="color:#c0392b;">Reason: ${reason}</p><p>Please re-upload the correct payment slip.</p>` : ""}
+     ${!approved ? `<p style="color:#c0392b;">Reason: ${reason}</p><p>Please re-upload the correct transaction slip.</p>` : ""}
      <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View My Tenancy</a></p>`
   );
   return send(
@@ -176,7 +176,7 @@ export async function notifyTenantLateFee(tenant: { name: string; email: string 
     "Late Payment Penalty",
     `<p>Hi ${tenant.name},</p>
      <p>Your <b>${typeLabel(originalType)}</b> bill is overdue, so a late payment penalty of RM${bill.amountDue} has been charged.</p>
-     <p>This penalty accrues daily — please upload the payment slip for the original bill and the penalty as soon as possible to avoid further charges.</p>
+     <p>This penalty accrues daily — please upload the transaction slip for the original bill and the penalty as soon as possible to avoid further charges.</p>
      <p><a href="${APP_URL}/my-tenancy" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Handle Now</a></p>`
   );
   return send(tenant.email, `Bliss Rooms — Late Payment Penalty RM${bill.amountDue}`, html, "LateFee", bill.paymentCode, "system-cron");

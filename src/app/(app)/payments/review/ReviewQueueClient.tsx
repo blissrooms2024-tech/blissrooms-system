@@ -99,11 +99,11 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="mb-3.5 text-base font-semibold text-brand">🧾 水单审核队列</h3>
+      <h3 className="mb-3.5 text-base font-semibold text-brand">🧾 交易单审核队列</h3>
       {error && <div className="text-sm text-red-600">{error}</div>}
       {!items && !error && <div className="text-sm text-gray-500">载入中...</div>}
       {items && items.length === 0 && (
-        <div className="py-8 text-center text-gray-400">🎉 没有待审核的水单</div>
+        <div className="py-8 text-center text-gray-400">🎉 没有待审核的交易单</div>
       )}
       {items && items.length > 0 && (
         <>
@@ -124,7 +124,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
             </select>
           </div>
           {filteredItems && filteredItems.length === 0 && (
-            <div className="py-8 text-center text-gray-400">没有符合条件的水单</div>
+            <div className="py-8 text-center text-gray-400">没有符合条件的交易单</div>
           )}
         </>
       )}
@@ -136,7 +136,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                 <button type="button" onClick={() => setZoomUrl(p.receiptLink)} className="shrink-0 cursor-zoom-in">
                   <img
                     src={p.receiptLink}
-                    alt="水单"
+                    alt="交易单"
                     className="h-[70px] w-[70px] rounded border border-gray-300 object-cover hover:opacity-90"
                   />
                 </button>
@@ -206,7 +206,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
           ))}
         </div>
       )}
-      {zoomUrl && <Lightbox src={zoomUrl} alt="水单" onClose={() => setZoomUrl(null)} />}
+      {zoomUrl && <Lightbox src={zoomUrl} alt="交易单" onClose={() => setZoomUrl(null)} />}
     </div>
   );
 }

@@ -36,7 +36,7 @@ const PAY_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD",
 const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "OTHER"];
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: "待上传水单", cls: "bg-gray-100 text-gray-600" },
+  PENDING: { label: "待上传交易单", cls: "bg-gray-100 text-gray-600" },
   PENDING_REVIEW: { label: "待审核", cls: "bg-yellow-50 text-yellow-800" },
   REJECTED: { label: "已拒绝", cls: "bg-red-50 text-red-700" },
 };
@@ -295,7 +295,7 @@ export default function PaymentModal({
 
       {role === "ADMIN" && (
       <div className="mt-3.5 rounded-lg bg-violet-50 p-3.5">
-        <b className="text-sm">🧾 开新账单 (租客要上传水单, Admin 审核后才算已付)</b>
+        <b className="text-sm">🧾 开新账单 (租客要上传交易单, Admin 审核后才算已付)</b>
         <div className="mt-2 flex flex-wrap items-end gap-2.5">
           <div className="min-w-[110px] flex-1">
             <label className="mb-1.5 block text-sm text-gray-600">项目</label>
@@ -393,7 +393,7 @@ export default function PaymentModal({
                               onClick={() => setZoomUrl(b.receiptLink)}
                               className="text-xs font-semibold text-brand underline"
                             >
-                              🧾 查看水单
+                              🧾 查看交易单
                             </button>
                           )}
                           {role !== "ADMIN" ? (
@@ -486,13 +486,13 @@ export default function PaymentModal({
               <td className="px-2.5 py-1.5">{paymentTypeLabel(p.type, p.customLabel)}</td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
-              <td className="px-2.5 py-1.5">{p.method || (p.receiptLink ? "水单上传" : "-")}</td>
+              <td className="px-2.5 py-1.5">{p.method || (p.receiptLink ? "交易单上传" : "-")}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {zoomUrl && <Lightbox src={zoomUrl} alt="水单" onClose={() => setZoomUrl(null)} />}
+      {zoomUrl && <Lightbox src={zoomUrl} alt="交易单" onClose={() => setZoomUrl(null)} />}
     </Modal>
   );
 }

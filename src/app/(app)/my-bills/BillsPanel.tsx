@@ -48,7 +48,7 @@ function buildBillSteps(b: PaymentRow): TimelineStep[] {
   if (b.status === "REJECTED") {
     return [
       { label: "账单已开", state: "done" },
-      { label: "已上传水单", state: "done" },
+      { label: "已上传交易单", state: "done" },
       { label: "已拒绝", sublabel: b.reviewNote ?? undefined, state: "rejected" },
     ];
   }
@@ -56,7 +56,7 @@ function buildBillSteps(b: PaymentRow): TimelineStep[] {
   return [
     { label: "账单已开", state: 0 < currentIndex ? "done" : currentIndex === 0 ? "active" : "pending" },
     {
-      label: "已上传水单",
+      label: "已上传交易单",
       sublabel: b.paidDate ? fmtDate(b.paidDate) : undefined,
       state: 1 < currentIndex ? "done" : currentIndex === 1 ? "active" : "pending",
     },
@@ -202,7 +202,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                       onClick={() => setZoomUrl(b.receiptLink)}
                       className="mt-2 text-xs font-semibold text-brand underline"
                     >
-                      🧾 查看已上传的水单
+                      🧾 查看已上传的交易单
                     </button>
                   )}
                   {(b.status === "PENDING" || b.status === "REJECTED") && (
@@ -251,7 +251,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
         </tbody>
       </table>
 
-      {zoomUrl && <Lightbox src={zoomUrl} alt="水单" onClose={() => setZoomUrl(null)} />}
+      {zoomUrl && <Lightbox src={zoomUrl} alt="交易单" onClose={() => setZoomUrl(null)} />}
 
       {payingItem && (
         <BreakdownPayModal
