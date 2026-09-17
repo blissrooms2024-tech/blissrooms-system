@@ -10,7 +10,9 @@ import { notifyTenantLateFee, sendWarningLetter, notifyAdminsRentEscalation } fr
  * total. Excludes LATE_FEE rows themselves so penalties don't compound into penalties on
  * penalties. On top of that, overdue RENTAL bills specifically escalate: day 7 auto-sends the
  * tenant a warning letter, day 10 emails every Admin that the contract needs a manual decision
- * on termination + deposit forfeiture (never auto-executed). */
+ * on termination + deposit forfeiture (never auto-executed). Skips any bill whose tenant
+ * account isn't verified yet (User.verified) — typically a legacy-imported record Admin
+ * hasn't finished checking, so it shouldn't accrue penalties on its own. */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -28,7 +30,17 @@ export async function GET(req: NextRequest) {
   let charged = 0;
   let warned = 0;
   let escalated = 0;
+  let skippedUnverified = 0;
   for (const bill of overdue) {
+    // Don't penalize a tenant whose account hasn't been verified yet — typically a legacy-
+    // imported record Admin hasn't finished double-checking. Once Admin verifies the account
+    // (or the tenant does), this bill becomes eligible on the cron's next run.
+    const tenant = bill.tenantId ? await prisma.user.findUnique({ where: { id: bill.tenantId } }) : null;
+    if (!tenant || !tenant.verified) {
+      skippedUnverified++;
+      continue;
+    }
+
     const daysOverdue = Math.round((startOfToday.getTime() - bill.dueDate!.getTime()) / (24 * 3600 * 1000));
 
     const alreadyChargedToday = await prisma.payment.findFirst({
@@ -55,23 +67,18 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      if (bill.tenantId) {
-        const tenant = await prisma.user.findUnique({ where: { id: bill.tenantId } });
-        if (tenant) {
-          await notifyTenantLateFee(
-            tenant,
-            {
-              paymentCode: lateFeeCode,
-              contractCode: "",
-              roomCode: bill.roomCode,
-              type: "LATE_FEE",
-              amountDue: FEES.LATE_PER_DAY,
-              amountPaid: 0,
-            },
-            bill.type
-          );
-        }
-      }
+      await notifyTenantLateFee(
+        tenant,
+        {
+          paymentCode: lateFeeCode,
+          contractCode: "",
+          roomCode: bill.roomCode,
+          type: "LATE_FEE",
+          amountDue: FEES.LATE_PER_DAY,
+          amountPaid: 0,
+        },
+        bill.type
+      );
       charged++;
     }
 
@@ -81,12 +88,9 @@ export async function GET(req: NextRequest) {
       const alreadyWarned = await prisma.warningLetter.findFirst({
         where: { contractId: bill.contractId, triggeredBy: "system-cron", createdAt: { gte: bill.dueDate! } },
       });
-      if (!alreadyWarned && bill.tenantId) {
-        const [tenant, contract] = await Promise.all([
-          prisma.user.findUnique({ where: { id: bill.tenantId } }),
-          prisma.contract.findUnique({ where: { id: bill.contractId } }),
-        ]);
-        if (tenant && contract) {
+      if (!alreadyWarned) {
+        const contract = await prisma.contract.findUnique({ where: { id: bill.contractId } });
+        if (contract) {
           const message = `Your rent of RM${Number(bill.amountDue)} (${bill.periodMonth ?? ""}) is now ${daysOverdue} days overdue, and a late payment penalty of RM${FEES.LATE_PER_DAY}/day is accruing. Please upload transaction slips for the rent and penalty as soon as possible, or we will proceed further under the terms of the contract, including termination.`;
           await sendWarningLetter(tenant, contract.contractCode, message, "system");
           await prisma.warningLetter.create({
@@ -122,5 +126,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, charged, warned, escalated });
+  return NextResponse.json({ success: true, charged, warned, escalated, skippedUnverified });
 }

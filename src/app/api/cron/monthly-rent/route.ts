@@ -8,9 +8,11 @@ import { notifyTenantBillCreated } from "@/lib/mail";
  * next month — so tenants have 10+ days' notice, and the existing late-fees cron (which
  * charges a RM30/day penalty once a bill's dueDate has passed) naturally starts penalizing
  * from the 6th without any separate "penalty day" logic needed here. Skips a contract whose
- * expiredDate falls before that due date, since the tenancy will already have ended by then.
- * Idempotent per contract+periodMonth, so a retry (or a second manual trigger) never doubles
- * up a tenant's rent bill. */
+ * expiredDate falls before that due date, since the tenancy will already have ended by then,
+ * and skips any contract whose tenant account isn't verified yet (User.verified) — typically
+ * a legacy-imported record Admin hasn't finished checking, so it shouldn't get billed on its
+ * own. Idempotent per contract+periodMonth, so a retry (or a second manual trigger) never
+ * doubles up a tenant's rent bill. */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -31,10 +33,15 @@ export async function GET(req: NextRequest) {
   let rentalCreated = 0;
   let carparkCreated = 0;
   let skippedExpiring = 0;
+  let skippedUnverified = 0;
 
   for (const c of contracts) {
     if (c.expiredDate && c.expiredDate < dueDate) {
       skippedExpiring++;
+      continue;
+    }
+    if (!c.tenant || !c.tenant.verified) {
+      skippedUnverified++;
       continue;
     }
 
@@ -121,5 +128,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, periodMonth, rentalCreated, carparkCreated, skippedExpiring });
+  return NextResponse.json({ success: true, periodMonth, rentalCreated, carparkCreated, skippedExpiring, skippedUnverified });
 }
