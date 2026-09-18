@@ -32,6 +32,7 @@ export default function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [mtceOpenCount, setMtceOpenCount] = useState(0);
   const [mtceHasUnseenCompleted, setMtceHasUnseenCompleted] = useState(false);
+  const [warningCount, setWarningCount] = useState(0);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -66,6 +67,15 @@ export default function AppShell({
     }
   }, [user.role, pathname, mtceHref]);
 
+  useEffect(() => {
+    if (user.role !== "TENANT" && !isAlsoTenant) return;
+    fetch("/api/contracts/warning-summary")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setWarningCount(data.count);
+      });
+  }, [user.role, isAlsoTenant, pathname]);
+
   const menu = MENUS[user.role] ?? [];
   const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT] : menu;
   const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料" }];
@@ -73,6 +83,7 @@ export default function AppShell({
   const sidebarLinks = menuWithProfile.map((m) => {
     const active = pathname === m.href || pathname.startsWith(m.href + "/");
     const isMaintenance = m.href === mtceHref;
+    const isWarnings = m.href === "/my-warnings";
     return (
       <Link
         key={m.href}
@@ -93,6 +104,11 @@ export default function AppShell({
                 {mtceOpenCount}
               </span>
             )}
+          </span>
+        )}
+        {isWarnings && warningCount > 0 && (
+          <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+            {warningCount}
           </span>
         )}
       </Link>
