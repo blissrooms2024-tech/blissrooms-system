@@ -129,9 +129,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
     <div className="rounded-xl bg-white p-5 shadow-sm">
       <h3 className="text-lg font-bold text-brand">💳 我的账单 — {contractCode}</h3>
 
-      <div className="my-3 flex gap-2.5">
-        <Box label="总款" value={fmt(totals.due)} />
-        <Box label="已收" value={fmt(totals.paid)} />
+      <div className="my-3">
         <Box label="还欠" value={fmt(totals.outstanding)} color="text-red-600" />
       </div>
 
