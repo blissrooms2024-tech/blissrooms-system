@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
-import { MOVE_ITEMS } from "@/lib/moveItems";
+import { MOVE_ITEMS, CARPARK_MOVE_ITEMS } from "@/lib/moveItems";
 import { RULES } from "@/lib/config";
 import { newId } from "@/lib/id";
 import type { MoveType } from "@/generated/prisma/enums";
@@ -32,8 +32,10 @@ export async function GET(
   const typeParam = req.nextUrl.searchParams.get("type"); // "MoveIn" | "MoveOut"
   const type = typeToEnum(typeParam);
 
-  const c = await prisma.contract.findUnique({ where: { contractCode: contractId } });
+  const c = await prisma.contract.findUnique({ where: { contractCode: contractId }, include: { room: true } });
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
+
+  const items = c.room.isCarpark ? CARPARK_MOVE_ITEMS : MOVE_ITEMS;
 
   const isTenant = c.tenantId === user.sub;
   const isAdmin = user.role === "ADMIN";
@@ -75,7 +77,7 @@ export async function GET(
       contractCode: c.contractCode,
       tenantName: c.tenantName,
       tenantIc: c.tenantIc,
-      roomCode: (await prisma.room.findUnique({ where: { id: c.roomId } }))?.roomCode,
+      roomCode: c.room.roomCode,
       moveInDate: c.moveInDate,
     }),
     hasForm: !!form,
@@ -92,7 +94,7 @@ export async function GET(
           locked: form.locked,
         })
       : null,
-    items: MOVE_ITEMS,
+    items,
   });
 }
 
@@ -117,8 +119,10 @@ export async function POST(
 
   const type = typeToEnum(body.type ?? null);
 
-  const c = await prisma.contract.findUnique({ where: { contractCode: contractId } });
+  const c = await prisma.contract.findUnique({ where: { contractCode: contractId }, include: { room: true } });
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
+
+  const items = c.room.isCarpark ? CARPARK_MOVE_ITEMS : MOVE_ITEMS;
 
   const isTenant = c.tenantId === user.sub;
   if (!isTenant && user.role !== "ADMIN") {
@@ -134,7 +138,7 @@ export async function POST(
   const photos = body.photos || {};
   const conditions = body.conditions || {};
   const missing: string[] = [];
-  for (const it of MOVE_ITEMS) {
+  for (const it of items) {
     if (!it.required) continue;
     const arr = photos[it.key] || [];
     if (arr.length < it.min) missing.push(`${it.label}(照片)`);
@@ -164,7 +168,7 @@ export async function POST(
     type,
     contractId: c.id,
     tenantId: c.tenantId,
-    roomCode: (await prisma.room.findUnique({ where: { id: c.roomId } }))!.roomCode,
+    roomCode: c.room.roomCode,
     moveInDate: body.moveInDate ? new Date(body.moveInDate) : c.moveInDate,
     formDate: now,
     photos,

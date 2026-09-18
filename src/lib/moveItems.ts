@@ -35,3 +35,10 @@ export const MOVE_ITEMS: MoveItem[] = [
   { key: "others", label: "Others 其他物品 (选填)", max: 5, required: false, min: 1 },
   { key: "damages", label: "Damages/Scratches 损坏刮痕 (选填)", max: 5, required: false, min: 1 },
 ];
+
+/** A carpark-only contract has no room to check in/out of — just the access card/RFID that
+ * opens the barrier, and the parking bay itself. */
+export const CARPARK_MOVE_ITEMS: MoveItem[] = [
+  { key: "accessCard", label: "Access Card / RFID 门卡 (正反面)", max: 3, required: true, min: 1 },
+  { key: "parkingLot", label: "Parking Lot 车位照片", max: 3, required: true, min: 1 },
+];

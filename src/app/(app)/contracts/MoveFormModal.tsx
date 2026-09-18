@@ -43,6 +43,7 @@ export function MoveFormPanel({
   const [isAdmin, setIsAdmin] = useState(false);
   const [locked, setLocked] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const [items, setItems] = useState<MoveItem[]>(MOVE_ITEMS);
 
   const load = useCallback(() => {
     return fetch(`/api/contracts/${contractCode}/move?type=${type}`)
@@ -55,6 +56,7 @@ export function MoveFormPanel({
         }
         setIsAdmin(!!data.isAdmin);
         setLocked(!!data.locked);
+        setItems(data.items?.length ? data.items : MOVE_ITEMS);
         // Tenant viewing their own locked submission: still show it, read-only, instead of
         // just an error — every other reason (contract not active, no permission, move-out
         // window closed) has no form data worth showing, so those stay a plain blocked message.
@@ -201,7 +203,7 @@ export function MoveFormPanel({
             />
           </div>
 
-          {MOVE_ITEMS.map((it) => (
+          {items.map((it) => (
             <div key={it.key} className="rounded-lg border border-gray-200 p-3">
               <b className="text-sm">
                 {it.label} {it.required && <span className="text-red-600">*</span>}
