@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -134,6 +135,13 @@ export default function WarningLetterModal({
                   {fmtDate(l.createdAt)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
                 </div>
                 <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{l.message}</div>
+                <Link
+                  href={`/warning-letter/${l.letterCode}`}
+                  target="_blank"
+                  className="mt-1 inline-block text-xs font-semibold text-brand underline"
+                >
+                  📄 查看正式信件
+                </Link>
               </div>
               <button
                 onClick={() => setDeleting(l.letterCode)}

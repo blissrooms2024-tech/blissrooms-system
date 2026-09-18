@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Modal from "@/components/Modal";
 import { fmtDate } from "@/lib/format";
 
@@ -51,8 +52,17 @@ export default function WarningLettersModal({
         <div className="mt-3 space-y-2">
           {letters.map((l) => (
             <div key={l.letterCode} className="rounded-lg border border-gray-200 p-3">
-              <div className="text-xs text-gray-400">
-                {fmtDate(l.createdAt)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="text-xs text-gray-400">
+                  {fmtDate(l.createdAt)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
+                </div>
+                <Link
+                  href={`/warning-letter/${l.letterCode}`}
+                  target="_blank"
+                  className="shrink-0 text-xs font-semibold text-brand underline"
+                >
+                  📄 查看正式信件
+                </Link>
               </div>
               <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{l.message}</div>
             </div>
