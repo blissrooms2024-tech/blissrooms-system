@@ -73,6 +73,10 @@ export async function GET() {
       depositOutstanding,
       agentSigned: !!c.agentSignature,
       tenantSigned: !!c.tenantSignature,
+      // Legacy-imported contracts go straight to ACTIVE with no digital signature on either
+      // side — they were signed on paper before import, so the sign-in-app flow and the
+      // original move-in form (already recorded in the old Google Form) don't apply.
+      isLegacy: c.status === "ACTIVE" && !c.agentSignature && !c.tenantSignature,
       hasICFront: !!c.icFront,
       hasICBack: !!c.icBack,
       moveInDone: moveSet.has(`${c.id}_MOVE_IN`),

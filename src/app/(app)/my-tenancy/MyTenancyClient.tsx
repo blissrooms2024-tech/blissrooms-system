@@ -13,6 +13,7 @@ interface Card {
   status: string;
   agentSigned: boolean;
   tenantSigned: boolean;
+  isLegacy: boolean;
   hasICFront: boolean;
   hasICBack: boolean;
   nationality: string | null;
@@ -117,7 +118,9 @@ export default function MyTenancyClient() {
                 icon="✍️"
                 name="合同签名 Signature"
                 status={
-                  c.tenantSigned ? (
+                  c.isLegacy ? (
+                    <Pill tone="done">✅ 旧合同 (纸本已签)</Pill>
+                  ) : c.tenantSigned ? (
                     <Pill tone="done">✅ 已签</Pill>
                   ) : !c.agentSigned ? (
                     <Pill tone="lock">🔒 等 Agent 先签</Pill>

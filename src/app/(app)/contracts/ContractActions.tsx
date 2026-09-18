@@ -104,7 +104,11 @@ export default function ContractActions({
   if (role === "ADMIN" || role === "AGENT") {
     items.push({ key: "pay", label: "💰 收款", color: "bg-amber-500", onClick: () => setPaying(true), primary: true });
   }
-  if (role === "AGENT" && !c.agentSignature && (c.status === "PENDING_SIGN" || c.status === "ACTIVE")) {
+  // status === "ACTIVE" is deliberately excluded here: under the normal sign flow, ACTIVE
+  // only happens once both signatures already exist, so an ACTIVE contract with no
+  // agentSignature is a legacy-imported one (signed on paper before import) — it doesn't
+  // need a digital signature, only a fresh renewal contract would go through PENDING_SIGN.
+  if (role === "AGENT" && !c.agentSignature && c.status === "PENDING_SIGN") {
     items.push({ key: "sign", label: "✍️ 签名", color: "bg-pink-600", onClick: () => setSigning(true), primary: true });
   }
   if ((role === "AGENT" || role === "ADMIN") && c.status === "DRAFT") {

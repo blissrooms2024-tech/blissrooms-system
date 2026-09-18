@@ -36,6 +36,11 @@ export async function GET(
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
 
   const items = c.room.isCarpark ? CARPARK_MOVE_ITEMS : MOVE_ITEMS;
+  // Legacy-imported contract (ACTIVE with no digital signature on either side — signed on
+  // paper before import) already has its move-in condition recorded in the old Google Form,
+  // so it doesn't need to be redone here — unless someone already filled one in this system,
+  // in which case that record stays viewable/editable as normal.
+  const isLegacy = c.status === "ACTIVE" && !c.agentSignature && !c.tenantSignature;
 
   const isTenant = c.tenantId === user.sub;
   const isAdmin = user.role === "ADMIN";
@@ -51,6 +56,7 @@ export async function GET(
   let reason = "";
   if (type === "MOVE_IN") {
     if (c.status !== "ACTIVE") reason = "合同签好生效后才能填 Move-in";
+    else if (isLegacy && !form) reason = "旧合同 Move-in 记录已在之前的系统 (Google Form)，不需要重填";
     else if (!isTenant && !isAdmin) reason = "只有租客本人或 Admin 可填";
     else if (isTenant && locked) reason = "表单已提交并锁定, 如需修改请联系 Admin 重新开放";
     else if (isTenant && (await depositOutstanding(c.id, c.securityDeposit)) > 0)
@@ -123,6 +129,7 @@ export async function POST(
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
 
   const items = c.room.isCarpark ? CARPARK_MOVE_ITEMS : MOVE_ITEMS;
+  const isLegacy = c.status === "ACTIVE" && !c.agentSignature && !c.tenantSignature;
 
   const isTenant = c.tenantId === user.sub;
   if (!isTenant && user.role !== "ADMIN") {
@@ -131,6 +138,17 @@ export async function POST(
   if (type === "MOVE_IN" && isTenant && (await depositOutstanding(c.id, c.securityDeposit)) > 0) {
     return NextResponse.json(
       { success: false, message: "请先缴清押金 (Deposit) 才能填写 Move-in Form" },
+      { status: 403 }
+    );
+  }
+
+  const existing = await prisma.moveInOutForm.findMany({
+    where: { contractId: c.id, type },
+    orderBy: { id: "asc" },
+  });
+  if (type === "MOVE_IN" && isLegacy && existing.length === 0) {
+    return NextResponse.json(
+      { success: false, message: "旧合同 Move-in 记录已在之前的系统 (Google Form)，不需要重填" },
       { status: 403 }
     );
   }
@@ -151,10 +169,6 @@ export async function POST(
     );
   }
 
-  const existing = await prisma.moveInOutForm.findMany({
-    where: { contractId: c.id, type },
-    orderBy: { id: "asc" },
-  });
   const latest = existing.length ? existing[existing.length - 1] : null;
   if (isTenant && latest?.locked) {
     return NextResponse.json(
