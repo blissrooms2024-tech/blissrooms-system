@@ -17,7 +17,7 @@ export async function GET() {
     include: { room: { select: { roomCode: true } } },
   });
 
-  const [paidGroups, depositPaidGroups, moveForms, unpaidBills, openMaintenance] = await Promise.all([
+  const [paidGroups, depositPaidGroups, moveForms, unpaidBills, openMaintenance, warningLetters] = await Promise.all([
     prisma.payment.groupBy({
       by: ["contractId"],
       where: { contractId: { in: contracts.map((c) => c.id) }, status: "Paid" },
@@ -43,6 +43,10 @@ export async function GET() {
       },
       select: { contractId: true },
     }),
+    prisma.warningLetter.findMany({
+      where: { contractId: { in: contracts.map((c) => c.id) } },
+      select: { contractId: true },
+    }),
   ]);
 
   const paidMap = new Map(paidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));
@@ -52,6 +56,8 @@ export async function GET() {
   for (const b of unpaidBills) unpaidBillCount.set(b.contractId, (unpaidBillCount.get(b.contractId) ?? 0) + 1);
   const openMaintenanceCount = new Map<string, number>();
   for (const m of openMaintenance) openMaintenanceCount.set(m.contractId, (openMaintenanceCount.get(m.contractId) ?? 0) + 1);
+  const warningLetterCount = new Map<string, number>();
+  for (const w of warningLetters) warningLetterCount.set(w.contractId, (warningLetterCount.get(w.contractId) ?? 0) + 1);
 
   const cards = contracts.map((c) => {
     const paid = paidMap.get(c.id) ?? 0;
@@ -83,6 +89,7 @@ export async function GET() {
       moveOutDone: moveSet.has(`${c.id}_MOVE_OUT`),
       unpaidBillCount: unpaidBillCount.get(c.id) ?? 0,
       openMaintenanceCount: openMaintenanceCount.get(c.id) ?? 0,
+      warningLetterCount: warningLetterCount.get(c.id) ?? 0,
       daysToExpiry,
       nationality: c.nationality,
       contactNumber: c.contactNumber,

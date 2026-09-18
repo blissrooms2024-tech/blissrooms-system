@@ -6,6 +6,7 @@ import { CONTRACT_STATUS_LABELS } from "@/lib/config";
 import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import TenantInfoEditModal from "./TenantInfoEditModal";
+import WarningLettersModal from "./WarningLettersModal";
 
 interface Card {
   contractCode: string;
@@ -14,6 +15,7 @@ interface Card {
   agentSigned: boolean;
   tenantSigned: boolean;
   isLegacy: boolean;
+  warningLetterCount: number;
   hasICFront: boolean;
   hasICBack: boolean;
   nationality: string | null;
@@ -44,6 +46,7 @@ export default function MyTenancyClient() {
   const [signing, setSigning] = useState<string | null>(null);
   const [icUploading, setIcUploading] = useState<string | null>(null);
   const [editingInfo, setEditingInfo] = useState<Card | null>(null);
+  const [viewingLetters, setViewingLetters] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -170,6 +173,19 @@ export default function MyTenancyClient() {
                   </button>
                 }
               />
+
+              {c.warningLetterCount > 0 && (
+                <Row
+                  icon="⚠️"
+                  name="警告信 Warning Letter"
+                  status={<Pill tone="due">{c.warningLetterCount} 封</Pill>}
+                  action={
+                    <button onClick={() => setViewingLetters(c.contractCode)} className="btn-soft px-3.5 py-1.5 text-xs">
+                      查看
+                    </button>
+                  }
+                />
+              )}
             </div>
           </div>
         );
@@ -188,6 +204,9 @@ export default function MyTenancyClient() {
           onClose={() => setEditingInfo(null)}
           onSaved={load}
         />
+      )}
+      {viewingLetters && (
+        <WarningLettersModal contractCode={viewingLetters} onClose={() => setViewingLetters(null)} />
       )}
     </div>
   );
