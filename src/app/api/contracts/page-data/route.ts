@@ -17,46 +17,54 @@ export async function GET() {
   startOfToday.setHours(0, 0, 0, 0);
   const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
 
-  const [contracts, paidGroups, vacantRooms, agents, escalatedRentBills] = await Promise.all([
-    prisma.contract.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: { room: { select: { roomCode: true } } },
-    }),
-    prisma.payment.groupBy({ by: ["contractId"], where: { status: "Paid" }, _sum: { amountPaid: true } }),
-    prisma.room.findMany({
-      where: { status: "VACANT" },
-      select: { roomCode: true, propertyName: true, isCarpark: true },
-    }),
-    user.role === "ADMIN"
-      ? prisma.user.findMany({
-          where: { role: "AGENT", status: "ACTIVE" },
-          select: { userCode: true, name: true },
-          orderBy: { name: "asc" },
-        })
-      : Promise.resolve([]),
-    prisma.payment.findMany({
-      where: { type: "RENTAL", status: "PENDING", dueDate: { lte: escalationCutoff } },
-      select: { contractId: true },
-    }),
-  ]);
+  try {
+    const [contracts, paidGroups, vacantRooms, agents, escalatedRentBills] = await Promise.all([
+      prisma.contract.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: { room: { select: { roomCode: true } } },
+      }),
+      prisma.payment.groupBy({ by: ["contractId"], where: { status: "Paid" }, _sum: { amountPaid: true } }),
+      prisma.room.findMany({
+        where: { status: "VACANT" },
+        select: { roomCode: true, propertyName: true, isCarpark: true },
+      }),
+      user.role === "ADMIN"
+        ? prisma.user.findMany({
+            where: { role: "AGENT", status: "ACTIVE" },
+            select: { userCode: true, name: true },
+            orderBy: { name: "asc" },
+          })
+        : Promise.resolve([]),
+      prisma.payment.findMany({
+        where: { type: "RENTAL", status: "PENDING", dueDate: { lte: escalationCutoff } },
+        select: { contractId: true },
+      }),
+    ]);
 
-  const paidMap = new Map(paidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));
-  const escalatedSet = new Set(escalatedRentBills.map((b) => b.contractId));
-  const list = contracts.map((c) => {
-    const paid = paidMap.get(c.id) ?? 0;
-    const outstanding = Math.max(Number(c.totalOutstanding) - paid, 0);
-    return serialize({ ...c, _paid: paid, _outstanding: outstanding, _rentEscalated: escalatedSet.has(c.id) });
-  });
+    const paidMap = new Map(paidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));
+    const escalatedSet = new Set(escalatedRentBills.map((b) => b.contractId));
+    const list = contracts.map((c) => {
+      const paid = paidMap.get(c.id) ?? 0;
+      const outstanding = Math.max(Number(c.totalOutstanding) - paid, 0);
+      return serialize({ ...c, _paid: paid, _outstanding: outstanding, _rentEscalated: escalatedSet.has(c.id) });
+    });
 
-  return NextResponse.json({
-    success: true,
-    contracts: list,
-    // "vacant" is every vacant room including carparks — a carpark can itself be the main
-    // room on a carpark-only contract. "vacantCarparks" is only carparks, for the separate
-    // optional carpark-add-on picker on a non-carpark contract.
-    vacant: vacantRooms,
-    vacantCarparks: vacantRooms.filter((r) => r.isCarpark),
-    agents,
-  });
+    return NextResponse.json({
+      success: true,
+      contracts: list,
+      // "vacant" is every vacant room including carparks — a carpark can itself be the main
+      // room on a carpark-only contract. "vacantCarparks" is only carparks, for the separate
+      // optional carpark-add-on picker on a non-carpark contract.
+      vacant: vacantRooms,
+      vacantCarparks: vacantRooms.filter((r) => r.isCarpark),
+      agents,
+    });
+  } catch (e) {
+    console.error("[contracts/page-data]", e);
+    return NextResponse.json(
+      { success: false, message: "读取合同资料失败: " + (e instanceof Error ? e.message : String(e)) },
+      { status: 500 }
+    );
+  }
 }

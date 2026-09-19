@@ -25,14 +25,20 @@ export default function ContractsClient({ role }: { role: string }) {
     setError("");
     try {
       const res = await fetch("/api/contracts/page-data");
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        setError(`服务器出错 (HTTP ${res.status})，请稍后再试或截图给开发者`);
+        return;
+      }
       if (!data.success) {
         setError(data.message);
         return;
       }
       setContracts(data.contracts);
     } catch {
-      setError("出错，请稍后再试");
+      setError("网络连接失败，请检查网络后重试");
     }
   }, []);
 
