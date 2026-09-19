@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
@@ -375,7 +376,12 @@ export default function PaymentModal({
                 const badge = STATUS_BADGE[b.status] ?? { label: b.status, cls: "bg-gray-100 text-gray-600" };
                 return (
                   <tr key={b.id} className="border-b border-gray-100 align-top">
-                    <td className="px-2.5 py-1.5">{paymentTypeLabel(b.type, b.customLabel)}</td>
+                    <td className="px-2.5 py-1.5">
+                      {paymentTypeLabel(b.type, b.customLabel)}
+                      <Link href={`/invoice/${b.paymentCode}`} target="_blank" className="block text-xs font-semibold text-brand underline">
+                        📄 Invoice
+                      </Link>
+                    </td>
                     <td className="px-2.5 py-1.5">{fmt(b.amountDue)}</td>
                     <td className="px-2.5 py-1.5">{fmtDate(b.dueDate)}</td>
                     <td className="px-2.5 py-1.5">
@@ -471,12 +477,13 @@ export default function PaymentModal({
             <th className="px-2.5 py-1.5 font-semibold">金额</th>
             <th className="px-2.5 py-1.5 font-semibold">日期</th>
             <th className="px-2.5 py-1.5 font-semibold">方式</th>
+            <th className="px-2.5 py-1.5 font-semibold">收据</th>
           </tr>
         </thead>
         <tbody>
           {paidHistory.length === 0 && (
             <tr>
-              <td colSpan={4} className="py-3 text-center text-gray-400">
+              <td colSpan={5} className="py-3 text-center text-gray-400">
                 还没有收款记录
               </td>
             </tr>
@@ -487,6 +494,11 @@ export default function PaymentModal({
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
               <td className="px-2.5 py-1.5">{p.method || (p.receiptLink ? "交易单上传" : "-")}</td>
+              <td className="px-2.5 py-1.5">
+                <Link href={`/receipt/${p.paymentCode}`} target="_blank" className="text-xs font-semibold text-brand underline">
+                  🧾 Receipt
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>

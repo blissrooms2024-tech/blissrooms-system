@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
@@ -189,6 +190,13 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                       <span className="text-sm text-gray-600">{fmt(b.amountDue)}</span>
                       {b.periodMonth && <span className="ml-1.5 text-xs text-gray-400">({b.periodMonth})</span>}
                       <div className="text-xs text-gray-500">到期日: {fmtDate(b.dueDate)}</div>
+                      <Link
+                        href={`/invoice/${b.paymentCode}`}
+                        target="_blank"
+                        className="mt-0.5 inline-block text-xs font-semibold text-brand underline"
+                      >
+                        📄 查看正式 Invoice
+                      </Link>
                     </div>
                     <div className="w-full sm:w-auto sm:min-w-[150px]">
                       <StepTimeline steps={buildBillSteps(b)} />
@@ -229,12 +237,13 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
             <th className="px-2.5 py-1.5 font-semibold">项目</th>
             <th className="px-2.5 py-1.5 font-semibold">金额</th>
             <th className="px-2.5 py-1.5 font-semibold">日期</th>
+            <th className="px-2.5 py-1.5 font-semibold">收据</th>
           </tr>
         </thead>
         <tbody>
           {paidHistory.length === 0 && (
             <tr>
-              <td colSpan={3} className="py-3 text-center text-gray-400">
+              <td colSpan={4} className="py-3 text-center text-gray-400">
                 还没有付款记录
               </td>
             </tr>
@@ -244,6 +253,11 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
               <td className="px-2.5 py-1.5">{paymentTypeLabel(p.type, p.customLabel)}</td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
+              <td className="px-2.5 py-1.5">
+                <Link href={`/receipt/${p.paymentCode}`} target="_blank" className="text-xs font-semibold text-brand underline">
+                  🧾 查看 Receipt
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>
