@@ -26,7 +26,6 @@ const DOC_STYLE = `
 .warningDoc .subject{font-weight:700;text-decoration:underline;margin:16px 0;}
 .warningDoc .body{white-space:pre-wrap;text-align:justify;margin:16px 0;}
 .warningDoc .closing{margin-top:34px;}
-.warningDoc .sigline{margin-top:44px;border-top:1px solid #333;width:220px;padding-top:4px;font-size:11.5px;color:#555;}
 `;
 
 export default function WarningLetterDocument({ l }: { l: WarningLetterData }) {
@@ -87,7 +86,6 @@ export default function WarningLetterDocument({ l }: { l: WarningLetterData }) {
         <br />
         For <b>{COMPANY.NAME}</b>
       </div>
-      <div className="sigline">Authorized Signatory ({l.triggeredBy === "system-cron" ? "系统自动 System" : l.sentBy})</div>
     </div>
   );
 }
