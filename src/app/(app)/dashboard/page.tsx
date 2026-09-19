@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -70,14 +71,30 @@ export default async function DashboardPage() {
     .sort((a, b) => b.total - a.total);
 
   const revBoxes = [
-    { n: fmtRM(revenueMonth._sum.amountPaid), l: "本月营业额" },
-    { n: fmtRM(revenueYear._sum.amountPaid), l: "本年营业额" },
-    { n: fmtRM(revenueAll._sum.amountPaid), l: "累计总营业额" },
+    { n: fmtRM(revenueMonth._sum.amountPaid), l: "本月营业额", href: "/revenue-report?period=month" },
+    { n: fmtRM(revenueYear._sum.amountPaid), l: "本年营业额", href: "/revenue-report?period=year" },
+    { n: fmtRM(revenueAll._sum.amountPaid), l: "累计总营业额", href: "/revenue-report?period=all" },
   ];
   const MEDAL = ["🥇", "🥈", "🥉"];
 
   return (
     <div className="space-y-4">
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <h3 className="mb-3.5 text-base font-semibold text-brand">💰 营业额</h3>
+        <div className="flex flex-wrap gap-3.5">
+          {revBoxes.map((b) => (
+            <Link
+              key={b.l}
+              href={b.href}
+              className="min-w-[140px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center transition hover:bg-brand-light"
+            >
+              <div className="text-2xl font-bold text-brand">{b.n}</div>
+              <div className="text-xs text-gray-500">{b.l}</div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <h3 className="mb-3.5 text-base font-semibold text-brand">🏠 房间总览</h3>
         <div className="flex flex-wrap gap-3.5">
@@ -94,18 +111,6 @@ export default async function DashboardPage() {
         <div className="flex flex-wrap gap-3.5">
           {carparkBoxes.map((b) => (
             <div key={b.l} className="min-w-[110px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center">
-              <div className="text-2xl font-bold text-brand">{b.n}</div>
-              <div className="text-xs text-gray-500">{b.l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">💰 营业额</h3>
-        <div className="flex flex-wrap gap-3.5">
-          {revBoxes.map((b) => (
-            <div key={b.l} className="min-w-[140px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center">
               <div className="text-2xl font-bold text-brand">{b.n}</div>
               <div className="text-xs text-gray-500">{b.l}</div>
             </div>
