@@ -15,6 +15,7 @@ interface Room {
   roomType: string | null;
   roomRental: number;
   carparkRental: number;
+  securityDeposit: number;
   carparkLotNumber: string | null;
   hasAircon: boolean;
   isCarpark: boolean;

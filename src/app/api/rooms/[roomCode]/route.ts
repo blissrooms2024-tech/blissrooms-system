@@ -33,6 +33,7 @@ export async function GET(
       roomType: room.roomType,
       roomRental: room.roomRental,
       carparkRental: room.carparkRental,
+      securityDeposit: room.securityDeposit,
       carparkLotNumber: room.carparkLotNumber,
       hasAircon: room.hasAircon,
       isCarpark: room.isCarpark,
@@ -65,6 +66,7 @@ const patchSchema = z
     roomType: z.string().trim().optional(),
     roomRental: z.coerce.number().min(0).optional(),
     carparkRental: z.coerce.number().min(0).optional(),
+    securityDeposit: z.coerce.number().min(0).optional(),
     carparkLotNumber: z.string().trim().optional(),
     notes: z.string().trim().optional(),
     photoLink: z.string().trim().optional(),
@@ -107,6 +109,7 @@ export async function PATCH(
     roomType?: string;
     roomRental?: number;
     carparkRental?: number;
+    securityDeposit?: number;
     carparkLotNumber?: string | null;
     notes?: string;
     photoLink?: string | null;
@@ -118,6 +121,7 @@ export async function PATCH(
   if (d.roomType !== undefined) data.roomType = d.roomType;
   if (d.roomRental !== undefined) data.roomRental = d.roomRental;
   if (d.carparkRental !== undefined) data.carparkRental = d.carparkRental;
+  if (d.securityDeposit !== undefined) data.securityDeposit = d.securityDeposit;
   if (d.carparkLotNumber !== undefined) data.carparkLotNumber = d.carparkLotNumber || null;
   if (d.notes !== undefined) data.notes = d.notes;
   if (d.photoLink !== undefined) data.photoLink = d.photoLink || null;

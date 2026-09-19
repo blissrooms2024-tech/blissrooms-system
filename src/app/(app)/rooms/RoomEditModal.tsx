@@ -12,6 +12,7 @@ export interface EditableRoom {
   roomType: string | null;
   roomRental: number;
   carparkRental: number;
+  securityDeposit: number;
   carparkLotNumber: string | null;
   hasAircon: boolean;
   isCarpark: boolean;
@@ -35,6 +36,7 @@ export default function RoomEditModal({
   const [useCustomType, setUseCustomType] = useState(!!room.roomType && !isPresetType(room.roomType));
   const [roomRental, setRoomRental] = useState(String(room.roomRental));
   const [carparkRental, setCarparkRental] = useState(String(room.carparkRental));
+  const [securityDeposit, setSecurityDeposit] = useState(String(room.securityDeposit));
   const [carparkLotNumber, setCarparkLotNumber] = useState(room.carparkLotNumber ?? "");
   const [hasAircon, setHasAircon] = useState(room.hasAircon);
   const [isCarpark, setIsCarpark] = useState(room.isCarpark);
@@ -53,6 +55,7 @@ export default function RoomEditModal({
           roomType: useCustomType ? customType : roomType,
           roomRental: Number(roomRental) || 0,
           carparkRental: Number(carparkRental) || 0,
+          securityDeposit: Number(securityDeposit) || 0,
           carparkLotNumber,
           hasAircon,
           isCarpark,
@@ -138,6 +141,15 @@ export default function RoomEditModal({
               className="input"
             />
           </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">押金 Deposit RM (可退还)</label>
+          <input
+            type="number"
+            value={securityDeposit}
+            onChange={(e) => setSecurityDeposit(e.target.value)}
+            className="input"
+          />
         </div>
         <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
           <input type="checkbox" checked={hasAircon} onChange={(e) => setHasAircon(e.target.checked)} />

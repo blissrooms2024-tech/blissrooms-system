@@ -14,6 +14,7 @@ interface PropertyRow {
   landlord: string | null;
   managementFeeRate: number | null;
   ownerRentalAmount: number | null;
+  ownerDeposit: number | null;
   status: string | null;
   notes: string | null;
   roomCount: number;

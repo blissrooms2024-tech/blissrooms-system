@@ -12,6 +12,7 @@ interface RoomDetail {
   roomType: string | null;
   roomRental: number;
   carparkRental: number;
+  securityDeposit: number;
   carparkLotNumber: string | null;
   hasAircon: boolean;
   isCarpark: boolean;
@@ -93,6 +94,7 @@ export default function RoomDetailClient({ roomCode }: { roomCode: string }) {
           </Info>
           {!room.isCarpark && <Info label="房租">RM{room.roomRental}</Info>}
           <Info label="车位租金">RM{room.carparkRental}</Info>
+          <Info label="押金 Deposit (可退还)">RM{room.securityDeposit}</Info>
           {room.isCarpark && <Info label="车位编号">{room.carparkLotNumber || "-"}</Info>}
           {!room.isCarpark && <Info label="冷气">{room.hasAircon ? "❄️ 有" : "- 没有"}</Info>}
         </div>

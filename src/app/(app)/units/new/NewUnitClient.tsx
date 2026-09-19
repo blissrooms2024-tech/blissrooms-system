@@ -13,6 +13,7 @@ const emptyForm = {
   landlord: "",
   managementFeeRate: "",
   ownerRentalAmount: "",
+  ownerDeposit: "",
   roomCount: "",
   carparkCount: "",
 };
@@ -47,6 +48,7 @@ export default function NewUnitClient() {
             dealType === "MANAGED" && form.managementFeeRate ? Number(form.managementFeeRate) / 100 : undefined,
           ownerRentalAmount:
             dealType === "MASTER_LEASE" && form.ownerRentalAmount ? Number(form.ownerRentalAmount) : undefined,
+          ownerDeposit: dealType === "MASTER_LEASE" && form.ownerDeposit ? Number(form.ownerDeposit) : undefined,
           roomCount: form.roomCount || 0,
           carparkCount: form.carparkCount || 0,
         }),
@@ -149,15 +151,26 @@ export default function NewUnitClient() {
                     />
                   </Field>
                 ) : (
-                  <Field label="每月付 Owner 租金 RM">
-                    <input
-                      type="number"
-                      step="1"
-                      className="input"
-                      value={form.ownerRentalAmount}
-                      onChange={(e) => setForm({ ...form, ownerRentalAmount: e.target.value })}
-                    />
-                  </Field>
+                  <>
+                    <Field label="每月付 Owner 租金 RM">
+                      <input
+                        type="number"
+                        step="1"
+                        className="input"
+                        value={form.ownerRentalAmount}
+                        onChange={(e) => setForm({ ...form, ownerRentalAmount: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="付 Owner 押金 RM (可退还)">
+                      <input
+                        type="number"
+                        step="1"
+                        className="input"
+                        value={form.ownerDeposit}
+                        onChange={(e) => setForm({ ...form, ownerDeposit: e.target.value })}
+                      />
+                    </Field>
+                  </>
                 )}
               </div>
             )}

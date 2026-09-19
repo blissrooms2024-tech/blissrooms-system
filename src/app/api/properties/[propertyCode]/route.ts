@@ -33,6 +33,7 @@ export async function GET(
       landlord: property.landlord,
       managementFeeRate: property.managementFeeRate ? Number(property.managementFeeRate) : null,
       ownerRentalAmount: property.ownerRentalAmount ? Number(property.ownerRentalAmount) : null,
+      ownerDeposit: property.ownerDeposit ? Number(property.ownerDeposit) : null,
       status: property.status,
       notes: property.notes,
       rooms: property.rooms,
@@ -47,6 +48,7 @@ const editSchema = z.object({
   landlord: z.string().trim().optional().default(""),
   managementFeeRate: z.coerce.number().min(0).max(1).optional(),
   ownerRentalAmount: z.coerce.number().min(0).optional(),
+  ownerDeposit: z.coerce.number().min(0).optional(),
   status: z.string().trim().optional().default("Active"),
   notes: z.string().trim().optional().default(""),
   roomCount: z.coerce.number().int().min(0).max(200).optional(),
@@ -140,6 +142,7 @@ export async function PATCH(
       // never both — owner rental (if given) wins.
       managementFeeRate: d.ownerRentalAmount ? null : d.managementFeeRate ?? null,
       ownerRentalAmount: d.ownerRentalAmount ?? null,
+      ownerDeposit: d.ownerRentalAmount ? d.ownerDeposit ?? null : null,
       status: d.status,
       notes: d.notes || null,
     },

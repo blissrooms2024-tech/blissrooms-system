@@ -36,6 +36,7 @@ export async function GET() {
       landlord: p.landlord,
       managementFeeRate: p.managementFeeRate ? Number(p.managementFeeRate) : null,
       ownerRentalAmount: p.ownerRentalAmount ? Number(p.ownerRentalAmount) : null,
+      ownerDeposit: p.ownerDeposit ? Number(p.ownerDeposit) : null,
       status: p.status,
       notes: p.notes,
       roomCount: roomCountByPropertyId.get(p.id) ?? 0,
@@ -52,6 +53,7 @@ const createSchema = z.object({
   landlord: z.string().trim().optional().default(""),
   managementFeeRate: z.coerce.number().min(0).max(1).optional(),
   ownerRentalAmount: z.coerce.number().min(0).optional(),
+  ownerDeposit: z.coerce.number().min(0).optional(),
   notes: z.string().trim().optional().default(""),
   roomCount: z.coerce.number().int().min(0).max(200).optional().default(0),
   carparkCount: z.coerce.number().int().min(0).max(200).optional().default(0),
@@ -84,6 +86,7 @@ export async function POST(req: NextRequest) {
       // never both — owner rental (if given) wins.
       managementFeeRate: d.ownerRentalAmount ? null : d.managementFeeRate ?? null,
       ownerRentalAmount: d.ownerRentalAmount ?? null,
+      ownerDeposit: d.ownerRentalAmount ? d.ownerDeposit ?? null : null,
       notes: d.notes || null,
     },
   });

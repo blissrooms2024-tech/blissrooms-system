@@ -12,6 +12,7 @@ export interface EditableProperty {
   landlord: string | null;
   managementFeeRate: number | null;
   ownerRentalAmount: number | null;
+  ownerDeposit: number | null;
   status: string | null;
   notes: string | null;
   roomCount: number;
@@ -40,6 +41,9 @@ export default function PropertyEditModal({
   const [ownerRentalAmount, setOwnerRentalAmount] = useState(
     property.ownerRentalAmount !== null ? String(property.ownerRentalAmount) : ""
   );
+  const [ownerDeposit, setOwnerDeposit] = useState(
+    property.ownerDeposit !== null ? String(property.ownerDeposit) : ""
+  );
   const [dealType, setDealType] = useState<DealType>(
     property.ownerRentalAmount !== null ? "MASTER_LEASE" : property.managementFeeRate ? "MANAGED" : "OWN"
   );
@@ -66,6 +70,7 @@ export default function PropertyEditModal({
           landlord: dealType === "OWN" ? "" : landlord,
           managementFeeRate: dealType === "MANAGED" && managementFeeRate ? Number(managementFeeRate) / 100 : undefined,
           ownerRentalAmount: dealType === "MASTER_LEASE" && ownerRentalAmount ? Number(ownerRentalAmount) : undefined,
+          ownerDeposit: dealType === "MASTER_LEASE" && ownerDeposit ? Number(ownerDeposit) : undefined,
           status,
           notes,
           roomCount: Number(roomCount) || 0,
@@ -145,16 +150,28 @@ export default function PropertyEditModal({
                 />
               </div>
             ) : (
-              <div>
-                <label className="mb-1.5 block text-sm text-gray-600">每月付 Owner 租金 RM</label>
-                <input
-                  type="number"
-                  step="1"
-                  value={ownerRentalAmount}
-                  onChange={(e) => setOwnerRentalAmount(e.target.value)}
-                  className="input"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="mb-1.5 block text-sm text-gray-600">每月付 Owner 租金 RM</label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={ownerRentalAmount}
+                    onChange={(e) => setOwnerRentalAmount(e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-gray-600">付 Owner 押金 RM (可退还)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={ownerDeposit}
+                    onChange={(e) => setOwnerDeposit(e.target.value)}
+                    className="input"
+                  />
+                </div>
+              </>
             )}
           </>
         )}

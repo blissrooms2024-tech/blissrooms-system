@@ -20,6 +20,7 @@ export default function NewRoomClient() {
     propertyCode: "",
     roomType: "",
     roomRental: "",
+    securityDeposit: "",
     carparkLotNumber: "",
     hasAircon: false,
     isCarpark: false,
@@ -142,6 +143,14 @@ export default function NewRoomClient() {
                 type="number"
                 value={form.roomRental}
                 onChange={(e) => setForm({ ...form, roomRental: e.target.value })}
+                className="input"
+              />
+            </Field>
+            <Field label="押金 Deposit RM (可退还)">
+              <input
+                type="number"
+                value={form.securityDeposit}
+                onChange={(e) => setForm({ ...form, securityDeposit: e.target.value })}
                 className="input"
               />
             </Field>

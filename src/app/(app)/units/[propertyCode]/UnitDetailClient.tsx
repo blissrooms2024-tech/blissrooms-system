@@ -18,6 +18,7 @@ interface PropertyDetail {
   landlord: string | null;
   managementFeeRate: number | null;
   ownerRentalAmount: number | null;
+  ownerDeposit: number | null;
   status: string | null;
   notes: string | null;
   rooms: RoomRow[];
@@ -77,6 +78,9 @@ export default function UnitDetailClient({ propertyCode }: { propertyCode: strin
               ? `${(property.managementFeeRate * 100).toFixed(1)}%`
               : "-"}
         </Info>
+        {property.ownerRentalAmount !== null && (
+          <Info label="付 Owner 押金 (可退还)">{property.ownerDeposit !== null ? `RM${property.ownerDeposit}` : "-"}</Info>
+        )}
         <Info label="状态">{property.status || "-"}</Info>
       </div>
 
