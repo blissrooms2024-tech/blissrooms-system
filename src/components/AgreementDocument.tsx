@@ -11,7 +11,8 @@ export interface AgreementContract {
   tenantIc: string | null;
   agentName: string;
   agentIc: string | null;
-  room: { roomCode: string };
+  room: { roomCode: string; isCarpark?: boolean; carparkLotNumber?: string | null };
+  carparkRoom: { roomCode: string; carparkLotNumber: string | null } | null;
   moveInDate: string | null;
   commencementDate: string | null;
   expiredDate: string | null;
@@ -105,6 +106,9 @@ function Sig({ name, ic, img, date, role }: { name: string; ic: string | null; i
 export default function AgreementDocument({ c }: { c: AgreementContract }) {
   const utilItems = utilExcludedItems(c);
   const NP = <div className="np">— NEW PAGE 新的一页 —</div>;
+  // Either the main room itself IS the carpark, or there's a separate linked carpark add-on.
+  const carparkCode = c.room.isCarpark ? c.room.roomCode : (c.carparkRoom?.roomCode ?? null);
+  const carparkLot = c.room.isCarpark ? c.room.carparkLotNumber : (c.carparkRoom?.carparkLotNumber ?? null);
 
   return (
     <div className="contractDoc">
@@ -164,6 +168,9 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
         <tbody>
           <Row label="Advance Rental for one month" value={fmtMoney(c.roomRental)} />
           <Row label="Car Park Rental" value={fmtMoney(c.carparkRental)} />
+          {carparkCode && (
+            <Row label="Parking Lot No." value={carparkLot ? `${carparkCode} (Lot ${carparkLot})` : carparkCode} />
+          )}
           <Row label="Security Deposit" value={fmtMoney(c.securityDeposit)} />
           <Row label="Utility Deposit (Electricity, Water & Sewerage)" value={fmtMoney(c.utilitiesDeposit)} />
           <Row label="Admin Fee (Non-refundable)" value={fmtMoney(c.adminFee)} />
@@ -255,6 +262,17 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
             </td>
             <td>{fmtMoney(c.accessCardDeposit)}</td>
           </tr>
+          {carparkCode && (
+            <tr>
+              <td>
+                <b>Parking Lot No.</b>
+              </td>
+              <td colSpan={3}>
+                {carparkCode}
+                {carparkLot ? ` (Lot ${carparkLot})` : ""}
+              </td>
+            </tr>
+          )}
           <tr>
             <td>
               <b>Security Deposit</b>

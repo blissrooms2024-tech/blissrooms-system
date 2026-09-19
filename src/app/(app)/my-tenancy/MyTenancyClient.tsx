@@ -11,6 +11,8 @@ import WarningLettersModal from "./WarningLettersModal";
 interface Card {
   contractCode: string;
   roomCode: string;
+  carparkRoomCode: string | null;
+  carparkLotNumber: string | null;
   status: string;
   agentSigned: boolean;
   tenantSigned: boolean;
@@ -84,6 +86,12 @@ export default function MyTenancyClient() {
               <div>
                 <div className="text-lg font-bold">{c.contractCode}</div>
                 <div className="text-sm opacity-90">🏠 {c.roomCode}</div>
+                {c.carparkRoomCode && (
+                  <div className="text-sm opacity-90">
+                    🚗 {c.carparkRoomCode}
+                    {c.carparkLotNumber ? ` (Lot ${c.carparkLotNumber})` : ""}
+                  </div>
+                )}
               </div>
               <div className="rounded-full bg-white/20 px-3.5 py-1 text-xs font-semibold">
                 {CONTRACT_STATUS_LABELS[c.status] ?? c.status}

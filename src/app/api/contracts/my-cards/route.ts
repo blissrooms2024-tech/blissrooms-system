@@ -14,7 +14,10 @@ export async function GET() {
   const contracts = await prisma.contract.findMany({
     where: { tenantId: user.sub },
     orderBy: { createdAt: "desc" },
-    include: { room: { select: { roomCode: true } } },
+    include: {
+      room: { select: { roomCode: true, isCarpark: true, carparkLotNumber: true } },
+      carparkRoom: { select: { roomCode: true, carparkLotNumber: true } },
+    },
   });
 
   const [paidGroups, depositPaidGroups, moveForms, unpaidBills, openMaintenance, warningLetters] = await Promise.all([
@@ -73,6 +76,10 @@ export async function GET() {
       contractCode: c.contractCode,
       roomCode: c.room.roomCode,
       status: c.status,
+      // Either the main room itself IS the carpark, or there's a separate linked carpark
+      // add-on — either way, show the tenant which lot is theirs.
+      carparkRoomCode: c.room.isCarpark ? c.room.roomCode : (c.carparkRoom?.roomCode ?? null),
+      carparkLotNumber: c.room.isCarpark ? c.room.carparkLotNumber : (c.carparkRoom?.carparkLotNumber ?? null),
       totalOutstanding: Number(c.totalOutstanding),
       paid,
       outstanding,
