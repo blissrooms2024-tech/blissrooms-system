@@ -14,6 +14,10 @@ function canView(user: SessionPayload, contract: { agentId: string; tenantId: st
 }
 
 const BREAKDOWN_ITEMS = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "RENTAL"] as const;
+// A contract whose own room IS a carpark (roomCode ends in -CPxx) only ever has RFID/access
+// card deposit + the carpark rent itself — security/utility deposit, admin fee and room rental
+// stay 0 forever, so showing them as "cleared RM0" rows just clutters the tenant's bill view.
+const CARPARK_ONLY_ITEMS = ["ACCESS_CARD", "CARPARK"] as const;
 
 export async function GET(
   _req: NextRequest,
@@ -25,7 +29,7 @@ export async function GET(
   const { contractId } = await params;
   const c = await prisma.contract.findUnique({
     where: { contractCode: contractId },
-    include: { agent: { select: { ic: true } }, room: { select: { hasAircon: true } } },
+    include: { agent: { select: { ic: true } }, room: { select: { hasAircon: true, isCarpark: true } } },
   });
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (!canView(user, c)) {
@@ -51,7 +55,8 @@ export async function GET(
     paidByType[p.type] = (paidByType[p.type] || 0) + Number(p.amountPaid);
   }
 
-  const breakdown = BREAKDOWN_ITEMS.map((item) => {
+  const items = c.room.isCarpark ? CARPARK_ONLY_ITEMS : BREAKDOWN_ITEMS;
+  const breakdown = items.map((item) => {
     const dd = due[item] || 0;
     const pd = paidByType[item] || 0;
     return { item, due: dd, paid: pd, outstanding: Math.max(dd - pd, 0) };
