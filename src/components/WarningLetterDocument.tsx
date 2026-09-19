@@ -34,7 +34,13 @@ export default function WarningLetterDocument({ l }: { l: WarningLetterData }) {
       <style>{DOC_STYLE}</style>
 
       <div className="hd">
-        {CONTRACT_IMAGES.logo && <img src={CONTRACT_IMAGES.logo} alt="logo" style={{ maxHeight: 70, marginBottom: 6 }} />}
+        {CONTRACT_IMAGES.logo && (
+          <img
+            src={CONTRACT_IMAGES.logo}
+            alt="logo"
+            style={{ display: "block", margin: "0 auto 8px", maxHeight: 90, width: "auto" }}
+          />
+        )}
         <div className="nm">{COMPANY.NAME}</div>
         <div className="meta">
           Reg. No.: {COMPANY.REG_NO}
