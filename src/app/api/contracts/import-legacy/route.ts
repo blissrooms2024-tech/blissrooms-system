@@ -17,7 +17,11 @@ interface RowResult {
 
 function cellToString(value: ExcelJS.CellValue): string {
   if (value === null || value === undefined) return "";
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  // ExcelJS occasionally hands back a Date it couldn't fully parse (a bad custom date format in
+  // the cell) with a NaN internal time — .toISOString() throws on that, which would otherwise
+  // crash the whole upload before any row's own try/catch runs. Treat it as blank instead; the
+  // per-row schema validation below will report "日期格式不对" for that cell like any other bad value.
+  if (value instanceof Date) return isNaN(value.getTime()) ? "" : value.toISOString().slice(0, 10);
   if (typeof value === "object" && "text" in value) return String((value as { text: unknown }).text ?? "");
   if (typeof value === "object" && "result" in value) return String((value as { result: unknown }).result ?? "");
   return String(value).trim();

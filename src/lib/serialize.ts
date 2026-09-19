@@ -9,6 +9,9 @@ export function serialize<T>(value: T): T {
   if (value === null || value === undefined) return value;
   if (value instanceof Decimal) return Number(value) as unknown as T;
   if (value instanceof Date) {
+    // A handful of legacy-imported rows ended up with an unparseable date stored — don't let
+    // one bad row 500 the whole list; surface it as "no value" the same way a blank cell would.
+    if (isNaN(value.getTime())) return null as unknown as T;
     return value.toISOString().slice(0, 10) as unknown as T;
   }
   if (Array.isArray(value)) return value.map(serialize) as unknown as T;
