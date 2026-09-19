@@ -23,6 +23,7 @@ export default function UsersClient() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<EditableUser | null>(null);
   const [deleting, setDeleting] = useState<UserRow | null>(null);
+  const [q, setQ] = useState("");
 
   async function load() {
     setError("");
@@ -103,18 +104,39 @@ export default function UsersClient() {
     setDeleting(null);
   }
 
+  const keyword = q.trim().toLowerCase();
+  const filtered =
+    users && keyword
+      ? users.filter(
+          (u) =>
+            u.name.toLowerCase().includes(keyword) ||
+            u.email.toLowerCase().includes(keyword) ||
+            u.userCode.toLowerCase().includes(keyword) ||
+            (u.phone ?? "").toLowerCase().includes(keyword)
+        )
+      : users;
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <div className="mb-3.5 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-brand">👥 用户清单</h3>
-          <Link href="/users/new" className="btn-primary text-sm">
-            ➕ 加新用户
-          </Link>
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold text-brand">👥 用户清单{users && ` (${filtered!.length}/${users.length})`}</h3>
+          <div className="flex items-center gap-2">
+            <input
+              className="input w-[220px] text-sm"
+              placeholder="搜索姓名 / Email / 电话 / ID..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            <Link href="/users/new" className="btn-primary text-sm">
+              ➕ 加新用户
+            </Link>
+          </div>
         </div>
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!users && !error && <div className="text-sm text-gray-500">载入中...</div>}
-        {users && (
+        {users && filtered!.length === 0 && <div className="py-8 text-center text-sm text-gray-400">没有符合的用户</div>}
+        {users && filtered!.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -130,7 +152,7 @@ export default function UsersClient() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {filtered!.map((u) => (
                   <tr key={u.userCode} className="border-b border-gray-100">
                     <Td className="hidden sm:table-cell">{u.userCode}</Td>
                     <Td className="sticky left-0 z-[1] bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">{u.name}</Td>
