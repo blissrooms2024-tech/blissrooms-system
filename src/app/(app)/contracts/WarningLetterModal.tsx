@@ -9,8 +9,24 @@ import { fmtDate } from "@/lib/format";
 
 const TEMPLATES = [
   {
-    label: "迟交房租",
-    text: "You have repeatedly paid rent late. Please make sure payment is completed by the 25th of each month, or your tenancy status may be affected.",
+    label: "拖欠房租 Overdue Rental",
+    text: `In reference to the Tenancy Agreement, which was duly signed and acknowledged by you as the tenant, we regret to inform you that you have breached one of the agreed tenancy terms and house rules despite our repeated attempts to reach you.
+
+Breach of Tenancy Clause
+Term No. 1 states that rental payment shall be made by the 25th of every month (in advance of the actual month), or shall not be later than the 5th of the actual month, or such later day as may be agreed by BLISS ROOMS ENTERPRISE ("Bliss Rooms") in writing.
+
+As stated in the Agreement, any breach of the terms, conditions, or house rules grants the Management the right to terminate, amend, or penalise the tenant/agreement immediately, with or without refund of the deposit, as stipulated in the Agreement. All tenants are required to comply fully with the said procedures and rules.
+
+This breach concerns non-payment of [X] month's rental, despite our repeated attempts to contact you through phone calls, WhatsApp messages, and WhatsApp calls. To date, we have not received the outstanding rental payment nor any response from you. Therefore, the Management reserves the right to impose penalties or take further action without prejudice.
+
+Please be informed that if payment is not received, or if you do not respond to us, by [DEADLINE DATE], BLISS ROOMS ENTERPRISE will have no choice but to proceed with the following actions:
+• Block all access cards linked to this unit;
+• Change the room door lock; and
+• Forfeit the deposit(s) held under this tenancy.
+
+We trust you understand the seriousness of this matter and urge you to settle the outstanding rental and contact our office immediately.
+
+If payment has already been made, kindly disregard this letter and contact our office with proof of payment for our records.`,
   },
   {
     label: "违反 House Rules",
