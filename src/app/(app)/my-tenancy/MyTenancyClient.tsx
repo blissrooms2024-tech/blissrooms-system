@@ -121,11 +121,12 @@ export default function MyTenancyClient() {
                 >
                   {flow.nextAction.who === "Tenant" ? (
                     <>
-                      <span className="font-semibold">⏭️ 轮到你了:</span> {flow.nextAction.text}
+                      <span className="font-semibold">⏭️ 下一个步骤:</span> {flow.nextAction.text}
                     </>
                   ) : (
                     <>
-                      <span className="font-semibold">⏳ 等 {flow.nextAction.who}:</span> {flow.nextAction.text}
+                      <span className="font-semibold">⏳ 下一个步骤 (等 {flow.nextAction.who}):</span>{" "}
+                      {flow.nextAction.text}
                     </>
                   )}
                 </div>
