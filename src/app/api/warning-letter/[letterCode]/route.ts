@@ -22,7 +22,7 @@ export async function GET(
   const { letterCode } = await params;
   const letter = await prisma.warningLetter.findUnique({
     where: { letterCode },
-    include: { contract: { include: { room: { select: { roomCode: true } } } } },
+    include: { contract: { include: { room: { select: { roomCode: true, isCarpark: true } } } } },
   });
   if (!letter) return NextResponse.json({ success: false, message: "找不到这封信" }, { status: 404 });
   if (!canView(user, letter.contract)) {
@@ -42,6 +42,7 @@ export async function GET(
       tenantIc: letter.contract.tenantIc,
       propertyAddress: letter.contract.propertyAddress,
       roomCode: letter.contract.room.roomCode,
+      isCarpark: letter.contract.room.isCarpark,
     }),
   });
 }

@@ -14,6 +14,7 @@ export interface WarningLetterData {
   tenantIc: string | null;
   propertyAddress: string | null;
   roomCode: string;
+  isCarpark: boolean;
 }
 
 const DOC_STYLE = `
@@ -137,7 +138,7 @@ export default function WarningLetterDocument({ l }: { l: WarningLetterData }) {
             <br />
             Date: <b>{fmtDate(l.createdAt)}</b>
             <br />
-            Room Code: <b>{l.roomCode}</b>
+            {l.isCarpark ? "Car Park Code" : "Room Code"}: <b>{l.roomCode}</b>
           </div>
         </div>
       </div>
@@ -153,7 +154,7 @@ export default function WarningLetterDocument({ l }: { l: WarningLetterData }) {
           </>
         )}
         <div className="subjectBox">
-          Re: Warning Letter — Room Code: {l.roomCode}
+          Re: Warning Letter — {l.isCarpark ? "Car Park Code" : "Room Code"}: {l.roomCode}
           {l.propertyAddress && (
             <>
               <br />
