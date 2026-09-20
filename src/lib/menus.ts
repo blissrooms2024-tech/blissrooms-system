@@ -26,6 +26,8 @@ export const MENUS: Record<string, MenuItem[]> = {
   ],
   AGENT: [
     { href: "/agent-dashboard", label: "📊 我的总览" },
+    { href: "/agent-tenants", label: "📋 Tenant 进度" },
+    { href: "/agent-commission", label: "💰 我的佣金" },
     { href: "/rooms", label: "🏠 空房" },
     { href: "/contracts", label: "📄 我的合同" },
   ],
