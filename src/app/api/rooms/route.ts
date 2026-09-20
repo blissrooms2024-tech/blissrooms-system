@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 
 // Agents need a heads-up before a room actually frees up, so they can start re-marketing
 // it ahead of time — not just once it's already VACANT.
-const EXPIRING_SOON_DAYS = 30;
+const EXPIRING_SOON_DAYS = 60;
 
 export async function GET() {
   const user = await getCurrentUser();
