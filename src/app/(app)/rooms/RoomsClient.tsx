@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ROOM_STATUS_LABELS } from "@/lib/config";
+import { ROOM_STATUS_LABELS, ROOM_STATUS_BADGE } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -26,14 +26,6 @@ interface Room {
   photoLink: string | null;
   expiringSoonDate: string | null;
 }
-
-const STATUS_BADGE: Record<string, string> = {
-  VACANT: "bg-green-50 text-green-700",
-  OCCUPIED: "bg-red-50 text-red-700",
-  RESERVED: "bg-yellow-50 text-yellow-800",
-  MAINTENANCE: "bg-gray-100 text-gray-600",
-  STORE: "bg-indigo-50 text-indigo-700",
-};
 
 export default function RoomsClient({ role }: { role: string }) {
   const toast = useToast();
@@ -161,7 +153,7 @@ export default function RoomsClient({ role }: { role: string }) {
                       {r.roomType ? ` · ${r.roomType}` : ""}
                     </div>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status]}`}>
+                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROOM_STATUS_BADGE[r.status]}`}>
                     {ROOM_STATUS_LABELS[r.status]}
                   </span>
                 </div>
@@ -291,7 +283,7 @@ export default function RoomsClient({ role }: { role: string }) {
                       )}
                     </Td>
                     <Td>
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status]}`}>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROOM_STATUS_BADGE[r.status]}`}>
                         {ROOM_STATUS_LABELS[r.status]}
                       </span>
                       {r.expiringSoonDate && (

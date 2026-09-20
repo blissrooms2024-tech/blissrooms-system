@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ROOM_STATUS_LABELS } from "@/lib/config";
+import { ROOM_STATUS_LABELS, ROOM_STATUS_BADGE } from "@/lib/config";
 
 interface RoomRow {
   roomCode: string;
@@ -23,14 +23,6 @@ interface PropertyDetail {
   notes: string | null;
   rooms: RoomRow[];
 }
-
-const STATUS_BADGE: Record<string, string> = {
-  VACANT: "bg-green-50 text-green-700",
-  OCCUPIED: "bg-red-50 text-red-700",
-  RESERVED: "bg-yellow-50 text-yellow-800",
-  MAINTENANCE: "bg-gray-100 text-gray-600",
-  STORE: "bg-indigo-50 text-indigo-700",
-};
 
 export default function UnitDetailClient({ propertyCode }: { propertyCode: string }) {
   const [property, setProperty] = useState<PropertyDetail | null>(null);
@@ -103,7 +95,7 @@ export default function UnitDetailClient({ propertyCode }: { propertyCode: strin
                 <span className="font-semibold text-brand">
                   {r.isCarpark ? "🅿️" : "🏠"} {r.roomCode}
                 </span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status]}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ROOM_STATUS_BADGE[r.status]}`}>
                   {ROOM_STATUS_LABELS[r.status] ?? r.status}
                 </span>
               </Link>

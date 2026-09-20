@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ROOM_STATUS_LABELS, CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { ROOM_STATUS_LABELS, ROOM_STATUS_BADGE, CONTRACT_STATUS_LABELS } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 
 interface RoomDetail {
@@ -30,14 +30,6 @@ interface ContractRow {
   expiredDate: string | null;
   totalOutstanding: number;
 }
-
-const STATUS_BADGE: Record<string, string> = {
-  VACANT: "bg-green-50 text-green-700",
-  OCCUPIED: "bg-red-50 text-red-700",
-  RESERVED: "bg-yellow-50 text-yellow-800",
-  MAINTENANCE: "bg-gray-100 text-gray-600",
-  STORE: "bg-indigo-50 text-indigo-700",
-};
 
 export default function RoomDetailClient({ roomCode }: { roomCode: string }) {
   const [room, setRoom] = useState<RoomDetail | null>(null);
@@ -88,7 +80,7 @@ export default function RoomDetailClient({ roomCode }: { roomCode: string }) {
           </Info>
           <Info label="类型">{room.roomType || "-"}</Info>
           <Info label="状态">
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[room.status]}`}>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROOM_STATUS_BADGE[room.status]}`}>
               {ROOM_STATUS_LABELS[room.status] ?? room.status}
             </span>
           </Info>

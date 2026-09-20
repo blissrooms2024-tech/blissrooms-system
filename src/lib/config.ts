@@ -66,6 +66,17 @@ export const ROOM_STATUS_LABELS: Record<string, string> = {
   STORE: "储藏室",
 };
 
+/** Room status badge colors, shared across the rooms list/detail and unit detail pages —
+ * 空房 (needs attention, still losing rent) is the one Admin wants to spot first, so it gets
+ * red; 已出租 is the normal/settled state, so it gets a calmer cyan. */
+export const ROOM_STATUS_BADGE: Record<string, string> = {
+  VACANT: "bg-red-50 text-red-700",
+  OCCUPIED: "bg-cyan-50 text-cyan-700",
+  RESERVED: "bg-yellow-50 text-yellow-800",
+  MAINTENANCE: "bg-gray-100 text-gray-600",
+  STORE: "bg-indigo-50 text-indigo-700",
+};
+
 export const ROOM_TYPE_OPTIONS = [
   "Studio Room",
   "Master Room",
