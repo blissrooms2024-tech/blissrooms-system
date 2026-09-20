@@ -9,7 +9,6 @@ import SignatureModal from "./SignatureModal";
 import ICUploadModal from "./ICUploadModal";
 import MoveFormModal from "./MoveFormModal";
 import PaymentModal from "./PaymentModal";
-import WarningLetterModal from "./WarningLetterModal";
 import ContractPdfModal from "./ContractPdfModal";
 
 export interface ActionableContract {
@@ -44,7 +43,6 @@ export default function ContractActions({
   const [moveForm, setMoveForm] = useState(false);
   const [paying, setPaying] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [warningOpen, setWarningOpen] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -98,7 +96,7 @@ export default function ContractActions({
 
   const notClosed = c.status !== "TERMINATED" && c.status !== "MOVED_OUT";
 
-  type Item = { key: string; label: string; color: string; onClick: () => void; primary?: boolean };
+  type Item = { key: string; label: string; color: string; onClick?: () => void; href?: string; primary?: boolean };
   const items: Item[] = [];
 
   if (role === "ADMIN" || role === "AGENT") {
@@ -137,7 +135,7 @@ export default function ContractActions({
     items.push({ key: "edit", label: "✏️ 编辑", color: "bg-brand", onClick: () => setEditing(true) });
   }
   if (role === "ADMIN") {
-    items.push({ key: "warning", label: "⚠️ 警告信", color: "bg-orange-600", onClick: () => setWarningOpen(true) });
+    items.push({ key: "warning", label: "⚠️ 警告信", color: "bg-orange-600", href: `/contracts/${c.contractCode}/warning-letter` });
     items.push({ key: "delete", label: "🗑️ 删除", color: "bg-red-600", onClick: () => setDeleting(true) });
   }
 
@@ -184,9 +182,6 @@ export default function ContractActions({
           onChanged={onChanged}
         />
       )}
-      {warningOpen && (
-        <WarningLetterModal contractCode={c.contractCode} tenantName={c.tenantName} onClose={() => setWarningOpen(false)} />
-      )}
       <ConfirmDialog
         open={deleting}
         danger
@@ -211,11 +206,17 @@ export default function ContractActions({
       <>
         <div className="flex flex-wrap gap-2">
           {agreementLink}
-          {items.map((i) => (
-            <ActionBtn key={i.key} color={i.color} onClick={i.onClick}>
-              {i.label}
-            </ActionBtn>
-          ))}
+          {items.map((i) =>
+            i.href ? (
+              <ActionLink key={i.key} color={i.color} href={i.href}>
+                {i.label}
+              </ActionLink>
+            ) : (
+              <ActionBtn key={i.key} color={i.color} onClick={i.onClick!}>
+                {i.label}
+              </ActionBtn>
+            )
+          )}
         </div>
         {modals}
       </>
@@ -225,11 +226,17 @@ export default function ContractActions({
   return (
     <div className="relative flex flex-wrap items-start gap-1.5">
       {agreementLink}
-      {primaryItems.map((i) => (
-        <ActionBtn key={i.key} color={i.color} onClick={i.onClick}>
-          {i.label}
-        </ActionBtn>
-      ))}
+      {primaryItems.map((i) =>
+        i.href ? (
+          <ActionLink key={i.key} color={i.color} href={i.href}>
+            {i.label}
+          </ActionLink>
+        ) : (
+          <ActionBtn key={i.key} color={i.color} onClick={i.onClick!}>
+            {i.label}
+          </ActionBtn>
+        )
+      )}
       {secondaryItems.length > 0 && (
         <>
           <button
@@ -246,18 +253,29 @@ export default function ContractActions({
                 style={{ top: menuPos.top, left: menuPos.left }}
                 className="fixed z-50 flex w-40 flex-col gap-1 rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-black/5"
               >
-                {secondaryItems.map((i) => (
-                  <button
-                    key={i.key}
-                    onClick={() => {
-                      setMenuOpen(false);
-                      i.onClick();
-                    }}
-                    className="rounded-md px-2.5 py-1.5 text-left text-xs font-semibold text-gray-700 hover:bg-gray-100"
-                  >
-                    {i.label}
-                  </button>
-                ))}
+                {secondaryItems.map((i) =>
+                  i.href ? (
+                    <Link
+                      key={i.key}
+                      href={i.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="rounded-md px-2.5 py-1.5 text-left text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                    >
+                      {i.label}
+                    </Link>
+                  ) : (
+                    <button
+                      key={i.key}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        i.onClick!();
+                      }}
+                      className="rounded-md px-2.5 py-1.5 text-left text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                    >
+                      {i.label}
+                    </button>
+                  )
+                )}
               </div>
             </>
           )}
@@ -281,5 +299,13 @@ function ActionBtn({
     <button onClick={onClick} className={`rounded-md ${color} px-2.5 py-1 text-xs font-semibold text-white`}>
       {children}
     </button>
+  );
+}
+
+function ActionLink({ children, color, href }: { children: React.ReactNode; color: string; href: string }) {
+  return (
+    <Link href={href} className={`rounded-md ${color} px-2.5 py-1 text-xs font-semibold text-white`}>
+      {children}
+    </Link>
   );
 }

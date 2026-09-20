@@ -62,7 +62,9 @@ export default function OutstandingBillsClient() {
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
   if (!items) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
 
-  const typeOptions = [...new Set(items.map((p) => p.type))];
+  // Every possible bill type, not just the ones with an outstanding bill right now — otherwise
+  // Admin can't even select "房租" to confirm there's nothing pending for it.
+  const typeOptions = Object.keys(PAYMENT_TYPE_LABELS);
   const today = new Date().toISOString().slice(0, 10);
   const q = search.trim().toLowerCase();
   const filtered = items.filter((p) => {

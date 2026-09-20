@@ -22,7 +22,8 @@ export interface ReceiptData {
 }
 
 const DOC_STYLE = `
-.docSheet{font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#1a1a1a;}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+.docSheet{font-family:'Inter',Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#1a1a1a;}
 .docSheet .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #0f2a5c;padding-bottom:14px;margin-bottom:18px;gap:16px;}
 .docSheet .hd .brand{display:flex;align-items:center;gap:10px;}
 .docSheet .hd .brand img{height:48px;width:auto;}

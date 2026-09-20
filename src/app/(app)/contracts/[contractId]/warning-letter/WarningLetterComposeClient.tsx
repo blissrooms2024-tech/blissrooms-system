@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { fmtDate } from "@/lib/format";
@@ -46,29 +45,36 @@ interface Letter {
   createdAt: string;
 }
 
-export default function WarningLetterModal({
-  contractCode,
-  tenantName,
-  onClose,
-}: {
-  contractCode: string;
-  tenantName: string;
-  onClose: () => void;
-}) {
+export default function WarningLetterComposeClient({ contractCode }: { contractCode: string }) {
   const toast = useToast();
+  const [tenantName, setTenantName] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [letters, setLetters] = useState<Letter[]>([]);
+  const [letters, setLetters] = useState<Letter[] | null>(null);
+  const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/contracts/${contractCode}/warning-letter`);
-    const data = await res.json();
-    if (data.success) setLetters(data.letters);
+    setError("");
+    try {
+      const [contractRes, lettersRes] = await Promise.all([
+        fetch(`/api/contracts/${contractCode}`),
+        fetch(`/api/contracts/${contractCode}/warning-letter`),
+      ]);
+      const contractData = await contractRes.json();
+      const lettersData = await lettersRes.json();
+      if (!contractData.success) {
+        setError(contractData.message);
+        return;
+      }
+      setTenantName(contractData.contract.tenantName);
+      if (lettersData.success) setLetters(lettersData.letters);
+    } catch {
+      setError("出错，请稍后再试");
+    }
   }, [contractCode]);
 
   useEffect(() => {
-    // setState happens after the fetch's await, not synchronously in the effect body.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
@@ -111,63 +117,81 @@ export default function WarningLetterModal({
     load();
   }
 
-  return (
-    <Modal onClose={onClose} wide>
-      <h3 className="text-lg font-bold text-brand">⚠️ 警告信 — {contractCode} ({tenantName})</h3>
-      <p className="mt-1 text-sm text-gray-500">会直接发邮件给租客登录邮箱。</p>
+  if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
 
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {TEMPLATES.map((t) => (
-          <button
-            key={t.label}
-            type="button"
-            onClick={() => setMessage(t.text)}
-            className="rounded-md bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200"
-          >
-            模板: {t.label}
-          </button>
-        ))}
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold text-brand">
+            ⚠️ 警告信 — {contractCode} {tenantName ? `(${tenantName})` : ""}
+          </h3>
+          <Link href={`/contracts/${contractCode}`} className="text-sm text-gray-500 hover:underline">
+            ← 返回合同
+          </Link>
+        </div>
+        <p className="mb-3.5 text-sm text-gray-500">会直接发邮件给租客登录邮箱。</p>
+
+        <div className="mb-2.5 flex flex-wrap gap-1.5">
+          {TEMPLATES.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              onClick={() => setMessage(t.text)}
+              className="rounded-md bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200"
+            >
+              模板: {t.label}
+            </button>
+          ))}
+        </div>
+
+        <textarea
+          className="input h-[420px] resize-y font-mono text-[13px] leading-relaxed"
+          placeholder="警告内容..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+
+        <button onClick={send} disabled={sending} className="btn-primary mt-3">
+          {sending ? "发送中..." : "发送警告信"}
+        </button>
       </div>
 
-      <textarea
-        className="input mt-2.5 h-24 resize-y"
-        placeholder="警告内容..."
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-      />
-
-      <button onClick={send} disabled={sending} className="btn-primary mt-3 block">
-        {sending ? "发送中..." : "发送警告信"}
-      </button>
-
-      <b className="mt-4 block text-sm">📜 警告信记录</b>
-      {letters.length === 0 && <div className="py-3 text-center text-sm text-gray-400">还没有发过警告信</div>}
-      <div className="mt-1.5 space-y-2">
-        {letters.map((l) => (
-          <div key={l.letterCode} className="rounded-lg border border-gray-200 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="text-xs text-gray-400">
-                  {fmtDate(l.createdAt)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <b className="mb-2.5 block text-sm text-brand">📜 警告信记录</b>
+        {!letters && <div className="py-3 text-center text-sm text-gray-500">载入中...</div>}
+        {letters && letters.length === 0 && (
+          <div className="py-3 text-center text-sm text-gray-400">还没有发过警告信</div>
+        )}
+        <div className="space-y-2">
+          {letters?.map((l) => (
+            <div key={l.letterCode} className="rounded-lg border border-gray-200 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-gray-400">
+                    {fmtDate(l.createdAt)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
+                  </div>
+                  <div className="mt-1 max-h-24 overflow-hidden whitespace-pre-wrap text-sm text-gray-700">
+                    {l.message}
+                  </div>
+                  <Link
+                    href={`/warning-letter/${l.letterCode}`}
+                    target="_blank"
+                    className="mt-1 inline-block text-xs font-semibold text-brand underline"
+                  >
+                    📄 查看正式信件
+                  </Link>
                 </div>
-                <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{l.message}</div>
-                <Link
-                  href={`/warning-letter/${l.letterCode}`}
-                  target="_blank"
-                  className="mt-1 inline-block text-xs font-semibold text-brand underline"
+                <button
+                  onClick={() => setDeleting(l.letterCode)}
+                  className="shrink-0 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
                 >
-                  📄 查看正式信件
-                </Link>
+                  撤销
+                </button>
               </div>
-              <button
-                onClick={() => setDeleting(l.letterCode)}
-                className="shrink-0 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
-              >
-                撤销
-              </button>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <ConfirmDialog
@@ -178,6 +202,6 @@ export default function WarningLetterModal({
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
       />
-    </Modal>
+    </div>
   );
 }
