@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { PAYMENT_TYPE_LABELS } from "@/lib/config";
+import { COMPANY, CONTRACT_IMAGES, PAYMENT_TYPE_LABELS } from "@/lib/config";
 import { fmtMoney } from "@/lib/format";
 import { useToast } from "@/components/Toast";
+import { REPORT_DOC_STYLE } from "@/lib/reportDocStyle";
 
 type Period = "month" | "year" | "all";
 
@@ -70,8 +71,7 @@ export default function RevenueReportClient() {
     }
     w.document.write(
       `<html><head><title>营业额报告 - Bliss Rooms</title><meta charset="utf-8">` +
-        `<style>body{margin:0;padding:34px;font-family:Arial,sans-serif;}table{width:100%;border-collapse:collapse;margin-top:10px;}` +
-        `td,th{border:1px solid #999;padding:6px 10px;font-size:13px;text-align:left;}@media print{@page{margin:14mm;}}</style>` +
+        `<style>body{margin:0;padding:34px;max-width:820px;margin:auto;}@media print{@page{margin:14mm;}}</style>` +
         `</head><body>${html}</body></html>`
     );
     w.document.close();
@@ -133,71 +133,88 @@ export default function RevenueReportClient() {
 
       {report && (
         <div ref={printAreaRef}>
-          <div className="mb-4 border-b border-gray-200 pb-3.5">
-            <div className="text-lg font-bold text-brand">Bliss Rooms Enterprise — 营业额报告</div>
-            <div className="text-sm text-gray-500">
-              {period === "month" && `报告月份: ${report.month}`}
-              {period === "year" && `报告年份: ${report.year}`}
-              {period === "all" && "累计总额 (至今)"}
-              {" · "}
-              {report.transactionCount} 笔已收款项
+        <div className="reportDoc">
+          <style>{REPORT_DOC_STYLE}</style>
+
+          <div className="hd">
+            <div className="brand">
+              {CONTRACT_IMAGES.logo && <img src={CONTRACT_IMAGES.logo} alt="logo" />}
+              <div>
+                <div className="nm">{COMPANY.NAME}</div>
+                <div className="sub">{report.transactionCount} 笔已收款项</div>
+              </div>
+            </div>
+            <div className="titleBlock">
+              <div className="title">REVENUE REPORT</div>
+              <div className="titleMeta">
+                {period === "month" && `报告月份: ${report.month}`}
+                {period === "year" && `报告年份: ${report.year}`}
+                {period === "all" && "累计总额 (至今)"}
+              </div>
             </div>
           </div>
 
-          <div className="mb-4 rounded-xl bg-gray-50 p-4 text-center">
-            <div className="text-3xl font-bold text-brand">{fmtMoney(report.total)}</div>
-            <div className="text-xs text-gray-500">{PERIOD_LABELS[report.period]}营业额</div>
+          <div className="statRow">
+            <div className="stat">
+              <div className="n">{fmtMoney(report.total)}</div>
+              <div className="l">{PERIOD_LABELS[report.period]}营业额</div>
+            </div>
           </div>
 
-          <b className="mb-1.5 block text-sm">🧾 按项目分类</b>
-          <table className="mb-4 w-full text-sm">
+          <h4>🧾 按项目分类</h4>
+          <table>
             <thead>
-              <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">项目</th>
-                <th className="px-2.5 py-1.5 font-semibold">金额</th>
+              <tr>
+                <th>项目</th>
+                <th className="num">金额</th>
               </tr>
             </thead>
             <tbody>
               {typeKeys.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="py-4 text-center text-gray-400">
+                  <td colSpan={2} className="empty">
                     这段时间没有收款记录
                   </td>
                 </tr>
               )}
               {typeKeys.map((k) => (
-                <tr key={k} className="border-b border-gray-100">
-                  <td className="px-2.5 py-1.5">{PAYMENT_TYPE_LABELS[k]}</td>
-                  <td className="px-2.5 py-1.5 font-semibold">{fmtMoney(report.byType[k])}</td>
+                <tr key={k}>
+                  <td>{PAYMENT_TYPE_LABELS[k]}</td>
+                  <td className="num">
+                    <b>{fmtMoney(report.byType[k])}</b>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <b className="mb-1.5 block text-sm">🏢 按楼盘分类</b>
-          <table className="w-full text-sm">
+          <h4>🏢 按楼盘分类</h4>
+          <table>
             <thead>
-              <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">楼盘</th>
-                <th className="px-2.5 py-1.5 font-semibold">金额</th>
+              <tr>
+                <th>楼盘</th>
+                <th className="num">金额</th>
               </tr>
             </thead>
             <tbody>
               {report.byProperty.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="py-4 text-center text-gray-400">
+                  <td colSpan={2} className="empty">
                     这段时间没有收款记录
                   </td>
                 </tr>
               )}
               {report.byProperty.map((p) => (
-                <tr key={p.name} className="border-b border-gray-100">
-                  <td className="px-2.5 py-1.5">{p.name}</td>
-                  <td className="px-2.5 py-1.5 font-semibold">{fmtMoney(p.amount)}</td>
+                <tr key={p.name}>
+                  <td>{p.name}</td>
+                  <td className="num">
+                    <b>{fmtMoney(p.amount)}</b>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
         </div>
       )}
     </div>

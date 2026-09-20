@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { COMPANY, CONTRACT_IMAGES, CONTRACT_STATUS_LABELS } from "@/lib/config";
 import { fmtMoney, fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
+import { REPORT_DOC_STYLE } from "@/lib/reportDocStyle";
 
 type Period = "month" | "year" | "all";
 
@@ -81,8 +82,7 @@ export default function AgentReportClient() {
     }
     w.document.write(
       `<html><head><title>我的合同报告 - Bliss Rooms</title><meta charset="utf-8">` +
-        `<style>body{margin:0;padding:34px;font-family:Arial,sans-serif;}table{width:100%;border-collapse:collapse;margin-top:10px;}` +
-        `td,th{border:1px solid #999;padding:6px 10px;font-size:13px;text-align:left;}@media print{@page{margin:14mm;}}</style>` +
+        `<style>body{margin:0;padding:34px;max-width:820px;margin:auto;}@media print{@page{margin:14mm;}}</style>` +
         `</head><body>${html}</body></html>`
     );
     w.document.close();
@@ -143,59 +143,80 @@ export default function AgentReportClient() {
 
       {report && (
         <div ref={printAreaRef}>
-          <div className="mb-4 border-b border-gray-200 pb-3.5">
-            <div className="text-lg font-bold text-brand">我的合同报告</div>
-            <div className="text-sm text-gray-500">
-              {period === "month" && `报告月份: ${report.month}`}
-              {period === "year" && `报告年份: ${report.year}`}
-              {period === "all" && "累计 (至今)"}
+        <div className="reportDoc">
+          <style>{REPORT_DOC_STYLE}</style>
+
+          <div className="hd">
+            <div className="brand">
+              {CONTRACT_IMAGES.logo && <img src={CONTRACT_IMAGES.logo} alt="logo" />}
+              <div>
+                <div className="nm">{COMPANY.NAME}</div>
+                <div className="sub">我的合同报告</div>
+              </div>
+            </div>
+            <div className="titleBlock">
+              <div className="title">AGENT REPORT</div>
+              <div className="titleMeta">
+                {period === "month" && `报告月份: ${report.month}`}
+                {period === "year" && `报告年份: ${report.year}`}
+                {period === "all" && "累计 (至今)"}
+              </div>
             </div>
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-3.5">
-            <Box n={report.stats.newContracts} l={period === "all" ? "总成交合同" : "新增合同"} />
-            <Box n={report.stats.activeRooms} l="出租中房间" />
-            <Box n={fmtMoney(report.stats.totalRent)} l="出租中总租金/月" />
+          <div className="statRow">
+            <div className="stat">
+              <div className="n">{report.stats.newContracts}</div>
+              <div className="l">{period === "all" ? "总成交合同" : "新增合同"}</div>
+            </div>
+            <div className="stat">
+              <div className="n">{report.stats.activeRooms}</div>
+              <div className="l">出租中房间</div>
+            </div>
+            <div className="stat alt">
+              <div className="n">{fmtMoney(report.stats.totalRent)}</div>
+              <div className="l">出租中总租金/月</div>
+            </div>
           </div>
 
-          <table className="w-full text-sm">
+          <table>
             <thead>
-              <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">合同</th>
-                <th className="px-2.5 py-1.5 font-semibold">租客</th>
-                <th className="px-2.5 py-1.5 font-semibold">状态</th>
-                <th className="px-2.5 py-1.5 font-semibold">开始~到期</th>
-                <th className="px-2.5 py-1.5 font-semibold">租金</th>
-                <th className="px-2.5 py-1.5 font-semibold">押金</th>
+              <tr>
+                <th>合同</th>
+                <th>租客</th>
+                <th>状态</th>
+                <th>开始~到期</th>
+                <th className="num">租金</th>
+                <th className="num">押金</th>
               </tr>
             </thead>
             <tbody>
               {report.contracts.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-gray-400">
+                  <td colSpan={6} className="empty">
                     这段时间没有合同记录
                   </td>
                 </tr>
               )}
               {report.contracts.map((c) => (
-                <tr key={c.contractCode} className="border-b border-gray-100">
-                  <td className="px-2.5 py-1.5">
-                    <Link href={`/contracts/${c.contractCode}`} className="font-semibold text-brand hover:underline">
-                      {c.contractCode}
+                <tr key={c.contractCode}>
+                  <td>
+                    <Link href={`/contracts/${c.contractCode}`}>
+                      <b>{c.contractCode}</b>
                     </Link>{" "}
                     · {c.roomCode}
                   </td>
-                  <td className="px-2.5 py-1.5">{c.tenantName}</td>
-                  <td className="px-2.5 py-1.5">{CONTRACT_STATUS_LABELS[c.status] ?? c.status}</td>
-                  <td className="px-2.5 py-1.5">
+                  <td>{c.tenantName}</td>
+                  <td>{CONTRACT_STATUS_LABELS[c.status] ?? c.status}</td>
+                  <td>
                     {fmtDate(c.commencementDate)} ~ {fmtDate(c.expiredDate)}
                   </td>
-                  <td className="px-2.5 py-1.5">{fmtMoney(c.roomRental + c.carparkRental)}</td>
-                  <td className="px-2.5 py-1.5">
+                  <td className="num">{fmtMoney(c.roomRental + c.carparkRental)}</td>
+                  <td className="num">
                     {c.depositOutstanding > 0 ? (
-                      <span className="font-semibold text-red-600">欠 {fmtMoney(c.depositOutstanding)}</span>
+                      <span style={{ color: "#dc2626", fontWeight: 700 }}>欠 {fmtMoney(c.depositOutstanding)}</span>
                     ) : (
-                      <span className="text-green-600">✅ 收齐</span>
+                      <span style={{ color: "#15803d" }}>✅ 收齐</span>
                     )}
                   </td>
                 </tr>
@@ -203,16 +224,8 @@ export default function AgentReportClient() {
             </tbody>
           </table>
         </div>
+        </div>
       )}
-    </div>
-  );
-}
-
-function Box({ n, l }: { n: number | string; l: string }) {
-  return (
-    <div className="min-w-[140px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center">
-      <div className="text-2xl font-bold text-brand">{n}</div>
-      <div className="text-xs text-gray-500">{l}</div>
     </div>
   );
 }
