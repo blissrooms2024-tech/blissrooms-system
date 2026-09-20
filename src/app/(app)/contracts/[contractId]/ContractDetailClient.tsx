@@ -78,6 +78,15 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
 
   const c = contract;
   const utils = [c.utilElectric && "水电", c.utilAircond && "冷气", c.utilDryer && "干衣机"].filter(Boolean);
+  const flow = buildContractSteps({
+    status: c.status,
+    agentSigned: !!c.agentSignature,
+    tenantSigned: !!c.tenantSignature,
+    icDone: !!c.icFront && !!c.icBack,
+    moveInDone: c._moveInDone,
+    outstanding: c._outstanding,
+    isLegacy: c._isLegacy,
+  });
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -130,17 +139,24 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <h3 className="mb-3.5 text-base font-semibold text-brand">📋 合同 & 付款流程</h3>
-        <StepTimeline
-          steps={buildContractSteps({
-            status: c.status,
-            agentSigned: !!c.agentSignature,
-            tenantSigned: !!c.tenantSignature,
-            icDone: !!c.icFront && !!c.icBack,
-            moveInDone: c._moveInDone,
-            outstanding: c._outstanding,
-            isLegacy: c._isLegacy,
-          })}
-        />
+        {flow.nextAction && (
+          <div
+            className={`mb-3.5 rounded-lg px-3.5 py-2.5 text-sm ${
+              flow.nextAction.who.toUpperCase() === role ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"
+            }`}
+          >
+            {flow.nextAction.who.toUpperCase() === role ? (
+              <>
+                <span className="font-semibold">⏭️ 轮到你了:</span> {flow.nextAction.text}
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">⏳ 等 {flow.nextAction.who}:</span> {flow.nextAction.text}
+              </>
+            )}
+          </div>
+        )}
+        <StepTimeline steps={flow.steps} />
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">

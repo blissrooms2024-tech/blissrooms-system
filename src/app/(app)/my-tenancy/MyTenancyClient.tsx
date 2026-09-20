@@ -83,6 +83,15 @@ export default function MyTenancyClient() {
       {cards.map((c) => {
         const icDone = c.hasICFront && c.hasICBack;
         const canSign = c.agentSigned && icDone && !c.tenantSigned;
+        const flow = buildContractSteps({
+          status: c.status,
+          agentSigned: c.agentSigned,
+          tenantSigned: c.tenantSigned,
+          icDone,
+          moveInDone: c.moveInDone,
+          outstanding: c.outstanding,
+          isLegacy: c.isLegacy,
+        });
 
         return (
           <div key={c.contractCode} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -104,17 +113,24 @@ export default function MyTenancyClient() {
 
             <div className="border-b border-gray-50 px-5 py-4">
               <b className="mb-2.5 block text-sm text-gray-600">📋 合同 & 付款流程</b>
-              <StepTimeline
-                steps={buildContractSteps({
-                  status: c.status,
-                  agentSigned: c.agentSigned,
-                  tenantSigned: c.tenantSigned,
-                  icDone: c.hasICFront && c.hasICBack,
-                  moveInDone: c.moveInDone,
-                  outstanding: c.outstanding,
-                  isLegacy: c.isLegacy,
-                })}
-              />
+              {flow.nextAction && (
+                <div
+                  className={`mb-2.5 rounded-lg px-3.5 py-2.5 text-sm ${
+                    flow.nextAction.who === "Tenant" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"
+                  }`}
+                >
+                  {flow.nextAction.who === "Tenant" ? (
+                    <>
+                      <span className="font-semibold">⏭️ 轮到你了:</span> {flow.nextAction.text}
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold">⏳ 等 {flow.nextAction.who}:</span> {flow.nextAction.text}
+                    </>
+                  )}
+                </div>
+              )}
+              <StepTimeline steps={flow.steps} />
             </div>
 
             <div className="px-5 py-1">
