@@ -107,6 +107,11 @@ export async function PATCH(
   }
   const carparkRoomChanged = (newCarparkRoom?.id ?? null) !== (contract.carparkRoomId ?? null);
 
+  const commAmount = d.commAmount ?? null;
+  const wasPaid = contract.commStatus === "Paid";
+  const nowPaid = commAmount !== null && d.commStatus === "Paid";
+  const commPaidAt = nowPaid ? (wasPaid ? contract.commPaidAt : new Date()) : null;
+
   await prisma.contract.update({
     where: { contractCode: contractId },
     data: {
@@ -138,6 +143,9 @@ export async function PATCH(
       utilDryer: d.utilDryer,
       utilAircond: d.utilAircond,
       utilElectric: d.utilElectric,
+      commAmount,
+      commStatus: commAmount !== null ? d.commStatus : "Pending",
+      commPaidAt,
     },
   });
 

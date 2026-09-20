@@ -34,6 +34,13 @@ export const contractFormSchema = z.object({
   utilDryer: z.boolean().optional().default(false),
   utilAircond: z.boolean().optional().default(false),
   utilElectric: z.boolean().optional().default(false),
+  commAmount: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .transform((v) => (v === "" ? undefined : Number(v))),
+  commStatus: z.enum(["Pending", "Paid"]).optional().default("Pending"),
 });
 
 export type ContractFormInput = z.infer<typeof contractFormSchema>;

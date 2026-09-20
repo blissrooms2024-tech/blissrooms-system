@@ -221,8 +221,9 @@ model Contract {
   tenantSignature String?
   tenantSignDate  DateTime?
 
-  commAmount Decimal? @db.Decimal(10, 2)
-  commStatus String?  @default("Pending")
+  commAmount Decimal?  @db.Decimal(10, 2)
+  commStatus String?   @default("Pending")
+  commPaidAt DateTime?
 
   createdBy   String
   createdAt   DateTime  @default(now())

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { fmtMoney } from "@/lib/format";
 
 interface ContractRow {
@@ -39,7 +40,12 @@ export default function AgentCommissionClient() {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">💰 我的佣金</h3>
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold text-brand">💰 我的佣金</h3>
+          <Link href="/agent-payslip" className="btn-soft px-3.5 py-1.5 text-xs">
+            📑 查看 Payslip
+          </Link>
+        </div>
         <div className="flex flex-wrap gap-3.5">
           <Box n={fmtMoney(data.stats.commissionPaid)} l="佣金已发" color="text-green-700" />
           <Box n={fmtMoney(data.stats.commissionPending)} l="佣金待发" color="text-amber-600" />

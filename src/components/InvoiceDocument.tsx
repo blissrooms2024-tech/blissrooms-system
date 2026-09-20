@@ -21,20 +21,28 @@ export interface InvoiceData {
 }
 
 const DOC_STYLE = `
-.docSheet{font-family:"Times New Roman",Georgia,serif;font-size:13px;line-height:1.7;color:#1a1a1a;}
-.docSheet .hd{text-align:center;border-bottom:2.5px solid #0b5394;padding-bottom:12px;margin-bottom:18px;}
-.docSheet .hd .nm{font-size:20px;font-weight:700;letter-spacing:1px;color:#0b5394;}
-.docSheet .hd .meta{font-size:10.5px;color:#555;line-height:1.5;margin-top:4px;}
-.docSheet .title{text-align:center;font-size:17px;font-weight:700;letter-spacing:2px;margin:6px 0 20px;}
-.docSheet .refRow{display:flex;justify-content:space-between;margin-bottom:18px;font-size:12.5px;}
+.docSheet{font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#1a1a1a;}
+.docSheet .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #0f2a5c;padding-bottom:14px;margin-bottom:18px;gap:16px;}
+.docSheet .hd .brand{display:flex;align-items:center;gap:10px;}
+.docSheet .hd .brand img{height:48px;width:auto;}
+.docSheet .hd .nm{font-size:16px;font-weight:700;color:#0f2a5c;}
+.docSheet .hd .meta{font-size:10px;color:#555;line-height:1.5;margin-top:3px;}
+.docSheet .hd .titleBlock{text-align:right;flex-shrink:0;}
+.docSheet .hd .title{font-size:24px;font-weight:800;letter-spacing:1.5px;color:#0f2a5c;}
+.docSheet .hd .titleMeta{font-size:11.5px;color:#333;line-height:1.6;margin-top:4px;}
+.docSheet .hd .titleMeta b{color:#0f2a5c;}
+.docSheet .billTo{margin:18px 0;font-size:12.5px;}
+.docSheet .billTo .lbl{font-size:10.5px;font-weight:700;letter-spacing:1px;color:#0f2a5c;margin-bottom:3px;}
 .docSheet table.items{width:100%;border-collapse:collapse;margin:16px 0;}
-.docSheet table.items th{background:#f0f4f9;text-align:left;padding:7px 9px;font-size:12px;border:1px solid #d5dee8;}
-.docSheet table.items td{padding:7px 9px;border:1px solid #d5dee8;}
+.docSheet table.items th{background:#0f2a5c;color:#fff;text-align:left;padding:8px 10px;font-size:11.5px;font-weight:700;}
+.docSheet table.items td{padding:8px 10px;border-bottom:1px solid #e3e7ee;font-size:12.5px;}
 .docSheet table.items .num{text-align:right;}
-.docSheet .totalRow td{font-weight:700;background:#f7f9fc;}
-.docSheet .note{margin-top:18px;font-size:12px;color:#444;}
-.docSheet .bank{margin-top:14px;border:1px solid #d5dee8;border-radius:6px;padding:10px 14px;font-size:12px;background:#fafbfd;}
-.docSheet .closing{margin-top:30px;}
+.docSheet .totals{margin-top:6px;margin-left:auto;width:260px;font-size:12.5px;}
+.docSheet .totals .row{display:flex;justify-content:space-between;padding:4px 10px;}
+.docSheet .totals .totalRow{display:flex;justify-content:space-between;padding:8px 10px;font-weight:700;font-size:14px;background:#eef1f7;color:#0f2a5c;border-top:2px solid #0f2a5c;}
+.docSheet .bank{margin-top:18px;border:1px solid #d5dee8;border-radius:6px;padding:10px 14px;font-size:12px;background:#fafbfd;}
+.docSheet .bank .lbl{font-size:10.5px;font-weight:700;letter-spacing:1px;color:#0f2a5c;margin-bottom:4px;}
+.docSheet .note{margin-top:18px;font-size:11.5px;color:#666;text-align:center;font-style:italic;}
 `;
 
 export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
@@ -44,37 +52,34 @@ export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
       <style>{DOC_STYLE}</style>
 
       <div className="hd">
-        {CONTRACT_IMAGES.logo && (
-          <img
-            src={CONTRACT_IMAGES.logo}
-            alt="logo"
-            style={{ display: "block", margin: "0 auto 8px", maxHeight: 90, width: "auto" }}
-          />
-        )}
-        <div className="nm">{COMPANY.NAME}</div>
-        <div className="meta">
-          Reg. No.: {COMPANY.REG_NO}
-          <br />
-          {COMPANY.ADDRESS}
-          <br />
-          TEL: {COMPANY.TEL} &nbsp;·&nbsp; {COMPANY.EMAIL}
+        <div className="brand">
+          {CONTRACT_IMAGES.logo && <img src={CONTRACT_IMAGES.logo} alt="logo" />}
+          <div>
+            <div className="nm">{COMPANY.NAME}</div>
+            <div className="meta">
+              Reg. No.: {COMPANY.REG_NO}
+              <br />
+              {COMPANY.ADDRESS}
+              <br />
+              TEL: {COMPANY.TEL} &nbsp;·&nbsp; {COMPANY.EMAIL}
+            </div>
+          </div>
+        </div>
+        <div className="titleBlock">
+          <div className="title">INVOICE</div>
+          <div className="titleMeta">
+            No: <b>{inv.paymentCode}</b>
+            <br />
+            Due Date: <b>{inv.dueDate ? fmtDate(inv.dueDate) : "-"}</b>
+            <br />
+            For Contract: <b>{inv.contractCode}</b>
+          </div>
         </div>
       </div>
 
-      <div className="title">INVOICE</div>
-
-      <div className="refRow">
-        <div>
-          Invoice No: {inv.paymentCode}
-          <br />
-          Contract: {inv.contractCode} · Room: {inv.roomCode}
-          {inv.carparkLotNumber ? ` (Lot ${inv.carparkLotNumber})` : ""}
-        </div>
-        <div>Due Date: {inv.dueDate ? fmtDate(inv.dueDate) : "-"}</div>
-      </div>
-
-      <div>
-        Bill To: <b>{inv.tenantName}</b>
+      <div className="billTo">
+        <div className="lbl">BILL TO</div>
+        <b>{inv.tenantName}</b>
         {inv.tenantIc && (
           <>
             <br />
@@ -87,6 +92,9 @@ export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
             {inv.propertyAddress}
           </>
         )}
+        <br />
+        Room: {inv.roomCode}
+        {inv.carparkLotNumber ? ` · Car Park Lot: ${inv.carparkLotNumber}` : ""}
       </div>
 
       <table className="items">
@@ -105,31 +113,32 @@ export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
             </td>
             <td className="num">{Number(inv.amountDue).toLocaleString()}</td>
           </tr>
-          <tr className="totalRow">
-            <td>Total Amount Due</td>
-            <td className="num">RM{outstanding.toLocaleString()}</td>
-          </tr>
         </tbody>
       </table>
 
+      <div className="totals">
+        <div className="row">
+          <span>Subtotal</span>
+          <span>RM{Number(inv.amountDue).toLocaleString()}</span>
+        </div>
+        <div className="totalRow">
+          <span>Total Due</span>
+          <span>RM{outstanding.toLocaleString()}</span>
+        </div>
+      </div>
+
       <div className="bank">
-        <b>Payment Details</b>
-        <br />
+        <div className="lbl">PAYMENT DETAILS</div>
         Bank: {COMPANY.BANK}
+        <br />
+        Account Name: {COMPANY.NAME}
         <br />
         Account No: {COMPANY.ACC_NO}
         <br />
-        Account Name: {COMPANY.NAME}
+        Please upload your transaction slip in the tenant portal after payment.
       </div>
 
-      <p className="note">
-        Please make payment before the due date and upload your transaction slip in the tenant portal. This invoice
-        is computer-generated and valid without a signature.
-      </p>
-
-      <div className="closing">
-        For <b>{COMPANY.NAME}</b>
-      </div>
+      <p className="note">Thank you for staying with Bliss Rooms.</p>
     </div>
   );
 }

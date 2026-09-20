@@ -20,20 +20,27 @@ export interface ReceiptData {
 }
 
 const DOC_STYLE = `
-.docSheet{font-family:"Times New Roman",Georgia,serif;font-size:13px;line-height:1.7;color:#1a1a1a;}
-.docSheet .hd{text-align:center;border-bottom:2.5px solid #0b5394;padding-bottom:12px;margin-bottom:18px;}
-.docSheet .hd .nm{font-size:20px;font-weight:700;letter-spacing:1px;color:#0b5394;}
-.docSheet .hd .meta{font-size:10.5px;color:#555;line-height:1.5;margin-top:4px;}
-.docSheet .title{text-align:center;font-size:17px;font-weight:700;letter-spacing:2px;margin:6px 0 20px;color:#146c2e;}
-.docSheet .refRow{display:flex;justify-content:space-between;margin-bottom:18px;font-size:12.5px;}
+.docSheet{font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#1a1a1a;}
+.docSheet .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #0f2a5c;padding-bottom:14px;margin-bottom:18px;gap:16px;}
+.docSheet .hd .brand{display:flex;align-items:center;gap:10px;}
+.docSheet .hd .brand img{height:48px;width:auto;}
+.docSheet .hd .nm{font-size:16px;font-weight:700;color:#0f2a5c;}
+.docSheet .hd .meta{font-size:10px;color:#555;line-height:1.5;margin-top:3px;}
+.docSheet .hd .titleBlock{text-align:right;flex-shrink:0;}
+.docSheet .hd .title{font-size:24px;font-weight:800;letter-spacing:1.5px;color:#0f2a5c;}
+.docSheet .hd .titleMeta{font-size:11.5px;color:#333;line-height:1.6;margin-top:4px;}
+.docSheet .hd .titleMeta b{color:#0f2a5c;}
+.docSheet .billTo{margin:18px 0;font-size:12.5px;}
+.docSheet .billTo .lbl{font-size:10.5px;font-weight:700;letter-spacing:1px;color:#0f2a5c;margin-bottom:3px;}
 .docSheet table.items{width:100%;border-collapse:collapse;margin:16px 0;}
-.docSheet table.items th{background:#eef7f0;text-align:left;padding:7px 9px;font-size:12px;border:1px solid #cfe6d6;}
-.docSheet table.items td{padding:7px 9px;border:1px solid #cfe6d6;}
+.docSheet table.items th{background:#0f2a5c;color:#fff;text-align:left;padding:8px 10px;font-size:11.5px;font-weight:700;}
+.docSheet table.items td{padding:8px 10px;border-bottom:1px solid #e3e7ee;font-size:12.5px;}
 .docSheet table.items .num{text-align:right;}
-.docSheet .totalRow td{font-weight:700;background:#f4faf5;}
-.docSheet .paidStamp{display:inline-block;margin-top:16px;padding:6px 16px;border:2.5px solid #146c2e;color:#146c2e;font-weight:700;letter-spacing:2px;transform:rotate(-3deg);border-radius:4px;}
-.docSheet .note{margin-top:18px;font-size:12px;color:#444;}
-.docSheet .closing{margin-top:30px;}
+.docSheet .totals{margin-top:6px;margin-left:auto;width:260px;font-size:12.5px;}
+.docSheet .totals .row{display:flex;justify-content:space-between;padding:4px 10px;}
+.docSheet .totals .totalRow{display:flex;justify-content:space-between;padding:8px 10px;font-weight:700;font-size:14px;background:#eef1f7;color:#0f2a5c;border-top:2px solid #0f2a5c;}
+.docSheet .paidStamp{display:inline-block;margin-top:16px;padding:5px 14px;border:2px solid #147a3d;color:#147a3d;font-weight:700;letter-spacing:1.5px;font-size:12px;border-radius:4px;}
+.docSheet .note{margin-top:22px;font-size:11.5px;color:#666;text-align:center;font-style:italic;}
 `;
 
 export default function ReceiptDocument({ r }: { r: ReceiptData }) {
@@ -42,37 +49,36 @@ export default function ReceiptDocument({ r }: { r: ReceiptData }) {
       <style>{DOC_STYLE}</style>
 
       <div className="hd">
-        {CONTRACT_IMAGES.logo && (
-          <img
-            src={CONTRACT_IMAGES.logo}
-            alt="logo"
-            style={{ display: "block", margin: "0 auto 8px", maxHeight: 90, width: "auto" }}
-          />
-        )}
-        <div className="nm">{COMPANY.NAME}</div>
-        <div className="meta">
-          Reg. No.: {COMPANY.REG_NO}
-          <br />
-          {COMPANY.ADDRESS}
-          <br />
-          TEL: {COMPANY.TEL} &nbsp;·&nbsp; {COMPANY.EMAIL}
+        <div className="brand">
+          {CONTRACT_IMAGES.logo && <img src={CONTRACT_IMAGES.logo} alt="logo" />}
+          <div>
+            <div className="nm">{COMPANY.NAME}</div>
+            <div className="meta">
+              Reg. No.: {COMPANY.REG_NO}
+              <br />
+              {COMPANY.ADDRESS}
+              <br />
+              TEL: {COMPANY.TEL} &nbsp;·&nbsp; {COMPANY.EMAIL}
+            </div>
+          </div>
+        </div>
+        <div className="titleBlock">
+          <div className="title">RECEIPT</div>
+          <div className="titleMeta">
+            No: <b>{r.paymentCode}</b>
+            <br />
+            Date: <b>{r.paidDate ? fmtDate(r.paidDate) : "-"}</b>
+            <br />
+            For Contract: <b>{r.contractCode}</b>
+            <br />
+            <span style={{ color: "#147a3d", fontWeight: 700 }}>PAID</span>
+          </div>
         </div>
       </div>
 
-      <div className="title">OFFICIAL RECEIPT</div>
-
-      <div className="refRow">
-        <div>
-          Receipt No: {r.paymentCode}
-          <br />
-          Contract: {r.contractCode} · Room: {r.roomCode}
-          {r.carparkLotNumber ? ` (Lot ${r.carparkLotNumber})` : ""}
-        </div>
-        <div>Date Paid: {r.paidDate ? fmtDate(r.paidDate) : "-"}</div>
-      </div>
-
-      <div>
-        Received From: <b>{r.tenantName}</b>
+      <div className="billTo">
+        <div className="lbl">RECEIVED FROM</div>
+        <b>{r.tenantName}</b>
         {r.tenantIc && (
           <>
             <br />
@@ -85,6 +91,9 @@ export default function ReceiptDocument({ r }: { r: ReceiptData }) {
             {r.propertyAddress}
           </>
         )}
+        <br />
+        Room: {r.roomCode}
+        {r.carparkLotNumber ? ` · Car Park Lot: ${r.carparkLotNumber}` : ""}
       </div>
 
       <table className="items">
@@ -105,20 +114,23 @@ export default function ReceiptDocument({ r }: { r: ReceiptData }) {
             <td>{r.method || "-"}</td>
             <td className="num">{Number(r.amountPaid).toLocaleString()}</td>
           </tr>
-          <tr className="totalRow">
-            <td colSpan={2}>Total Amount Received</td>
-            <td className="num">RM{Number(r.amountPaid).toLocaleString()}</td>
-          </tr>
         </tbody>
       </table>
 
+      <div className="totals">
+        <div className="row">
+          <span>Subtotal</span>
+          <span>RM{Number(r.amountPaid).toLocaleString()}</span>
+        </div>
+        <div className="totalRow">
+          <span>Total Paid</span>
+          <span>RM{Number(r.amountPaid).toLocaleString()}</span>
+        </div>
+      </div>
+
       <div className="paidStamp">PAID IN FULL</div>
 
-      <p className="note">Thank you for your payment. This receipt is computer-generated and valid without a signature.</p>
-
-      <div className="closing">
-        For <b>{COMPANY.NAME}</b>
-      </div>
+      <p className="note">Thank you for staying with Bliss Rooms.</p>
     </div>
   );
 }

@@ -59,6 +59,8 @@ export default function EditContractModal({
         emergencyName: c.emergencyName || "",
         emergencyContact: c.emergencyContact || "",
         emergencyRelationship: c.emergencyRelationship || "",
+        commAmount: c.commAmount != null ? String(c.commAmount) : "",
+        commStatus: c.commStatus === "Paid" ? "Paid" : "Pending",
       });
       setUtils({ electric: !!c.utilElectric, aircond: !!c.utilAircond, dryer: !!c.utilDryer });
 
@@ -232,6 +234,24 @@ export default function EditContractModal({
                 value={form.emergencyRelationship}
                 onChange={(e) => set("emergencyRelationship", e.target.value)}
               />
+            </Field>
+          </Row>
+
+          <div className="pt-1 text-sm font-semibold text-brand">💰 佣金 Commission</div>
+          <Row>
+            <Field label="佣金金额 RM">
+              <input
+                type="number"
+                className="input"
+                value={form.commAmount}
+                onChange={(e) => set("commAmount", e.target.value)}
+              />
+            </Field>
+            <Field label="发放状态">
+              <select className="input" value={form.commStatus} onChange={(e) => set("commStatus", e.target.value)}>
+                <option value="Pending">待发 Pending</option>
+                <option value="Paid">已发 Paid</option>
+              </select>
             </Field>
           </Row>
 
