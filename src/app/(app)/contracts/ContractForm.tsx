@@ -29,15 +29,12 @@ const initialForm = {
   accessCardDeposit: "0",
   adminFee: "",
   remarks: "",
-  nationality: "",
+  // Not agent-editable here — nationality/occupation/company/carPlate/emergency contact are
+  // secondary personal info the tenant fills in themselves after signup (my-tenancy → 个人资料),
+  // same as bank details (我的资料). contactNumber/email are still silently pre-filled from the
+  // tenant's account below so they're not lost, just no longer shown as agent input fields.
   contactNumber: "",
   email: "",
-  occupation: "",
-  company: "",
-  carPlate: "",
-  emergencyName: "",
-  emergencyContact: "",
-  emergencyRelationship: "",
 };
 
 export default function ContractForm({
@@ -228,44 +225,9 @@ export default function ContractForm({
           </Field>
         </Row>
 
-        <div className="pt-2 text-sm font-semibold text-brand">👤 租客个人资料</div>
-        <Row>
-          <Field label="国籍 Nationality">
-            <input className="input" value={form.nationality} onChange={(e) => set("nationality", e.target.value)} />
-          </Field>
-          <Field label="电话 Contact">
-            <input className="input" value={form.contactNumber} onChange={(e) => set("contactNumber", e.target.value)} />
-          </Field>
-          <Field label="Email">
-            <input type="email" className="input" value={form.email} onChange={(e) => set("email", e.target.value)} />
-          </Field>
-          <Field label="职业 Occupation">
-            <input className="input" value={form.occupation} onChange={(e) => set("occupation", e.target.value)} />
-          </Field>
-        </Row>
-        <Row>
-          <Field label="公司/大学 Company">
-            <input className="input" value={form.company} onChange={(e) => set("company", e.target.value)} />
-          </Field>
-          <Field label="车牌 Car Plate">
-            <input className="input" value={form.carPlate} onChange={(e) => set("carPlate", e.target.value)} />
-          </Field>
-          <Field label="紧急联络人">
-            <input className="input" value={form.emergencyName} onChange={(e) => set("emergencyName", e.target.value)} />
-          </Field>
-          <Field label="紧急电话">
-            <input className="input" value={form.emergencyContact} onChange={(e) => set("emergencyContact", e.target.value)} />
-          </Field>
-        </Row>
-        <Row>
-          <Field label="关系 Relationship">
-            <input
-              className="input"
-              value={form.emergencyRelationship}
-              onChange={(e) => set("emergencyRelationship", e.target.value)}
-            />
-          </Field>
-        </Row>
+        <p className="pt-1 text-xs text-gray-400">
+          国籍/职业/公司/车牌/紧急联络人等资料，租客签名前会自己在「我的租约」补填；银行资料（退押金用）在「我的资料」自己填。
+        </p>
 
         <div className="pt-2 text-sm font-semibold text-brand">⚡ 适用水电项目 (勾了才写进合同)</div>
         <div className="flex flex-col gap-2 pt-1">
