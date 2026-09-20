@@ -1,6 +1,6 @@
 "use client";
 
-import { COMPANY, CONTRACT_IMAGES, paymentTypeLabel } from "@/lib/config";
+import { COMPANY, CONTRACT_IMAGES, paymentTypeLabelEn } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 
 export interface InvoiceData {
@@ -14,6 +14,7 @@ export interface InvoiceData {
   dueDate: string | null;
   contractCode: string;
   roomCode: string;
+  carparkLotNumber: string | null;
   tenantName: string;
   tenantIc: string | null;
   propertyAddress: string | null;
@@ -67,6 +68,7 @@ export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
           Invoice No: {inv.paymentCode}
           <br />
           Contract: {inv.contractCode} · Room: {inv.roomCode}
+          {inv.carparkLotNumber ? ` (Lot ${inv.carparkLotNumber})` : ""}
         </div>
         <div>Due Date: {inv.dueDate ? fmtDate(inv.dueDate) : "-"}</div>
       </div>
@@ -97,7 +99,8 @@ export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
         <tbody>
           <tr>
             <td>
-              {paymentTypeLabel(inv.type, inv.customLabel)}
+              {paymentTypeLabelEn(inv.type, inv.customLabel)}
+              {inv.type === "CARPARK" && inv.carparkLotNumber ? ` (Lot ${inv.carparkLotNumber})` : ""}
               {inv.periodMonth ? ` (${inv.periodMonth})` : ""}
             </td>
             <td className="num">{Number(inv.amountDue).toLocaleString()}</td>

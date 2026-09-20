@@ -1,6 +1,6 @@
 "use client";
 
-import { COMPANY, CONTRACT_IMAGES, paymentTypeLabel } from "@/lib/config";
+import { COMPANY, CONTRACT_IMAGES, paymentTypeLabelEn } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 
 export interface ReceiptData {
@@ -13,6 +13,7 @@ export interface ReceiptData {
   paidDate: string | null;
   contractCode: string;
   roomCode: string;
+  carparkLotNumber: string | null;
   tenantName: string;
   tenantIc: string | null;
   propertyAddress: string | null;
@@ -65,6 +66,7 @@ export default function ReceiptDocument({ r }: { r: ReceiptData }) {
           Receipt No: {r.paymentCode}
           <br />
           Contract: {r.contractCode} · Room: {r.roomCode}
+          {r.carparkLotNumber ? ` (Lot ${r.carparkLotNumber})` : ""}
         </div>
         <div>Date Paid: {r.paidDate ? fmtDate(r.paidDate) : "-"}</div>
       </div>
@@ -96,7 +98,8 @@ export default function ReceiptDocument({ r }: { r: ReceiptData }) {
         <tbody>
           <tr>
             <td>
-              {paymentTypeLabel(r.type, r.customLabel)}
+              {paymentTypeLabelEn(r.type, r.customLabel)}
+              {r.type === "CARPARK" && r.carparkLotNumber ? ` (Lot ${r.carparkLotNumber})` : ""}
               {r.periodMonth ? ` (${r.periodMonth})` : ""}
             </td>
             <td>{r.method || "-"}</td>

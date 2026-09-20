@@ -130,6 +130,27 @@ export function paymentTypeLabel(type: string, customLabel?: string | null): str
   return PAYMENT_TYPE_LABELS[type] ?? type;
 }
 
+/** English equivalents, for the formal Invoice/Receipt documents (English-only, unlike the
+ * rest of the app which is Chinese-first). */
+export const PAYMENT_TYPE_LABELS_EN: Record<string, string> = {
+  DEPOSIT: "Security Deposit",
+  UTILITIES: "Utilities Deposit",
+  RENTAL: "Room Rental",
+  ADMIN_FEE: "Admin Fee",
+  ACCESS_CARD: "Access Card Deposit",
+  CARPARK: "Car Park Rental",
+  AC: "Air-Conditioner Usage",
+  DRYER: "Dryer Usage",
+  ELECTRIC: "Electricity Usage",
+  LATE_FEE: "Late Payment Penalty",
+  OTHER: "Other",
+};
+
+export function paymentTypeLabelEn(type: string, customLabel?: string | null): string {
+  if (type === "OTHER" && customLabel) return customLabel;
+  return PAYMENT_TYPE_LABELS_EN[type] ?? type;
+}
+
 export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
   SUBMITTED: "已提交",
   ACKNOWLEDGED: "已受理",

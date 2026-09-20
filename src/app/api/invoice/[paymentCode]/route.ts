@@ -23,12 +23,23 @@ export async function GET(
   const { paymentCode } = await params;
   const payment = await prisma.payment.findUnique({
     where: { paymentCode },
-    include: { contract: { include: { room: { select: { roomCode: true } } } } },
+    include: {
+      contract: {
+        include: {
+          room: { select: { roomCode: true, isCarpark: true, carparkLotNumber: true } },
+          carparkRoom: { select: { roomCode: true, carparkLotNumber: true } },
+        },
+      },
+    },
   });
   if (!payment) return NextResponse.json({ success: false, message: "找不到这笔账单" }, { status: 404 });
   if (!canView(user, payment.contract)) {
     return NextResponse.json({ success: false, message: "没有权限查看这笔账单" }, { status: 403 });
   }
+
+  const { room, carparkRoom } = payment.contract;
+  // Either the main room itself IS the carpark, or there's a separate linked carpark add-on.
+  const carparkLotNumber = room.isCarpark ? room.carparkLotNumber : (carparkRoom?.carparkLotNumber ?? null);
 
   return NextResponse.json({
     success: true,
@@ -42,7 +53,8 @@ export async function GET(
       status: payment.status,
       dueDate: payment.dueDate,
       contractCode: payment.contract.contractCode,
-      roomCode: payment.contract.room.roomCode,
+      roomCode: room.roomCode,
+      carparkLotNumber,
       tenantName: payment.contract.tenantName,
       tenantIc: payment.contract.tenantIc,
       propertyAddress: payment.contract.propertyAddress,
