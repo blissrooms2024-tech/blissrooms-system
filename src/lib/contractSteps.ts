@@ -39,10 +39,10 @@ export function buildContractSteps(c: ContractStepInput): { steps: TimelineStep[
     defs = [
       { label: "旧合同 (纸本已签)", state: "done" },
       {
-        label: c.outstanding > 0 ? `开办费/押金 (还欠 ${money(c.outstanding)})` : "开办费/押金已收清",
+        label: c.outstanding > 0 ? `还欠 ${money(c.outstanding)}` : "已清",
         state: c.outstanding > 0 ? "active" : "done",
         who: "Tenant",
-        action: `请缴清开办费/押金，还欠 ${money(c.outstanding)}`,
+        action: `请缴清还欠款项 ${money(c.outstanding)}`,
       },
     ];
   } else {
@@ -74,10 +74,10 @@ export function buildContractSteps(c: ContractStepInput): { steps: TimelineStep[
         action: "请签名",
       },
       {
-        label: c.outstanding > 0 ? `开办费/押金 (还欠 ${money(c.outstanding)})` : "开办费/押金已收清",
+        label: c.outstanding > 0 ? `还欠 ${money(c.outstanding)}` : "已清",
         state: c.outstanding > 0 ? (c.tenantSigned ? "active" : "pending") : "done",
         who: "Tenant",
-        action: `请缴清开办费/押金，还欠 ${money(c.outstanding)}`,
+        action: `请缴清还欠款项 ${money(c.outstanding)}`,
       },
       {
         label: "Move-in 表格",
