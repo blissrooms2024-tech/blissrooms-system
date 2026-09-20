@@ -5,6 +5,8 @@ import Link from "next/link";
 import { CONTRACT_STATUS_LABELS } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import ContractActions, { type ActionableContract } from "../ContractActions";
+import StepTimeline from "@/components/StepTimeline";
+import { buildContractSteps } from "@/lib/contractSteps";
 
 interface ContractDetail extends ActionableContract {
   room: { roomCode: string; propertyCode: string | null; propertyName: string };
@@ -37,8 +39,12 @@ interface ContractDetail extends ActionableContract {
   commStatus: string | null;
   remarks: string | null;
   pdfLink: string | null;
+  icFront: string | null;
+  icBack: string | null;
   _paid: number;
   _outstanding: number;
+  _moveInDone: boolean;
+  _isLegacy: boolean;
 }
 
 function fmt(v: number | null) {
@@ -120,6 +126,21 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
             {fmt(c.commAmount)} {c.commAmount ? `(${c.commStatus === "Paid" ? "已付" : "待付"})` : ""}
           </Info>
         </div>
+      </div>
+
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <h3 className="mb-3.5 text-base font-semibold text-brand">📋 合同 & 付款流程</h3>
+        <StepTimeline
+          steps={buildContractSteps({
+            status: c.status,
+            agentSigned: !!c.agentSignature,
+            tenantSigned: !!c.tenantSignature,
+            icDone: !!c.icFront && !!c.icBack,
+            moveInDone: c._moveInDone,
+            outstanding: c._outstanding,
+            isLegacy: c._isLegacy,
+          })}
+        />
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">

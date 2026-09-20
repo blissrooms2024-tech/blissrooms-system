@@ -7,6 +7,8 @@ import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import TenantInfoEditModal from "./TenantInfoEditModal";
 import WarningLettersModal from "./WarningLettersModal";
+import StepTimeline from "@/components/StepTimeline";
+import { buildContractSteps } from "@/lib/contractSteps";
 
 interface Card {
   contractCode: string;
@@ -20,6 +22,8 @@ interface Card {
   warningLetterCount: number;
   hasICFront: boolean;
   hasICBack: boolean;
+  moveInDone: boolean;
+  outstanding: number;
   nationality: string | null;
   contactNumber: string | null;
   email: string | null;
@@ -96,6 +100,21 @@ export default function MyTenancyClient() {
               <div className="rounded-full bg-white/20 px-3.5 py-1 text-xs font-semibold">
                 {CONTRACT_STATUS_LABELS[c.status] ?? c.status}
               </div>
+            </div>
+
+            <div className="border-b border-gray-50 px-5 py-4">
+              <b className="mb-2.5 block text-sm text-gray-600">📋 合同 & 付款流程</b>
+              <StepTimeline
+                steps={buildContractSteps({
+                  status: c.status,
+                  agentSigned: c.agentSigned,
+                  tenantSigned: c.tenantSigned,
+                  icDone: c.hasICFront && c.hasICBack,
+                  moveInDone: c.moveInDone,
+                  outstanding: c.outstanding,
+                  isLegacy: c.isLegacy,
+                })}
+              />
             </div>
 
             <div className="px-5 py-1">

@@ -34,13 +34,17 @@ export async function GET(
   startOfToday.setHours(0, 0, 0, 0);
   const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
 
-  const [paidAgg, escalatedBill] = await Promise.all([
+  const [paidAgg, escalatedBill, moveInForm] = await Promise.all([
     prisma.payment.aggregate({
       where: { contractId: contract.id, status: "Paid" },
       _sum: { amountPaid: true },
     }),
     prisma.payment.findFirst({
       where: { contractId: contract.id, type: "RENTAL", status: "PENDING", dueDate: { lte: escalationCutoff } },
+      select: { id: true },
+    }),
+    prisma.moveInOutForm.findFirst({
+      where: { contractId: contract.id, type: "MOVE_IN" },
       select: { id: true },
     }),
   ]);
@@ -56,6 +60,10 @@ export async function GET(
       _paid: paid,
       _outstanding: outstanding,
       _rentEscalated: !!escalatedBill,
+      _moveInDone: !!moveInForm,
+      // Legacy-imported contracts go straight to ACTIVE with no digital signature on either
+      // side — they were signed on paper before import.
+      _isLegacy: contract.status === "ACTIVE" && !contract.agentSignature && !contract.tenantSignature,
     }),
   });
 }
