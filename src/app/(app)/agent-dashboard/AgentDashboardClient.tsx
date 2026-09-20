@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { fmtMoney } from "@/lib/format";
 
 interface LeaderRow {
@@ -42,11 +43,11 @@ export default function AgentDashboardClient() {
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <h3 className="mb-3.5 text-base font-semibold text-brand">📊 我的总览</h3>
         <div className="flex flex-wrap gap-3.5">
-          <Box n={data.stats.totalContracts} l="总成交合同" />
-          <Box n={data.stats.thisMonth} l="本月新增" />
-          <Box n={data.stats.occupiedRooms} l="出租中房间" />
-          <Box n={fmtMoney(data.stats.commissionPaid)} l="佣金已发" color="text-green-700" />
-          <Box n={fmtMoney(data.stats.commissionPending)} l="佣金待发" color="text-amber-600" />
+          <Box n={data.stats.totalContracts} l="总成交合同" href="/agent-report?period=all" />
+          <Box n={data.stats.thisMonth} l="本月新增" href="/agent-report?period=month" />
+          <Box n={data.stats.occupiedRooms} l="出租中房间" href="/agent-report?period=all" />
+          <Box n={fmtMoney(data.stats.commissionPaid)} l="佣金已发" color="text-green-700" href="/agent-commission" />
+          <Box n={fmtMoney(data.stats.commissionPending)} l="佣金待发" color="text-amber-600" href="/agent-commission" />
         </div>
       </div>
 
@@ -84,11 +85,14 @@ export default function AgentDashboardClient() {
   );
 }
 
-function Box({ n, l, color }: { n: number | string; l: string; color?: string }) {
+function Box({ n, l, color, href }: { n: number | string; l: string; color?: string; href: string }) {
   return (
-    <div className="min-w-[130px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center">
+    <Link
+      href={href}
+      className="min-w-[130px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center transition hover:bg-brand-light"
+    >
       <div className={`text-2xl font-bold ${color ?? "text-brand"}`}>{n}</div>
       <div className="text-xs text-gray-500">{l}</div>
-    </div>
+    </Link>
   );
 }
