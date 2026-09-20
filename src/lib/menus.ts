@@ -6,6 +6,7 @@ export interface MenuItem {
 export const MENUS: Record<string, MenuItem[]> = {
   BOSS: [
     { href: "/dashboard", label: "📊 总览" },
+    { href: "/finance", label: "💰 财务总览" },
     { href: "/units", label: "🏢 楼盘" },
     { href: "/rooms", label: "🏠 房间" },
     { href: "/contracts", label: "📄 合同" },
@@ -16,6 +17,7 @@ export const MENUS: Record<string, MenuItem[]> = {
   ],
   ADMIN: [
     { href: "/dashboard", label: "📊 总览" },
+    { href: "/finance", label: "💰 财务总览" },
     { href: "/units", label: "🏢 楼盘" },
     { href: "/rooms", label: "🏠 房间" },
     { href: "/contracts", label: "📄 合同" },
