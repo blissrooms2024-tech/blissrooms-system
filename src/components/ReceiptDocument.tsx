@@ -13,6 +13,8 @@ export interface ReceiptData {
   paidDate: string | null;
   contractCode: string;
   roomCode: string;
+  isCarpark: boolean;
+  carparkRoomCode: string | null;
   carparkLotNumber: string | null;
   tenantName: string;
   tenantIc: string | null;
@@ -92,8 +94,19 @@ export default function ReceiptDocument({ r }: { r: ReceiptData }) {
           </>
         )}
         <br />
-        Room: {r.roomCode}
-        {r.carparkLotNumber ? ` · Car Park Lot: ${r.carparkLotNumber}` : ""}
+        {r.isCarpark ? (
+          <>
+            Car Park: {r.roomCode}
+            {r.carparkLotNumber ? ` (Lot ${r.carparkLotNumber})` : ""}
+          </>
+        ) : (
+          <>
+            Room: {r.roomCode}
+            {r.carparkRoomCode
+              ? ` · Car Park: ${r.carparkRoomCode}${r.carparkLotNumber ? ` (Lot ${r.carparkLotNumber})` : ""}`
+              : ""}
+          </>
+        )}
       </div>
 
       <table className="items">

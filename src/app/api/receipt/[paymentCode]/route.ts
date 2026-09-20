@@ -57,6 +57,8 @@ export async function GET(
       recordedBy: payment.recordedBy,
       contractCode: payment.contract.contractCode,
       roomCode: room.roomCode,
+      isCarpark: room.isCarpark,
+      carparkRoomCode: room.isCarpark ? null : (carparkRoom?.roomCode ?? null),
       carparkLotNumber,
       tenantName: payment.contract.tenantName,
       tenantIc: payment.contract.tenantIc,

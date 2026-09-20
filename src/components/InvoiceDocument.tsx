@@ -14,6 +14,8 @@ export interface InvoiceData {
   dueDate: string | null;
   contractCode: string;
   roomCode: string;
+  isCarpark: boolean;
+  carparkRoomCode: string | null;
   carparkLotNumber: string | null;
   tenantName: string;
   tenantIc: string | null;
@@ -93,8 +95,19 @@ export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
           </>
         )}
         <br />
-        Room: {inv.roomCode}
-        {inv.carparkLotNumber ? ` · Car Park Lot: ${inv.carparkLotNumber}` : ""}
+        {inv.isCarpark ? (
+          <>
+            Car Park: {inv.roomCode}
+            {inv.carparkLotNumber ? ` (Lot ${inv.carparkLotNumber})` : ""}
+          </>
+        ) : (
+          <>
+            Room: {inv.roomCode}
+            {inv.carparkRoomCode
+              ? ` · Car Park: ${inv.carparkRoomCode}${inv.carparkLotNumber ? ` (Lot ${inv.carparkLotNumber})` : ""}`
+              : ""}
+          </>
+        )}
       </div>
 
       <table className="items">
