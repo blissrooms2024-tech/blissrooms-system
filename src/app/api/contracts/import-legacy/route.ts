@@ -225,8 +225,26 @@ export async function POST(req: NextRequest) {
         d.roomRental + d.securityDeposit + d.utilitiesDeposit + d.accessCardDeposit + d.adminFee + d.carparkRental;
       const contractCode = await newId("CT");
 
-      await prisma.$transaction([
-        prisma.contract.create({
+      // A legacy tenant has always already handed over the one-time move-in items (deposit,
+      // utilities deposit, admin fee, access card) long before this system existed — only the
+      // recurring rental/carpark rent is a genuinely still-open bill. Mark those as Paid right
+      // away instead of importing every old contract as if nothing had ever been collected.
+      // No exact collection date survives in the spreadsheet, so move-in date (falling back to
+      // the commencement date, then today) stands in as a placeholder; Admin can correct it
+      // later on the contract's payment history if the real date matters.
+      const oneTimeItems = (
+        [
+          { type: "DEPOSIT", amount: d.securityDeposit },
+          { type: "UTILITIES", amount: d.utilitiesDeposit },
+          { type: "ADMIN_FEE", amount: d.adminFee },
+          { type: "ACCESS_CARD", amount: d.accessCardDeposit },
+        ] as const
+      ).filter((it) => it.amount > 0);
+      const settledDate = d.moveInDate ?? d.commencementDate ?? new Date();
+      const oneTimePaymentCodes = await Promise.all(oneTimeItems.map(() => newId("PY")));
+
+      await prisma.$transaction(async (tx) => {
+        const contract = await tx.contract.create({
           data: {
             contractCode,
             roomId: room.id,
@@ -266,20 +284,39 @@ export async function POST(req: NextRequest) {
             utilAircond: d.utilAircond,
             utilElectric: d.utilElectric,
           },
-        }),
-        prisma.room.update({
+        });
+
+        for (let j = 0; j < oneTimeItems.length; j++) {
+          const it = oneTimeItems[j];
+          await tx.payment.create({
+            data: {
+              paymentCode: oneTimePaymentCodes[j],
+              contractId: contract.id,
+              roomCode: room.roomCode,
+              tenantId: tenant.id,
+              tenantName: d.tenantName,
+              type: it.type,
+              amountDue: it.amount,
+              amountPaid: it.amount,
+              paidDate: settledDate,
+              status: "Paid",
+              notes: "旧合同导入 (入住前已收齐，日期为占位，待 Admin 核实)",
+              recordedBy: user.name,
+            },
+          });
+        }
+
+        await tx.room.update({
           where: { id: room.id },
           data: { status: "OCCUPIED", currentContractId: contractCode, currentTenantId: tenant.id },
-        }),
-        ...(carparkRoom
-          ? [
-              prisma.room.update({
-                where: { id: carparkRoom.id },
-                data: { status: "OCCUPIED", currentContractId: contractCode, currentTenantId: tenant.id },
-              }),
-            ]
-          : []),
-      ]);
+        });
+        if (carparkRoom) {
+          await tx.room.update({
+            where: { id: carparkRoom.id },
+            data: { status: "OCCUPIED", currentContractId: contractCode, currentTenantId: tenant.id },
+          });
+        }
+      });
 
       imported++;
       results.push({ row: rowNum, status: "imported", message: `✅ ${contractCode} (${d.tenantName} · ${d.roomCode})` });
