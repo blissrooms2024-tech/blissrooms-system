@@ -18,7 +18,10 @@ export async function GET() {
   cutoff.setMonth(cutoff.getMonth() + RULES.NOTICE_MONTHS);
 
   const contracts = await prisma.contract.findMany({
-    where: { status: "ACTIVE", expiredDate: { lte: cutoff } },
+    where: {
+      status: "ACTIVE",
+      OR: [{ expiredDate: { lte: cutoff } }, { renewalRequestedAt: { not: null } }],
+    },
     orderBy: { expiredDate: "asc" },
     include: { room: { select: { roomCode: true } } },
   });
@@ -28,10 +31,13 @@ export async function GET() {
     tenantName: c.tenantName,
     roomCode: c.room.roomCode,
     agentName: c.agentName,
+    contactNumber: c.contactNumber,
     expiredDate: c.expiredDate,
     daysToExpiry: c.expiredDate
       ? Math.ceil((c.expiredDate.getTime() - startOfToday.getTime()) / (24 * 3600 * 1000))
       : null,
+    renewalRequestedAt: c.renewalRequestedAt,
+    renewalRequestedMonths: c.renewalRequestedMonths,
   }));
 
   return NextResponse.json({ success: true, contracts: list });

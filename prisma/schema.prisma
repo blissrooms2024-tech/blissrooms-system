@@ -224,6 +224,11 @@ model Contract {
   /// once they're physically checking out — this is just a heads-up so Admin can follow up and
   /// start re-marketing the room ahead of time.
   moveOutNoticeDate DateTime?
+  /// Tenant's declared intent TO renew, with how many months they want — the other half of
+  /// the "renew or move out" notice, set by the tenant themself. Admin still has to actually
+  /// process it (contract reserves Admin's absolute right to decline), on the 续约管理 page.
+  renewalRequestedAt     DateTime?
+  renewalRequestedMonths Int?
 
   roomRental        Decimal @db.Decimal(10, 2)
   carparkRental     Decimal @default(0) @db.Decimal(10, 2)

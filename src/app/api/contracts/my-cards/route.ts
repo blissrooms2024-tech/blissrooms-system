@@ -100,6 +100,8 @@ export async function GET() {
       expiredDate: c.expiredDate,
       daysToExpiry,
       moveOutNoticeDate: c.moveOutNoticeDate,
+      renewalRequestedAt: c.renewalRequestedAt,
+      renewalRequestedMonths: c.renewalRequestedMonths,
       nationality: c.nationality,
       contactNumber: c.contactNumber,
       email: c.email,

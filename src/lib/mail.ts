@@ -318,6 +318,51 @@ export async function notifyAdminsMoveOutNotice(
   );
 }
 
+/** Best-effort local-to-international normalization for a Malaysian mobile number (the only
+ * market this system serves) so a wa.me link actually opens the right chat — strips
+ * formatting, and swaps a leading "0" for the "60" country code. Returns null when there's
+ * nothing usable, since wa.me needs digits, not a guess. */
+function toWhatsAppNumber(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("0")) return "60" + digits.slice(1);
+  if (digits.startsWith("60")) return digits;
+  return digits;
+}
+
+export async function notifyAdminsRenewalRequested(
+  contractCode: string,
+  roomCode: string,
+  tenantName: string,
+  tenantPhone: string | null,
+  months: number,
+  triggeredBy: string
+) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
+  const link = `${APP_URL}/contracts/renewal`;
+  const waNumber = toWhatsAppNumber(tenantPhone);
+  const waText = encodeURIComponent(
+    `Hi ${tenantName}, this is Bliss Rooms regarding your renewal request for ${contractCode} (${months} months). `
+  );
+  const waLink = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : null;
+  const html = wrap(
+    "Tenant Requested Renewal",
+    `<p><b>${tenantName}</b> (Contract <b>${contractCode}</b>, Room ${roomCode}) has requested to renew for <b>${months} months</b>.</p>
+     <p>Please review and process on the 续约管理 (Renewal) page — the contract reserves your right to decline.</p>
+     <p><a href="${link}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go to Renewal Page</a>${
+      waLink
+        ? ` &nbsp; <a href="${waLink}" style="background:#25d366;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">WhatsApp Tenant</a>`
+        : ""
+    }</p>`
+  );
+  return Promise.all(
+    admins.map((a) =>
+      send(a.email, `Bliss Rooms — ${contractCode} Renewal Requested (${months} months)`, html, "RenewalRequested", contractCode, triggeredBy)
+    )
+  );
+}
+
 /** Admin manually confirms terminating a contract for rent arrears (deposit forfeited). */
 export async function notifyTenantContractTerminated(
   tenant: { name: string; email: string },

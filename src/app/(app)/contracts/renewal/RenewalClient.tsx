@@ -12,14 +12,28 @@ interface Candidate {
   tenantName: string;
   roomCode: string;
   agentName: string;
+  contactNumber: string | null;
   expiredDate: string | null;
   daysToExpiry: number | null;
+  renewalRequestedAt: string | null;
+  renewalRequestedMonths: number | null;
 }
 
 function addMonths(dateStr: string | null, months: number) {
   const d = dateStr ? new Date(dateStr) : new Date();
   d.setMonth(d.getMonth() + months);
   return d.toISOString().slice(0, 10);
+}
+
+// Best-effort local-to-international normalization for a Malaysian mobile number, matching
+// the same logic used server-side when the renewal-request email builds its wa.me link.
+function toWhatsAppLink(phone: string | null, tenantName: string) {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  const intl = digits.startsWith("0") ? "60" + digits.slice(1) : digits;
+  const text = encodeURIComponent(`Hi ${tenantName}, this is Bliss Rooms regarding your tenancy renewal. `);
+  return `https://wa.me/${intl}?text=${text}`;
 }
 
 export default function RenewalClient() {
@@ -54,7 +68,7 @@ export default function RenewalClient() {
 
   function openRow(c: Candidate) {
     setOpenId(c.contractCode);
-    setNewDate(addMonths(c.expiredDate, 12));
+    setNewDate(addMonths(c.expiredDate, c.renewalRequestedMonths ?? 12));
   }
 
   async function confirmRenew() {
@@ -120,12 +134,29 @@ export default function RenewalClient() {
                         <span className="font-semibold text-amber-600">(还剩 {c.daysToExpiry} 天)</span>
                       )}
                     </div>
+                    {c.renewalRequestedAt && (
+                      <div className="mt-1 inline-block rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                        🔄 租客已申请续约 {c.renewalRequestedMonths} 个月 ({fmtDate(c.renewalRequestedAt)})
+                      </div>
+                    )}
                   </div>
-                  {openId !== c.contractCode && (
-                    <button onClick={() => openRow(c)} className="btn-primary text-sm">
-                      🔄 续约
-                    </button>
-                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {toWhatsAppLink(c.contactNumber, c.tenantName) && (
+                      <a
+                        href={toWhatsAppLink(c.contactNumber, c.tenantName)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-soft text-sm"
+                      >
+                        📱 WhatsApp
+                      </a>
+                    )}
+                    {openId !== c.contractCode && (
+                      <button onClick={() => openRow(c)} className="btn-primary text-sm">
+                        🔄 续约
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {openId === c.contractCode && (

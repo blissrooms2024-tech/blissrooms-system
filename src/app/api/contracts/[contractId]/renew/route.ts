@@ -50,7 +50,10 @@ export async function POST(
   dueDate.setDate(dueDate.getDate() + 7);
 
   await prisma.$transaction([
-    prisma.contract.update({ where: { id: c.id }, data: { expiredDate: newExpiredDate } }),
+    prisma.contract.update({
+      where: { id: c.id },
+      data: { expiredDate: newExpiredDate, renewalRequestedAt: null, renewalRequestedMonths: null },
+    }),
     prisma.payment.create({
       data: {
         paymentCode,

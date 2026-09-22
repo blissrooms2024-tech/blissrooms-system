@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { CONTRACT_STATUS_LABELS, RULES } from "@/lib/config";
+import { RULES, contractStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
+import { useLanguage } from "@/components/LanguageProvider";
 import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import TenantInfoEditModal from "./TenantInfoEditModal";
@@ -24,6 +25,8 @@ interface Card {
   expiredDate: string | null;
   daysToExpiry: number | null;
   moveOutNoticeDate: string | null;
+  renewalRequestedAt: string | null;
+  renewalRequestedMonths: number | null;
   warningLetterCount: number;
   hasICFront: boolean;
   hasICBack: boolean;
@@ -53,6 +56,7 @@ function Pill({ tone, children }: { tone: "done" | "wait" | "lock" | "due"; chil
 
 export default function MyTenancyClient() {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [cards, setCards] = useState<Card[] | null>(null);
   const [error, setError] = useState("");
   const [signing, setSigning] = useState<string | null>(null);
@@ -62,6 +66,9 @@ export default function MyTenancyClient() {
   const [movingOutId, setMovingOutId] = useState<string | null>(null);
   const [moveOutDate, setMoveOutDate] = useState("");
   const [movingOutSaving, setMovingOutSaving] = useState(false);
+  const [renewingId, setRenewingId] = useState<string | null>(null);
+  const [renewMonths, setRenewMonths] = useState("12");
+  const [renewingSaving, setRenewingSaving] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -71,8 +78,9 @@ export default function MyTenancyClient() {
       if (!data.success) return setError(data.message);
       setCards(data.cards);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -83,7 +91,7 @@ export default function MyTenancyClient() {
 
   async function submitMoveOutNotice(contractCode: string) {
     if (!moveOutDate) {
-      toast.warning("请选日期");
+      toast.warning(t("请选日期", "Please pick a date"));
       return;
     }
     setMovingOutSaving(true);
@@ -102,16 +110,48 @@ export default function MyTenancyClient() {
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setMovingOutSaving(false);
     }
   }
 
+  async function submitRenewalRequest(contractCode: string) {
+    const months = Number(renewMonths);
+    if (!months || months < 1) {
+      toast.warning(t("请填要续约的月数", "Please enter how many months to renew"));
+      return;
+    }
+    setRenewingSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${contractCode}/renewal-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ months }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setRenewingId(null);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setRenewingSaving(false);
+    }
+  }
+
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
   if (cards.length === 0) {
-    return <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">你还没有租约</div>;
+    return (
+      <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">
+        {t("你还没有租约", "You don't have a tenancy yet")}
+      </div>
+    );
   }
 
   return (
@@ -119,15 +159,18 @@ export default function MyTenancyClient() {
       {cards.map((c) => {
         const icDone = c.hasICFront && c.hasICBack;
         const canSign = c.agentSigned && icDone && !c.tenantSigned;
-        const flow = buildContractSteps({
-          status: c.status,
-          agentSigned: c.agentSigned,
-          tenantSigned: c.tenantSigned,
-          icDone,
-          moveInDone: c.moveInDone,
-          outstanding: c.outstanding,
-          isLegacy: c.isLegacy,
-        });
+        const flow = buildContractSteps(
+          {
+            status: c.status,
+            agentSigned: c.agentSigned,
+            tenantSigned: c.tenantSigned,
+            icDone,
+            moveInDone: c.moveInDone,
+            outstanding: c.outstanding,
+            isLegacy: c.isLegacy,
+          },
+          t
+        );
 
         return (
           <div key={c.contractCode} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -143,12 +186,12 @@ export default function MyTenancyClient() {
                 )}
               </div>
               <div className="rounded-full bg-white/20 px-3.5 py-1 text-xs font-semibold">
-                {CONTRACT_STATUS_LABELS[c.status] ?? c.status}
+                {contractStatusLabel(c.status, locale)}
               </div>
             </div>
 
             <div className="border-b border-gray-50 px-5 py-4">
-              <b className="mb-2.5 block text-sm text-gray-600">📋 合同 & 付款流程</b>
+              <b className="mb-2.5 block text-sm text-gray-600">{t("📋 合同 & 付款流程", "📋 Contract & Payment Progress")}</b>
               {flow.nextAction && (
                 <div
                   className={`mb-2.5 rounded-lg px-3.5 py-2.5 text-sm ${
@@ -157,11 +200,13 @@ export default function MyTenancyClient() {
                 >
                   {flow.nextAction.who === "Tenant" ? (
                     <>
-                      <span className="font-semibold">⏭️ 下一个步骤:</span> {flow.nextAction.text}
+                      <span className="font-semibold">{t("⏭️ 下一个步骤:", "⏭️ Next step:")}</span> {flow.nextAction.text}
                     </>
                   ) : (
                     <>
-                      <span className="font-semibold">⏳ 下一个步骤 (等 {flow.nextAction.who}):</span>{" "}
+                      <span className="font-semibold">
+                        {t(`⏳ 下一个步骤 (等 ${flow.nextAction.who}):`, `⏳ Next step (waiting on ${flow.nextAction.who}):`)}
+                      </span>{" "}
                       {flow.nextAction.text}
                     </>
                   )}
@@ -173,12 +218,12 @@ export default function MyTenancyClient() {
             <div className="px-5 py-1">
               <Row
                 icon="📄"
-                name="合同 Agreement"
-                desc="查看完整合同与条款"
-                status={<Pill tone={c.status === "ACTIVE" ? "done" : "wait"}>{CONTRACT_STATUS_LABELS[c.status]}</Pill>}
+                name={t("合同 Agreement", "Agreement")}
+                desc={t("查看完整合同与条款", "View the full agreement and terms")}
+                status={<Pill tone={c.status === "ACTIVE" ? "done" : "wait"}>{contractStatusLabel(c.status, locale)}</Pill>}
                 action={
                   <Link href={`/agreement/${c.contractCode}`} className="btn-soft px-3.5 py-1.5 text-xs">
-                    查看合同
+                    {t("查看合同", "View Agreement")}
                   </Link>
                 }
               />
@@ -186,48 +231,97 @@ export default function MyTenancyClient() {
               {c.expiredDate && c.status === "ACTIVE" && (
                 <Row
                   icon="📅"
-                  name="租约到期 Lease Expiry"
+                  name={t("租约到期 Lease Expiry", "Lease Expiry")}
                   desc={
-                    c.moveOutNoticeDate
-                      ? `${fmtDate(c.expiredDate)} · 已登记搬出日期: ${fmtDate(c.moveOutNoticeDate)}`
-                      : c.daysToExpiry !== null && c.daysToExpiry <= RULES.NOTICE_MONTHS * 30
-                        ? `${fmtDate(c.expiredDate)} · 要续约请联系 Agent/Admin`
-                        : fmtDate(c.expiredDate)
+                    c.renewalRequestedAt
+                      ? t(
+                          `${fmtDate(c.expiredDate)} · 已申请续约 ${c.renewalRequestedMonths} 个月 (${fmtDate(c.renewalRequestedAt)})，等 Admin 处理`,
+                          `${fmtDate(c.expiredDate)} · Requested renewal for ${c.renewalRequestedMonths} months (${fmtDate(c.renewalRequestedAt)}), pending Admin`
+                        )
+                      : c.moveOutNoticeDate
+                        ? t(
+                            `${fmtDate(c.expiredDate)} · 已登记搬出日期: ${fmtDate(c.moveOutNoticeDate)}`,
+                            `${fmtDate(c.expiredDate)} · Registered move-out date: ${fmtDate(c.moveOutNoticeDate)}`
+                          )
+                        : c.daysToExpiry !== null && c.daysToExpiry <= RULES.NOTICE_MONTHS * 30
+                          ? t(
+                              `${fmtDate(c.expiredDate)} · 要续约或搬出，请选一个`,
+                              `${fmtDate(c.expiredDate)} · Please choose to renew or move out`
+                            )
+                          : (fmtDate(c.expiredDate) as string)
                   }
                   status={
-                    c.moveOutNoticeDate ? (
-                      <Pill tone="done">📤 不续约</Pill>
+                    c.renewalRequestedAt ? (
+                      <Pill tone="wait">{t("🔄 已申请续约", "🔄 Renewal Requested")}</Pill>
+                    ) : c.moveOutNoticeDate ? (
+                      <Pill tone="done">{t("📤 不续约", "📤 Not Renewing")}</Pill>
                     ) : c.daysToExpiry !== null && c.daysToExpiry < 0 ? (
-                      <Pill tone="due">⚠️ 已过期 {Math.abs(c.daysToExpiry)} 天</Pill>
+                      <Pill tone="due">{t(`⚠️ 已过期 ${Math.abs(c.daysToExpiry)} 天`, `⚠️ Expired ${Math.abs(c.daysToExpiry)} days ago`)}</Pill>
                     ) : c.daysToExpiry !== null && c.daysToExpiry <= RULES.NOTICE_MONTHS * 30 ? (
-                      <Pill tone="wait">⏰ 还剩 {c.daysToExpiry} 天</Pill>
+                      <Pill tone="wait">{t(`⏰ 还剩 ${c.daysToExpiry} 天`, `⏰ ${c.daysToExpiry} days left`)}</Pill>
                     ) : (
-                      <Pill tone="done">还剩 {c.daysToExpiry} 天</Pill>
+                      <Pill tone="done">{t(`还剩 ${c.daysToExpiry} 天`, `${c.daysToExpiry} days left`)}</Pill>
                     )
                   }
                   action={
+                    !c.renewalRequestedAt &&
                     !c.moveOutNoticeDate &&
                     c.daysToExpiry !== null &&
                     c.daysToExpiry <= RULES.NOTICE_MONTHS * 30 &&
-                    movingOutId !== c.contractCode && (
-                      <button
-                        onClick={() => {
-                          setMovingOutId(c.contractCode);
-                          setMoveOutDate("");
-                        }}
-                        className="btn-soft px-3.5 py-1.5 text-xs"
-                      >
-                        不续约, 我要搬出
-                      </button>
+                    movingOutId !== c.contractCode &&
+                    renewingId !== c.contractCode && (
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          onClick={() => {
+                            setRenewingId(c.contractCode);
+                            setRenewMonths("12");
+                          }}
+                          className="btn-primary px-3.5 py-1.5 text-xs"
+                        >
+                          {t("🔄 我要续约", "🔄 I Want to Renew")}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setMovingOutId(c.contractCode);
+                            setMoveOutDate("");
+                          }}
+                          className="btn-soft px-3.5 py-1.5 text-xs"
+                        >
+                          {t("不续约, 我要搬出", "Not Renewing, I'm Moving Out")}
+                        </button>
+                      </div>
                     )
                   }
                 />
               )}
 
+              {renewingId === c.contractCode && (
+                <div className="flex flex-wrap items-end gap-2.5 border-b border-gray-50 px-5 py-3.5">
+                  <div>
+                    <label className="mb-1.5 block text-sm text-gray-600">{t("要续约几个月？", "How many months?")}</label>
+                    <select value={renewMonths} onChange={(e) => setRenewMonths(e.target.value)} className="input">
+                      <option value="6">{t("6 个月", "6 months")}</option>
+                      <option value="12">{t("12 个月", "12 months")}</option>
+                      <option value="24">{t("24 个月", "24 months")}</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={() => submitRenewalRequest(c.contractCode)}
+                    disabled={renewingSaving}
+                    className="btn-primary px-3.5 py-1.5 text-xs"
+                  >
+                    {renewingSaving ? t("提交中...", "Submitting...") : t("确认申请续约", "Confirm Renewal Request")}
+                  </button>
+                  <button onClick={() => setRenewingId(null)} className="btn-soft px-3.5 py-1.5 text-xs">
+                    {t("取消", "Cancel")}
+                  </button>
+                </div>
+              )}
+
               {movingOutId === c.contractCode && (
                 <div className="flex flex-wrap items-end gap-2.5 border-b border-gray-50 px-5 py-3.5">
                   <div>
-                    <label className="mb-1.5 block text-sm text-gray-600">预计搬出日期</label>
+                    <label className="mb-1.5 block text-sm text-gray-600">{t("预计搬出日期", "Expected Move-out Date")}</label>
                     <input
                       type="date"
                       value={moveOutDate}
@@ -240,10 +334,10 @@ export default function MyTenancyClient() {
                     disabled={movingOutSaving}
                     className="btn-primary px-3.5 py-1.5 text-xs"
                   >
-                    {movingOutSaving ? "提交中..." : "确认登记"}
+                    {movingOutSaving ? t("提交中...", "Submitting...") : t("确认登记", "Confirm")}
                   </button>
                   <button onClick={() => setMovingOutId(null)} className="btn-soft px-3.5 py-1.5 text-xs">
-                    取消
+                    {t("取消", "Cancel")}
                   </button>
                 </div>
               )}
@@ -251,12 +345,12 @@ export default function MyTenancyClient() {
               {c.pdfLink && (
                 <Row
                   icon="📎"
-                  name="旧合同 PDF"
-                  desc="Admin 上传的签名版扫描件"
-                  status={<Pill tone="done">✅ 已上传</Pill>}
+                  name={t("旧合同 PDF", "Legacy Contract PDF")}
+                  desc={t("Admin 上传的签名版扫描件", "Signed scan uploaded by Admin")}
+                  status={<Pill tone="done">{t("✅ 已上传", "✅ Uploaded")}</Pill>}
                   action={
                     <a href={c.pdfLink} target="_blank" rel="noopener noreferrer" className="btn-soft px-3.5 py-1.5 text-xs">
-                      查看 / 下载
+                      {t("查看 / 下载", "View / Download")}
                     </a>
                   }
                 />
@@ -264,24 +358,24 @@ export default function MyTenancyClient() {
 
               <Row
                 icon="✍️"
-                name="合同签名 Signature"
+                name={t("合同签名 Signature", "Signature")}
                 status={
                   c.isLegacy ? (
-                    <Pill tone="done">✅ 旧合同 (纸本已签)</Pill>
+                    <Pill tone="done">{t("✅ 旧合同 (纸本已签)", "✅ Legacy Contract (Signed on Paper)")}</Pill>
                   ) : c.tenantSigned ? (
-                    <Pill tone="done">✅ 已签</Pill>
+                    <Pill tone="done">{t("✅ 已签", "✅ Signed")}</Pill>
                   ) : !c.agentSigned ? (
-                    <Pill tone="lock">🔒 等 Agent 先签</Pill>
+                    <Pill tone="lock">{t("🔒 等 Agent 先签", "🔒 Waiting on Agent to sign first")}</Pill>
                   ) : !icDone ? (
-                    <Pill tone="wait">⚠️ 先上传 IC</Pill>
+                    <Pill tone="wait">{t("⚠️ 先上传 IC", "⚠️ Upload IC first")}</Pill>
                   ) : (
-                    <Pill tone="wait">待签名</Pill>
+                    <Pill tone="wait">{t("待签名", "Awaiting Signature")}</Pill>
                   )
                 }
                 action={
                   canSign && (
                     <button onClick={() => setSigning(c.contractCode)} className="btn-primary px-3.5 py-1.5 text-xs">
-                      签名
+                      {t("签名", "Sign")}
                     </button>
                   )
                 }
@@ -289,32 +383,32 @@ export default function MyTenancyClient() {
 
               <Row
                 icon="🪪"
-                name="IC / 护照"
-                desc="正反面副本"
+                name={t("IC / 护照", "IC / Passport")}
+                desc={t("正反面副本", "Front and back copy")}
                 status={
                   icDone ? (
-                    <Pill tone="done">✅ 已上传</Pill>
+                    <Pill tone="done">{t("✅ 已上传", "✅ Uploaded")}</Pill>
                   ) : c.hasICFront || c.hasICBack ? (
-                    <Pill tone="wait">⚠️ 差一面</Pill>
+                    <Pill tone="wait">{t("⚠️ 差一面", "⚠️ Missing one side")}</Pill>
                   ) : (
-                    <Pill tone="wait">⚠️ 未上传</Pill>
+                    <Pill tone="wait">{t("⚠️ 未上传", "⚠️ Not uploaded")}</Pill>
                   )
                 }
                 action={
                   <button onClick={() => setIcUploading(c.contractCode)} className="btn-soft px-3.5 py-1.5 text-xs">
-                    {icDone ? "查看" : "上传"}
+                    {icDone ? t("查看", "View") : t("上传", "Upload")}
                   </button>
                 }
               />
 
               <Row
                 icon="📇"
-                name="个人资料 Personal Info"
-                desc="国籍/职业/公司/车牌/紧急联络人"
+                name={t("个人资料 Personal Info", "Personal Info")}
+                desc={t("国籍/职业/公司/车牌/紧急联络人", "Nationality/Occupation/Company/Car Plate/Emergency Contact")}
                 status={null}
                 action={
                   <button onClick={() => setEditingInfo(c)} className="btn-soft px-3.5 py-1.5 text-xs">
-                    ✏️ 编辑
+                    {t("✏️ 编辑", "✏️ Edit")}
                   </button>
                 }
               />
@@ -322,11 +416,11 @@ export default function MyTenancyClient() {
               {c.warningLetterCount > 0 && (
                 <Row
                   icon="⚠️"
-                  name="警告信 Warning Letter"
-                  status={<Pill tone="due">{c.warningLetterCount} 封</Pill>}
+                  name={t("警告信 Warning Letter", "Warning Letter")}
+                  status={<Pill tone="due">{t(`${c.warningLetterCount} 封`, `${c.warningLetterCount}`)}</Pill>}
                   action={
                     <button onClick={() => setViewingLetters(c.contractCode)} className="btn-soft px-3.5 py-1.5 text-xs">
-                      查看
+                      {t("查看", "View")}
                     </button>
                   }
                 />

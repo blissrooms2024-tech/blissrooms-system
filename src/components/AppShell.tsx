@@ -8,6 +8,7 @@ import { ROLE_LABELS } from "@/lib/config";
 import ChangePasswordModal from "./ChangePasswordModal";
 import LanguageToggle from "./LanguageToggle";
 import { useLanguage } from "./LanguageProvider";
+import LeaseExpiryReminder from "./LeaseExpiryReminder";
 
 const MAINTENANCE_SEEN_KEY = "mtce_seen_resolved_at";
 
