@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { expenseCategoryLabel } from "@/lib/config";
+import { serialize } from "@/lib/serialize";
 
 /**
  * Monthly income report for a Unit (Property): total collected, broken down by room and by
- * payment type, and — for units managed on behalf of a landlord — the net amount payable to
- * them after Bliss Rooms' management fee.
+ * payment type, running expenses (water/electric/wifi/cleaning/maintenance/other) booked to
+ * this month, and — for units managed on behalf of a landlord, or master-leased from an
+ * owner — the net amount payable/profit after Bliss Rooms' management fee (or fixed owner
+ * rent) and those expenses.
  */
 export async function GET(
   req: NextRequest,
@@ -32,16 +36,28 @@ export async function GET(
   if (!property) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
 
   const roomCodes = property.rooms.map((r) => r.roomCode);
-  const payments = roomCodes.length
-    ? await prisma.payment.findMany({
-        where: {
-          roomCode: { in: roomCodes },
-          paidDate: { gte: rangeStart, lt: rangeEnd },
-          status: "Paid",
-        },
-        orderBy: [{ roomCode: "asc" }, { paidDate: "asc" }],
-      })
-    : [];
+  const [payments, expenses, maintenanceCosts] = await Promise.all([
+    roomCodes.length
+      ? prisma.payment.findMany({
+          where: {
+            roomCode: { in: roomCodes },
+            paidDate: { gte: rangeStart, lt: rangeEnd },
+            status: "Paid",
+          },
+          orderBy: [{ roomCode: "asc" }, { paidDate: "asc" }],
+        })
+      : Promise.resolve([]),
+    prisma.expense.findMany({
+      where: { propertyId: property.id, periodMonth: monthParam },
+      orderBy: { expenseDate: "asc" },
+    }),
+    roomCodes.length
+      ? prisma.maintenanceRequest.findMany({
+          where: { roomCode: { in: roomCodes }, cost: { not: null }, costPaidAt: { gte: rangeStart, lt: rangeEnd } },
+          select: { requestCode: true, roomCode: true, title: true, cost: true, costPaidAt: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
   const byRoom = new Map<
     string,
@@ -64,12 +80,32 @@ export async function GET(
     total += amt;
   }
 
+  const expenseItems = expenses.map((e) => ({
+    expenseCode: e.expenseCode,
+    category: e.category,
+    label: expenseCategoryLabel(e.category, e.customLabel),
+    amount: Number(e.amount),
+    expenseDate: e.expenseDate,
+    notes: e.notes,
+    recordedBy: e.recordedBy,
+  }));
+  const expenseTotal = expenseItems.reduce((s, e) => s + e.amount, 0);
+  const maintenanceItems = maintenanceCosts.map((m) => ({
+    requestCode: m.requestCode,
+    roomCode: m.roomCode,
+    title: m.title,
+    amount: Number(m.cost),
+    costPaidAt: m.costPaidAt,
+  }));
+  const maintenanceTotal = maintenanceItems.reduce((s, m) => s + m.amount, 0);
+  const totalExpenses = expenseTotal + maintenanceTotal;
+
   const feeRate = property.managementFeeRate ? Number(property.managementFeeRate) : 0;
   const managementFee = property.managementFeeRate ? total * feeRate : 0;
-  const netToLandlord = property.managementFeeRate ? total - managementFee : null;
+  const netToLandlord = property.managementFeeRate ? total - managementFee - totalExpenses : null;
 
   const ownerRentalAmount = property.ownerRentalAmount ? Number(property.ownerRentalAmount) : null;
-  const netProfit = ownerRentalAmount !== null ? total - ownerRentalAmount : null;
+  const netProfit = ownerRentalAmount !== null ? total - ownerRentalAmount - totalExpenses : null;
 
   return NextResponse.json({
     success: true,
@@ -85,6 +121,9 @@ export async function GET(
     rooms: Array.from(byRoom.values()),
     byType,
     total,
+    expenses: serialize({ items: expenseItems, total: expenseTotal }),
+    maintenance: serialize({ items: maintenanceItems, total: maintenanceTotal }),
+    totalExpenses,
     managementFee,
     netToLandlord,
     netProfit,

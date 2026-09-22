@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-import { paymentTypeLabel } from "@/lib/config";
+import { paymentTypeLabel, expenseCategoryLabel } from "@/lib/config";
 
 const DEPOSIT_TYPES = ["DEPOSIT", "UTILITIES", "ACCESS_CARD"] as const;
 
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, message: "period 要是 month / year / all" }, { status: 400 });
   }
 
-  const [payments, rooms, properties, paidCommissions, paidMaintenance] = await Promise.all([
+  const [payments, rooms, properties, paidCommissions, paidMaintenance, expenses] = await Promise.all([
     prisma.payment.findMany({
       where: { status: "Paid", ...(rangeStart && rangeEnd ? { paidDate: { gte: rangeStart, lt: rangeEnd } } : {}) },
       select: {
@@ -102,6 +102,19 @@ export async function GET(req: NextRequest) {
       },
       select: { cost: true },
     }),
+    prisma.expense.findMany({
+      where: rangeStart && rangeEnd ? { expenseDate: { gte: rangeStart, lt: rangeEnd } } : {},
+      select: {
+        expenseCode: true,
+        category: true,
+        customLabel: true,
+        amount: true,
+        expenseDate: true,
+        notes: true,
+        property: { select: { propertyCode: true, name: true } },
+      },
+      orderBy: { expenseDate: "asc" },
+    }),
   ]);
 
   const roomToProperty = new Map(rooms.map((r) => [r.roomCode, r.propertyId]));
@@ -138,7 +151,18 @@ export async function GET(req: NextRequest) {
   // --- Actual outflow (verified-paid transactions only) -------------------------------------
   const commissionPaid = sum(paidCommissions.map((c) => Number(c.commAmount)));
   const maintenancePaid = sum(paidMaintenance.map((m) => Number(m.cost)));
-  const totalActualOutflow = commissionPaid + maintenancePaid;
+  const expensePaid = sum(expenses.map((e) => Number(e.amount)));
+  const totalActualOutflow = commissionPaid + maintenancePaid + expensePaid;
+
+  const expenseTransactions = expenses.map((e) => ({
+    expenseDate: e.expenseDate,
+    propertyCode: e.property.propertyCode,
+    propertyName: e.property.name,
+    category: e.category,
+    label: expenseCategoryLabel(e.category, e.customLabel),
+    amount: Number(e.amount),
+    notes: e.notes,
+  }));
 
   const netCashFlow = totalIncome - totalActualOutflow;
 
@@ -233,9 +257,10 @@ export async function GET(req: NextRequest) {
     year,
     cashFlow: {
       income: { rental: rentalIncome, deposits: depositIncome, other: otherIncome, total: totalIncome },
-      outflow: { commissionPaid, maintenancePaid, total: totalActualOutflow },
+      outflow: { commissionPaid, maintenancePaid, expensePaid, total: totalActualOutflow },
       netCashFlow,
       transactions,
+      expenseTransactions,
     },
     obligations: {
       monthsInRange,

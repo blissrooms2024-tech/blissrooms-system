@@ -80,6 +80,15 @@ enum MaintenanceWorkerType {
   OUTSOURCED
 }
 
+enum ExpenseCategory {
+  WATER
+  ELECTRIC
+  WIFI
+  CLEANING
+  MAINTENANCE
+  OTHER
+}
+
 model Counter {
   prefix String @id
   seq    Int    @default(0)
@@ -137,6 +146,7 @@ model Property {
   status       String?  @default("Active")
   notes        String?
   rooms        Room[]
+  expenses     Expense[]
 
   createdAt DateTime @default(now())
 }
@@ -370,6 +380,30 @@ model MaintenanceRequest {
   @@index([contractId])
   @@index([status])
   @@index([assignedWorkerId])
+}
+
+/// Recurring/operational running costs for a property (water, electricity, wifi, cleaning,
+/// ad-hoc maintenance not tied to a MaintenanceRequest ticket, etc.) — deducted from that
+/// property's net profit / landlord payout in the monthly report and rolled into the
+/// company-wide cash flow's actual outflow.
+model Expense {
+  id           String          @id @default(cuid())
+  expenseCode  String          @unique
+  propertyId   String
+  property     Property        @relation(fields: [propertyId], references: [id])
+  category     ExpenseCategory
+  customLabel  String?
+  amount       Decimal         @db.Decimal(10, 2)
+  /// Month this expense belongs to (YYYY-MM) — usually the same as expenseDate's month, but
+  /// kept separate so a bill paid slightly late/early can still be booked to the right month.
+  periodMonth  String
+  expenseDate  DateTime
+  notes        String?
+  recordedBy   String
+  createdAt    DateTime        @default(now())
+
+  @@index([propertyId])
+  @@index([periodMonth])
 }
 
 model WarningLetter {

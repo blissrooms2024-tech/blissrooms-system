@@ -36,15 +36,25 @@ interface Transaction {
   amount: number;
   method: string | null;
 }
+interface ExpenseTransaction {
+  expenseDate: string;
+  propertyCode: string;
+  propertyName: string;
+  category: string;
+  label: string;
+  amount: number;
+  notes: string | null;
+}
 interface Overview {
   period: Period;
   month: string;
   year: number;
   cashFlow: {
     income: { rental: number; deposits: number; other: number; total: number };
-    outflow: { commissionPaid: number; maintenancePaid: number; total: number };
+    outflow: { commissionPaid: number; maintenancePaid: number; expensePaid: number; total: number };
     netCashFlow: number;
     transactions: Transaction[];
+    expenseTransactions: ExpenseTransaction[];
   };
   obligations: {
     monthsInRange: number;
@@ -214,7 +224,7 @@ export default function FinanceOverviewClient() {
                 </div>
                 <div className="stat alt">
                   <div className="n">{fmtMoney(data.cashFlow.outflow.total)}</div>
-                  <div className="l">实际支出 (佣金+维修)</div>
+                  <div className="l">实际支出 (佣金+维修+楼盘支出)</div>
                 </div>
                 <div className="stat" style={{ background: data.cashFlow.netCashFlow >= 0 ? undefined : "linear-gradient(135deg,#991b1b,#dc2626)" }}>
                   <div className="n">{fmtMoney(data.cashFlow.netCashFlow)}</div>
@@ -313,8 +323,12 @@ export default function FinanceOverviewClient() {
                     <td className="num">{fmtMoney(data.cashFlow.outflow.commissionPaid)}</td>
                   </tr>
                   <tr>
-                    <td>维修支出已付</td>
+                    <td>维修支出已付 (报修工单)</td>
                     <td className="num">{fmtMoney(data.cashFlow.outflow.maintenancePaid)}</td>
+                  </tr>
+                  <tr>
+                    <td>楼盘支出 (水电/Wifi/清洁/维修/其他)</td>
+                    <td className="num">{fmtMoney(data.cashFlow.outflow.expensePaid)}</td>
                   </tr>
                   <tr>
                     <td>
@@ -326,6 +340,46 @@ export default function FinanceOverviewClient() {
                   </tr>
                 </tbody>
               </table>
+
+              {data.cashFlow.expenseTransactions.length > 0 && (
+                <>
+                  <h4>📑 支出明细 (Expense Detail) — 逐笔对账用</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>日期</th>
+                        <th>楼盘</th>
+                        <th>类型</th>
+                        <th>备注</th>
+                        <th className="num">金额</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.cashFlow.expenseTransactions.map((e, i) => (
+                        <tr key={i}>
+                          <td>
+                            <b>{fmtDate(e.expenseDate)}</b>
+                          </td>
+                          <td>
+                            {e.propertyName} <span style={{ color: "#94a3b8" }}>({e.propertyCode})</span>
+                          </td>
+                          <td>{e.label}</td>
+                          <td>{e.notes || "-"}</td>
+                          <td className="num">{fmtMoney(e.amount)}</td>
+                        </tr>
+                      ))}
+                      <tr>
+                        <td colSpan={4}>
+                          <b>合计 ({data.cashFlow.expenseTransactions.length} 笔)</b>
+                        </td>
+                        <td className="num">
+                          <b>{fmtMoney(data.cashFlow.outflow.expensePaid)}</b>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </>
+              )}
 
               <h4>📋 固定应付 (Owner 租金 / Landlord 分成) — 预估, 非已付记录</h4>
               <p style={{ fontSize: 11.5, color: "#64748b", margin: "0 0 10px" }}>

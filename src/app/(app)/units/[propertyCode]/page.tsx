@@ -16,7 +16,7 @@ export default async function UnitReportPage({
   return (
     <div className="space-y-4">
       <UnitDetailClient propertyCode={propertyCode} />
-      <UnitReportClient propertyCode={propertyCode} />
+      <UnitReportClient propertyCode={propertyCode} role={session.role} />
     </div>
   );
 }

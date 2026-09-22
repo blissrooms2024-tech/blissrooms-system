@@ -170,3 +170,19 @@ export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
   COMPLETED: "已完成",
   CANCELLED: "已取消",
 };
+
+export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
+  WATER: "水费",
+  ELECTRIC: "电费",
+  WIFI: "Wifi",
+  CLEANING: "清洁费",
+  MAINTENANCE: "维修",
+  OTHER: "其他",
+};
+
+/** Shows Admin's own custom name for a category=OTHER expense (e.g. "灭虫费") instead of the
+ * generic "其他" label, same idea as paymentTypeLabel. */
+export function expenseCategoryLabel(category: string, customLabel?: string | null): string {
+  if (category === "OTHER" && customLabel) return customLabel;
+  return EXPENSE_CATEGORY_LABELS[category] ?? category;
+}
