@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/monthly-rent",
-      "schedule": "0 5 25 * *"
+      "schedule": "0 5 20 * *"
     }
   ]
 }

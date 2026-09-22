@@ -3,9 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
 
-/** Vercel Cron hits this on the 25th of each month. Opens next month's RENTAL bill (and
+/** Vercel Cron hits this on the 20th of each month. Opens next month's RENTAL bill (and
  * CARPARK bill, if the contract has one) for every ACTIVE contract, due on the 5th of that
- * next month — so tenants have 10+ days' notice, and the existing late-fees cron (which
+ * next month — so tenants have 15+ days' notice, and the existing late-fees cron (which
  * charges a RM30/day penalty once a bill's dueDate has passed) naturally starts penalizing
  * from the 6th without any separate "penalty day" logic needed here. Skips a contract whose
  * expiredDate falls before that due date, since the tenancy will already have ended by then,
