@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface RowResult {
   row: number;
@@ -34,6 +35,9 @@ export default function ImportLegacyClient() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<ImportResponse | null>(null);
+  const [settling, setSettling] = useState(false);
+  const [confirmingSettle, setConfirmingSettle] = useState(false);
+  const [settleResult, setSettleResult] = useState<{ message: string; details: string[] } | null>(null);
 
   async function submit() {
     if (!file) {
@@ -59,6 +63,26 @@ export default function ImportLegacyClient() {
       toast.danger("系统出错，请稍后再试");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function runSettle() {
+    setConfirmingSettle(false);
+    setSettling(true);
+    setSettleResult(null);
+    try {
+      const res = await fetch("/api/contracts/bulk-settle-legacy", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setSettleResult({ message: data.message, details: data.details ?? [] });
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger("系统出错，请稍后再试");
+    } finally {
+      setSettling(false);
     }
   }
 
@@ -89,6 +113,38 @@ export default function ImportLegacyClient() {
             {uploading ? "导入中..." : "⬆️ 上传并导入"}
           </button>
         </div>
+      </div>
+
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <h3 className="mb-1 text-base font-semibold text-brand">🔧 补齐已导入旧合同的已付记录</h3>
+        <p className="mb-3.5 text-xs text-gray-400">
+          之前导入的旧合同 (还欠款项等于总款、看起来什么都没收过的那些) 一次性补上押金/水电押/Admin
+          Fee/门卡押/第一个月房租/车位租金的已付记录，日期先用 move-in 日期占位，之后再核实。已经补过的合同不会重复补，可以放心点。
+        </p>
+        <button onClick={() => setConfirmingSettle(true)} disabled={settling} className="btn-primary">
+          {settling ? "处理中..." : "立即补齐"}
+        </button>
+
+        <ConfirmDialog
+          open={confirmingSettle}
+          message="确定现在补齐所有旧合同 (生效中、没有电子签名的) 的已付记录？"
+          confirmLabel="确定补齐"
+          onConfirm={runSettle}
+          onCancel={() => setConfirmingSettle(false)}
+        />
+
+        {settleResult && (
+          <div className="mt-3.5 rounded-lg bg-gray-50 p-3.5 text-sm">
+            <b>{settleResult.message}</b>
+            {settleResult.details.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                {settleResult.details.map((d) => (
+                  <li key={d}>{d}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {result && (
