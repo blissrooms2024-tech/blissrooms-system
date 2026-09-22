@@ -97,6 +97,7 @@ export async function GET() {
       unpaidBillCount: unpaidBillCount.get(c.id) ?? 0,
       openMaintenanceCount: openMaintenanceCount.get(c.id) ?? 0,
       warningLetterCount: warningLetterCount.get(c.id) ?? 0,
+      expiredDate: c.expiredDate,
       daysToExpiry,
       nationality: c.nationality,
       contactNumber: c.contactNumber,

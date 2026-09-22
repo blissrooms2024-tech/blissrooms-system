@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { CONTRACT_STATUS_LABELS, RULES } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import TenantInfoEditModal from "./TenantInfoEditModal";
@@ -19,6 +20,8 @@ interface Card {
   agentSigned: boolean;
   tenantSigned: boolean;
   isLegacy: boolean;
+  expiredDate: string | null;
+  daysToExpiry: number | null;
   warningLetterCount: number;
   hasICFront: boolean;
   hasICBack: boolean;
@@ -146,6 +149,27 @@ export default function MyTenancyClient() {
                   </Link>
                 }
               />
+
+              {c.expiredDate && c.status === "ACTIVE" && (
+                <Row
+                  icon="📅"
+                  name="租约到期 Lease Expiry"
+                  desc={
+                    c.daysToExpiry !== null && c.daysToExpiry <= RULES.NOTICE_MONTHS * 30
+                      ? `${fmtDate(c.expiredDate)} · 请联系 Agent/Admin 商量续约`
+                      : fmtDate(c.expiredDate)
+                  }
+                  status={
+                    c.daysToExpiry !== null && c.daysToExpiry < 0 ? (
+                      <Pill tone="due">⚠️ 已过期 {Math.abs(c.daysToExpiry)} 天</Pill>
+                    ) : c.daysToExpiry !== null && c.daysToExpiry <= RULES.NOTICE_MONTHS * 30 ? (
+                      <Pill tone="wait">⏰ 还剩 {c.daysToExpiry} 天</Pill>
+                    ) : (
+                      <Pill tone="done">还剩 {c.daysToExpiry} 天</Pill>
+                    )
+                  }
+                />
+              )}
 
               {c.pdfLink && (
                 <Row

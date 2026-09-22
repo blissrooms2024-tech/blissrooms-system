@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
-import { RENT_ARREARS } from "@/lib/config";
+import { RENT_ARREARS, RULES } from "@/lib/config";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -16,6 +16,8 @@ export async function GET() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
+  const expiringSoonCutoff = new Date(startOfToday);
+  expiringSoonCutoff.setMonth(expiringSoonCutoff.getMonth() + RULES.NOTICE_MONTHS);
 
   try {
     const [contracts, paidGroups, vacantRooms, agents, escalatedRentBills] = await Promise.all([
@@ -47,7 +49,15 @@ export async function GET() {
     const list = contracts.map((c) => {
       const paid = paidMap.get(c.id) ?? 0;
       const outstanding = Math.max(Number(c.totalOutstanding) - paid, 0);
-      return serialize({ ...c, _paid: paid, _outstanding: outstanding, _rentEscalated: escalatedSet.has(c.id) });
+      const expiringSoon =
+        c.status === "ACTIVE" && !!c.expiredDate && c.expiredDate >= startOfToday && c.expiredDate <= expiringSoonCutoff;
+      return serialize({
+        ...c,
+        _paid: paid,
+        _outstanding: outstanding,
+        _rentEscalated: escalatedSet.has(c.id),
+        _expiringSoon: expiringSoon,
+      });
     });
 
     return NextResponse.json({

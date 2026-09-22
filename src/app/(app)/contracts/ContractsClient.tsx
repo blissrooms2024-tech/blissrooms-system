@@ -3,12 +3,15 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { fmtDate } from "@/lib/format";
 import ContractActions, { type ActionableContract } from "./ContractActions";
 
 interface Contract extends ActionableContract {
   roomCode?: string;
+  expiredDate: string | null;
   _paid: number;
   _outstanding: number;
+  _expiringSoon?: boolean;
   room?: { roomCode: string };
 }
 
@@ -103,6 +106,7 @@ export default function ContractsClient({ role }: { role: string }) {
                   <Th>总款</Th>
                   <Th>已收</Th>
                   <Th>还欠</Th>
+                  <Th>到期日</Th>
                   <Th>状态</Th>
                   <Th>操作</Th>
                 </tr>
@@ -110,7 +114,7 @@ export default function ContractsClient({ role }: { role: string }) {
               <tbody>
                 {filteredContracts.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="py-6 text-center text-gray-400">
+                    <td colSpan={10} className="py-6 text-center text-gray-400">
                       {q ? "没有符合条件的合同" : "还没有合同"}
                     </td>
                   </tr>
@@ -132,6 +136,14 @@ export default function ContractsClient({ role }: { role: string }) {
                         <span className="font-semibold text-red-600">{fmt(c._outstanding)}</span>
                       ) : (
                         <span className="text-green-700">✅清</span>
+                      )}
+                    </Td>
+                    <Td>
+                      {fmtDate(c.expiredDate)}
+                      {c._expiringSoon && (
+                        <div className="mt-1 whitespace-normal rounded bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                          ⏰ 快到期
+                        </div>
                       )}
                     </Td>
                     <Td>

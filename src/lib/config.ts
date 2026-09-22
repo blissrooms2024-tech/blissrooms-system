@@ -28,7 +28,7 @@ export const RULES = {
   RENT_DUE_DAY: 25, // 每月25号前交租
   RENT_GRACE_DAY: 5, // 最迟实际月份5号
   DRAFT_AUTO_DELETE_DAYS: 3, // 草稿3天没搞好自动删
-  NOTICE_MONTHS: 2, // 到期前2个月通知
+  NOTICE_MONTHS: 2, // 到期前2个月通知 — Agent/Admin 提前续约/re-market 的门槛
   DEPOSIT_REFUND_DAYS: 30, // 押金30工作天内退
   DEFAULT_COMM_RATE: 0.5, // Agent默认佣金率
   MOVE_OUT_WINDOW_DAYS: 14, // 到期前14天才开放 Move-out

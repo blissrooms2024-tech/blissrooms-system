@@ -2,19 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-
-// Agents need a heads-up before a room actually frees up, so they can start re-marketing
-// it ahead of time — not just once it's already VACANT.
-const EXPIRING_SOON_DAYS = 60;
+import { RULES } from "@/lib/config";
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "请重新登录" }, { status: 401 });
 
+  // Agents need a heads-up before a room actually frees up, so they can start re-marketing
+  // it ahead of time — not just once it's already VACANT.
   const expiringDateByRoomId = new Map<string, Date>();
   if (user.role === "AGENT") {
     const now = new Date();
-    const soon = new Date(now.getTime() + EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000);
+    const soon = new Date(now);
+    soon.setMonth(soon.getMonth() + RULES.NOTICE_MONTHS);
     const expiringContracts = await prisma.contract.findMany({
       where: { status: "ACTIVE", expiredDate: { gte: now, lte: soon } },
       select: { roomId: true, expiredDate: true },
