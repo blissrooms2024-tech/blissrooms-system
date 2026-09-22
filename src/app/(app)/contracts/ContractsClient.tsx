@@ -72,6 +72,11 @@ export default function ContractsClient({ role }: { role: string }) {
           <h3 className="text-base font-semibold text-brand">合同清单</h3>
           <div className="flex items-center gap-2">
             {role === "ADMIN" && (
+              <Link href="/contracts/renewal" className="btn-soft text-sm">
+                🔄 续约管理
+              </Link>
+            )}
+            {role === "ADMIN" && (
               <Link href="/contracts/import" className="btn-soft text-sm">
                 📥 导入旧合同
               </Link>
