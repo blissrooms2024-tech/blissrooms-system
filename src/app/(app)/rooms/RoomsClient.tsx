@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ROOM_STATUS_LABELS, ROOM_STATUS_BADGE } from "@/lib/config";
+import { ROOM_STATUS_LABELS, ROOM_STATUS_BADGE, roomStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { useLanguage } from "@/components/LanguageProvider";
 import RoomEditModal from "./RoomEditModal";
 
 interface Room {
@@ -29,6 +30,7 @@ interface Room {
 
 export default function RoomsClient({ role }: { role: string }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [error, setError] = useState("");
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -46,7 +48,7 @@ export default function RoomsClient({ role }: { role: string }) {
       }
       setRooms(data.rooms);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
   }
 
@@ -92,7 +94,10 @@ export default function RoomsClient({ role }: { role: string }) {
   }
 
   const canEdit = role === "ADMIN";
-  const title = role === "AGENT" ? "空房 + 快到期清单 (做 Sales 用)" : "房间清单";
+  const title =
+    role === "AGENT"
+      ? t("空房 + 快到期清单 (做 Sales 用)", "Vacant + Expiring Soon List (For Sales)")
+      : t("房间清单", "Room List");
   const rentalOf = (r: Room) => (r.isCarpark ? r.carparkRental : r.roomRental);
 
   const q = search.trim().toLowerCase();
@@ -113,22 +118,24 @@ export default function RoomsClient({ role }: { role: string }) {
           <h3 className="text-base font-semibold text-brand">{title}</h3>
           {canEdit && (
             <Link href="/rooms/new" className="btn-primary text-sm">
-              ➕ 加新房间
+              ➕ {t("加新房间", "Add New Room")}
             </Link>
           )}
         </div>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔍 搜 Room Code / 楼盘名字 / 类型..."
+          placeholder={`🔍 ${t("搜 Room Code / 楼盘名字 / 类型...", "Search Room Code / Property Name / Type...")}`}
           className="input mb-3.5 max-w-xs"
         />
         {error && <div className="text-sm text-red-600">{error}</div>}
-        {!rooms && !error && <div className="text-sm text-gray-500">载入中...</div>}
+        {!rooms && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
         {rooms && (
           <div className="space-y-2.5 sm:hidden">
             {filteredRooms!.length === 0 && (
-              <div className="py-6 text-center text-sm text-gray-400">{q ? "没有符合条件的房间" : "暂时没有房间"}</div>
+              <div className="py-6 text-center text-sm text-gray-400">
+                {q ? t("没有符合条件的房间", "No rooms match your search") : t("暂时没有房间", "No rooms yet")}
+              </div>
             )}
             {filteredRooms!.map((r) => (
               <div key={r.roomCode} className="rounded-lg border border-gray-100 p-3.5">
@@ -139,7 +146,7 @@ export default function RoomsClient({ role }: { role: string }) {
                     </Link>
                     {r.isCarpark && (
                       <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                        🅿️ {r.carparkLotNumber || "车位"}
+                        🅿️ {r.carparkLotNumber || t("车位", "Carpark")}
                       </span>
                     )}
                     <div className="text-sm text-gray-700">
@@ -148,26 +155,26 @@ export default function RoomsClient({ role }: { role: string }) {
                           {r.propertyName}
                         </Link>
                       ) : (
-                        <span className="text-gray-400">{r.propertyName || "未分配"}</span>
+                        <span className="text-gray-400">{r.propertyName || t("未分配", "Unassigned")}</span>
                       )}
                       {r.roomType ? ` · ${r.roomType}` : ""}
                     </div>
                   </div>
                   <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROOM_STATUS_BADGE[r.status]}`}>
-                    {ROOM_STATUS_LABELS[r.status]}
+                    {roomStatusLabel(r.status, locale)}
                   </span>
                 </div>
                 {r.expiringSoonDate && (
                   <div className="mt-1.5 text-xs font-semibold text-orange-600">
-                    ⏰ 快到期: {fmtDate(r.expiringSoonDate)}
+                    ⏰ {t("快到期", "Expiring Soon")}: {fmtDate(r.expiringSoonDate)}
                   </div>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
                   <span>RM{rentalOf(r)}</span>
-                  {r.hasAircon && <span>❄️ 有冷气</span>}
+                  {r.hasAircon && <span>❄️ {t("有冷气", "Has Aircon")}</span>}
                   {r.photoLink && (
                     <a href={r.photoLink} target="_blank" rel="noopener noreferrer" className="text-brand underline">
-                      📷 照片
+                      📷 {t("照片", "Photo")}
                     </a>
                   )}
                 </div>
@@ -178,9 +185,9 @@ export default function RoomsClient({ role }: { role: string }) {
                       onChange={(e) => changeStatus(r.roomCode, e.target.value)}
                       className="rounded-md border border-gray-300 px-2 py-1.5 text-xs"
                     >
-                      {Object.entries(ROOM_STATUS_LABELS).map(([k, v]) => (
+                      {Object.keys(ROOM_STATUS_LABELS).map((k) => (
                         <option key={k} value={k}>
-                          {v}
+                          {roomStatusLabel(k, locale)}
                         </option>
                       ))}
                     </select>
@@ -189,14 +196,14 @@ export default function RoomsClient({ role }: { role: string }) {
                       onClick={() => setEditingRoom(r)}
                       className="flex-1 rounded-md bg-gray-100 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
                     >
-                      ✏️ 编辑
+                      ✏️ {t("编辑", "Edit")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setDeletingRoom(r)}
                       className="flex-1 rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
                     >
-                      🗑️ 删除
+                      🗑️ {t("删除", "Delete")}
                     </button>
                   </div>
                 )}
@@ -211,20 +218,20 @@ export default function RoomsClient({ role }: { role: string }) {
                 <tr className="bg-gray-50 text-left text-gray-600">
                   <Th className="sticky left-0 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">Room Code</Th>
                   <Th>楼盘 Unit</Th>
-                  <Th>类型</Th>
-                  <Th>租金</Th>
-                  <Th>冷气</Th>
-                  <Th>照片</Th>
-                  <Th>状态</Th>
-                  {canEdit && <Th>改状态</Th>}
-                  {canEdit && <Th>操作</Th>}
+                  <Th>{t("类型", "Type")}</Th>
+                  <Th>{t("租金", "Rental")}</Th>
+                  <Th>{t("冷气", "Aircon")}</Th>
+                  <Th>{t("照片", "Photo")}</Th>
+                  <Th>{t("状态", "Status")}</Th>
+                  {canEdit && <Th>{t("改状态", "Change Status")}</Th>}
+                  {canEdit && <Th>{t("操作", "Actions")}</Th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredRooms!.length === 0 && (
                   <tr>
                     <td colSpan={canEdit ? 9 : 7} className="py-6 text-center text-gray-400">
-                      {q ? "没有符合条件的房间" : "暂时没有房间"}
+                      {q ? t("没有符合条件的房间", "No rooms match your search") : t("暂时没有房间", "No rooms yet")}
                     </td>
                   </tr>
                 )}
@@ -236,7 +243,7 @@ export default function RoomsClient({ role }: { role: string }) {
                       </Link>
                       {r.isCarpark && (
                         <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                          🅿️ {r.carparkLotNumber || "车位"}
+                          🅿️ {r.carparkLotNumber || t("车位", "Carpark")}
                         </span>
                       )}
                     </Td>
@@ -246,7 +253,7 @@ export default function RoomsClient({ role }: { role: string }) {
                           {r.propertyName}
                         </Link>
                       ) : (
-                        <span className="text-gray-400">{r.propertyName || "未分配"}</span>
+                        <span className="text-gray-400">{r.propertyName || t("未分配", "Unassigned")}</span>
                       )}
                     </Td>
                     <Td>{r.roomType}</Td>
@@ -260,7 +267,7 @@ export default function RoomsClient({ role }: { role: string }) {
                             r.hasAircon ? "bg-sky-50 text-sky-700" : "bg-gray-100 text-gray-500"
                           }`}
                         >
-                          {r.hasAircon ? "❄️ 有" : "- 没有"}
+                          {r.hasAircon ? `❄️ ${t("有", "Yes")}` : `- ${t("没有", "No")}`}
                         </button>
                       ) : r.hasAircon ? (
                         "❄️"
@@ -276,7 +283,7 @@ export default function RoomsClient({ role }: { role: string }) {
                           rel="noopener noreferrer"
                           className="text-brand underline"
                         >
-                          📷 查看
+                          📷 {t("查看", "View")}
                         </a>
                       ) : (
                         <span className="text-gray-400">-</span>
@@ -284,7 +291,7 @@ export default function RoomsClient({ role }: { role: string }) {
                     </Td>
                     <Td>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROOM_STATUS_BADGE[r.status]}`}>
-                        {ROOM_STATUS_LABELS[r.status]}
+                        {roomStatusLabel(r.status, locale) ?? r.status}
                       </span>
                       {r.expiringSoonDate && (
                         <div className="mt-1 text-xs font-semibold text-orange-600">
@@ -299,9 +306,9 @@ export default function RoomsClient({ role }: { role: string }) {
                           onChange={(e) => changeStatus(r.roomCode, e.target.value)}
                           className="rounded-md border border-gray-300 px-2 py-1 text-xs"
                         >
-                          {Object.entries(ROOM_STATUS_LABELS).map(([k, v]) => (
+                          {Object.keys(ROOM_STATUS_LABELS).map((k) => (
                             <option key={k} value={k}>
-                              {v}
+                              {roomStatusLabel(k, locale)}
                             </option>
                           ))}
                         </select>
@@ -315,14 +322,14 @@ export default function RoomsClient({ role }: { role: string }) {
                             onClick={() => setEditingRoom(r)}
                             className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
                           >
-                            ✏️ 编辑
+                            ✏️ {t("编辑", "Edit")}
                           </button>
                           <button
                             type="button"
                             onClick={() => setDeletingRoom(r)}
                             className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
                           >
-                            🗑️ 删除
+                            🗑️ {t("删除", "Delete")}
                           </button>
                         </div>
                       </Td>
@@ -342,9 +349,12 @@ export default function RoomsClient({ role }: { role: string }) {
       <ConfirmDialog
         open={!!deletingRoom}
         danger
-        title="⚠️ 删除房间"
-        message={`确定要删除房间 ${deletingRoom?.roomCode} 吗？此操作不能撤销。`}
-        confirmLabel="确定删除"
+        title={`⚠️ ${t("删除房间", "Delete Room")}`}
+        message={t(
+          `确定要删除房间 ${deletingRoom?.roomCode} 吗？此操作不能撤销。`,
+          `Are you sure you want to delete room ${deletingRoom?.roomCode}? This action cannot be undone.`
+        )}
+        confirmLabel={t("确定删除", "Confirm Delete")}
         onConfirm={confirmDeleteRoom}
         onCancel={() => setDeletingRoom(null)}
       />
