@@ -122,10 +122,12 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
 
   const actionable = payments.filter((p) => p.status !== "Paid");
   const paidHistory = payments.filter((p) => p.status === "Paid");
-  // Items still owed but that Admin hasn't opened a bill for yet — tenant can self-initiate
-  // payment on these directly instead of waiting for Admin to issue one.
-  const coveredTypes = new Set(actionable.map((p) => p.type));
-  const payableItems = breakdown.filter((b) => b.outstanding > 0 && !coveredTypes.has(b.item));
+  // Only an item with its own Admin-opened bill (PENDING) or a rejected one (REJECTED) is
+  // excluded here — those already have a single-item upload widget below. An item that's
+  // PENDING_REVIEW (tenant already paid, waiting on Admin) stays payable so tenants can pay
+  // ahead / top up the rest without the button vanishing while the earlier slip is reviewed.
+  const blockedTypes = new Set(actionable.filter((p) => p.status === "PENDING" || p.status === "REJECTED").map((p) => p.type));
+  const payableItems = breakdown.filter((b) => b.outstanding > 0 && !blockedTypes.has(b.item));
   const payableTotal = payableItems.reduce((s, b) => s + b.outstanding, 0);
 
   return (
@@ -163,25 +165,23 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                   </td>
                 </tr>
               ))}
-              {payableItems.length > 0 && (
-                <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
-                  <td className="px-2.5 py-1.5" colSpan={3}>
-                    还欠总额 (未开账单项目)
-                  </td>
-                  <td className="px-2.5 py-1.5">
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-red-600">{fmt(payableTotal)}</span>
-                      <button
-                        type="button"
-                        onClick={() => setPayingAll(true)}
-                        className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-brand-dark"
-                      >
-                        付款
-                      </button>
-                    </span>
-                  </td>
-                </tr>
-              )}
+              <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
+                <td className="px-2.5 py-1.5" colSpan={3}>
+                  还欠总额 (未开账单项目)
+                </td>
+                <td className="px-2.5 py-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <span className={payableTotal > 0 ? "text-red-600" : "text-gray-400"}>{fmt(payableTotal)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPayingAll(true)}
+                      className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-brand-dark"
+                    >
+                      付款
+                    </button>
+                  </span>
+                </td>
+              </tr>
             </tbody>
           </table>
         </>

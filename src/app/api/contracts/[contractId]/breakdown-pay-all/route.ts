@@ -53,7 +53,12 @@ export async function POST(
   };
 
   const allPayments = await prisma.payment.findMany({ where: { contractId: c.id } });
-  const pendingTypes = new Set(allPayments.filter((p) => p.status !== "Paid").map((p) => p.type));
+  // Only block an item that already has an Admin-opened bill (PENDING) or a rejected one
+  // (REJECTED) — those have their own single-item upload widget on the 待处理账单 list, so
+  // routing them here too would create a confusing duplicate record. A PENDING_REVIEW item
+  // (tenant already uploaded, awaiting Admin's decision) stays payable here so tenants can
+  // still pay ahead / top up the rest while the earlier slip is still under review.
+  const blockedTypes = new Set(allPayments.filter((p) => p.status === "PENDING" || p.status === "REJECTED").map((p) => p.type));
   const paidByType: Record<string, number> = {};
   for (const p of allPayments) {
     if (p.status !== "Paid") continue;
@@ -62,7 +67,7 @@ export async function POST(
 
   const items = c.room.isCarpark ? CARPARK_ONLY_ITEMS : BREAKDOWN_ITEMS;
   const eligible = items
-    .filter((item) => !pendingTypes.has(item))
+    .filter((item) => !blockedTypes.has(item))
     .map((item) => ({ item, outstanding: Math.max((due[item] || 0) - (paidByType[item] || 0), 0) }))
     .filter((row) => row.outstanding > 0);
 

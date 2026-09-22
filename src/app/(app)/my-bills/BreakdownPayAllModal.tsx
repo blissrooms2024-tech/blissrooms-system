@@ -43,6 +43,10 @@ export default function BreakdownPayAllModal({
   const isPartial = amt > 0 && amt < total;
 
   async function submit() {
+    if (total <= 0) {
+      toast.warning("目前没有可以支付的项目");
+      return;
+    }
     if (!amt || amt <= 0) {
       toast.warning("请填正确的金额");
       return;
@@ -89,18 +93,24 @@ export default function BreakdownPayAllModal({
         以下项目还没开账单，一次上传一张付款证明就够了，不用逐项分开付。
       </p>
 
-      <div className="mb-3.5 space-y-1 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
-        {items.map((it) => (
-          <div key={it.item} className="flex items-center justify-between">
-            <span className="text-gray-600">{PAYMENT_TYPE_LABELS[it.item] ?? it.item}</span>
-            <span className="font-semibold">RM{it.outstanding.toLocaleString()}</span>
+      {total > 0 ? (
+        <div className="mb-3.5 space-y-1 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+          {items.map((it) => (
+            <div key={it.item} className="flex items-center justify-between">
+              <span className="text-gray-600">{PAYMENT_TYPE_LABELS[it.item] ?? it.item}</span>
+              <span className="font-semibold">RM{it.outstanding.toLocaleString()}</span>
+            </div>
+          ))}
+          <div className="mt-1.5 flex items-center justify-between border-t border-gray-200 pt-1.5">
+            <b>还欠总额</b>
+            <b className="text-brand">RM{total.toLocaleString()}</b>
           </div>
-        ))}
-        <div className="mt-1.5 flex items-center justify-between border-t border-gray-200 pt-1.5">
-          <b>还欠总额</b>
-          <b className="text-brand">RM{total.toLocaleString()}</b>
         </div>
-      </div>
+      ) : (
+        <p className="mb-3.5 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
+          目前没有可以支付的项目（已全部付清，或已有账单在等 Admin 审核）。
+        </p>
+      )}
 
       <div className="space-y-3">
         <div>
@@ -108,9 +118,10 @@ export default function BreakdownPayAllModal({
           <input
             type="number"
             min="1"
-            max={total}
+            max={total || undefined}
             step="0.01"
             value={amount}
+            disabled={total <= 0}
             onChange={(e) => setAmount(e.target.value)}
             className="input"
           />
@@ -122,11 +133,11 @@ export default function BreakdownPayAllModal({
         </div>
         <div>
           <label className="mb-1.5 block text-sm text-gray-600">付款日期</label>
-          <input type="date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} className="input" />
+          <input type="date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} disabled={total <= 0} className="input" />
         </div>
         <div>
           <label className="mb-1.5 block text-sm text-gray-600">付款方式</label>
-          <select value={method} onChange={(e) => setMethod(e.target.value)} className="input">
+          <select value={method} onChange={(e) => setMethod(e.target.value)} disabled={total <= 0} className="input">
             <option>Bank Transfer</option>
             <option>Cash</option>
             <option>Cheque</option>
@@ -137,13 +148,13 @@ export default function BreakdownPayAllModal({
           <input
             type="file"
             accept="image/*"
-            disabled={submitting}
+            disabled={submitting || total <= 0}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
           />
           {file && <div className="mt-1.5 text-xs text-gray-500">已选择: {file.name}</div>}
         </div>
-        <button onClick={submit} disabled={submitting} className="btn-primary w-full">
+        <button onClick={submit} disabled={submitting || total <= 0} className="btn-primary w-full">
           {submitting ? "提交中..." : "提交付款证明"}
         </button>
       </div>
