@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import BreakdownPayModal from "./BreakdownPayModal";
+import BreakdownPayAllModal from "./BreakdownPayAllModal";
 
 interface BreakdownRow {
   item: string;
@@ -73,6 +74,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [payingItem, setPayingItem] = useState<{ item: string; outstanding: number } | null>(null);
+  const [payingAll, setPayingAll] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -125,6 +127,8 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   // Items still owed but that Admin hasn't opened a bill for yet — tenant can self-initiate
   // payment on these directly instead of waiting for Admin to issue one.
   const coveredTypes = new Set(actionable.map((p) => p.type));
+  const payableItems = breakdown.filter((b) => b.outstanding > 0 && !coveredTypes.has(b.item));
+  const payableTotal = payableItems.reduce((s, b) => s + b.outstanding, 0);
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
@@ -172,6 +176,25 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                   </td>
                 </tr>
               ))}
+              {payableItems.length > 0 && (
+                <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
+                  <td className="px-2.5 py-1.5" colSpan={3}>
+                    还欠总额 (未开账单项目)
+                  </td>
+                  <td className="px-2.5 py-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-red-600">{fmt(payableTotal)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPayingAll(true)}
+                        className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-brand-dark"
+                      >
+                        一次过付款
+                      </button>
+                    </span>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </>
@@ -271,6 +294,16 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
           item={payingItem.item}
           outstanding={payingItem.outstanding}
           onClose={() => setPayingItem(null)}
+          onPaid={load}
+        />
+      )}
+
+      {payingAll && (
+        <BreakdownPayAllModal
+          contractCode={contractCode}
+          items={payableItems.map((b) => ({ item: b.item, outstanding: b.outstanding }))}
+          total={payableTotal}
+          onClose={() => setPayingAll(false)}
           onPaid={load}
         />
       )}
