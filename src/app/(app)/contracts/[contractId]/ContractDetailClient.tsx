@@ -42,6 +42,7 @@ interface ContractDetail extends ActionableContract {
   icFront: string | null;
   icBack: string | null;
   _paid: number;
+  _pendingReview: number;
   _outstanding: number;
   _moveInDone: boolean;
   _isLegacy: boolean;
@@ -169,7 +170,12 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
           <Info label="门卡押金">{fmt(c.accessCardDeposit)}</Info>
           <Info label="Admin Fee">{fmt(c.adminFee)}</Info>
           <Info label="总款">{fmt(c.totalOutstanding)}</Info>
-          <Info label="已收">{fmt(c._paid)}</Info>
+          <Info label="已收">
+            {fmt(c._paid)}
+            {c._pendingReview > 0 && (
+              <span className="ml-1 text-xs font-normal text-amber-600">(含待审核 {fmt(c._pendingReview)})</span>
+            )}
+          </Info>
           <Info label="还欠">
             {c._outstanding > 0 ? (
               <span className="font-semibold text-red-600">{fmt(c._outstanding)}</span>

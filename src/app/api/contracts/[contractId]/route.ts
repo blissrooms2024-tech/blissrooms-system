@@ -34,9 +34,16 @@ export async function GET(
   startOfToday.setHours(0, 0, 0, 0);
   const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
 
-  const [paidAgg, escalatedBill, moveInForm] = await Promise.all([
+  const [paidAgg, pendingReviewAgg, escalatedBill, moveInForm] = await Promise.all([
     prisma.payment.aggregate({
       where: { contractId: contract.id, status: "Paid" },
+      _sum: { amountPaid: true },
+    }),
+    // Once a tenant has uploaded a slip, the ball is in Admin's court (the 交易单审核 queue) —
+    // the contract summary shouldn't keep nagging "还欠" for money that's already been sent and
+    // is just waiting on review, so it counts toward `paid` here the same as a confirmed one.
+    prisma.payment.aggregate({
+      where: { contractId: contract.id, status: "PENDING_REVIEW" },
       _sum: { amountPaid: true },
     }),
     prisma.payment.findFirst({
@@ -48,7 +55,9 @@ export async function GET(
       select: { id: true },
     }),
   ]);
-  const paid = Number(paidAgg._sum.amountPaid ?? 0);
+  const confirmedPaid = Number(paidAgg._sum.amountPaid ?? 0);
+  const pendingReview = Number(pendingReviewAgg._sum.amountPaid ?? 0);
+  const paid = confirmedPaid + pendingReview;
   const outstanding = Math.max(Number(contract.totalOutstanding) - paid, 0);
 
   const { agent, ...rest } = contract;
@@ -58,6 +67,7 @@ export async function GET(
       ...rest,
       agentIc: agent.ic,
       _paid: paid,
+      _pendingReview: pendingReview,
       _outstanding: outstanding,
       _rentEscalated: !!escalatedBill,
       _moveInDone: !!moveInForm,
