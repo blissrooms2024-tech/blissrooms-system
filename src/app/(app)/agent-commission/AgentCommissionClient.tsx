@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fmtMoney } from "@/lib/format";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface ContractRow {
   contractCode: string;
@@ -16,6 +17,7 @@ interface Data {
 }
 
 export default function AgentCommissionClient() {
+  const { t } = useLanguage();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
 
@@ -29,11 +31,11 @@ export default function AgentCommissionClient() {
         }
         setData(d);
       })
-      .catch(() => setError("出错，请稍后再试"));
-  }, []);
+      .catch(() => setError(t("出错，请稍后再试", "Something went wrong, please try again later")));
+  }, [t]);
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!data) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!data) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
 
   const rows = data.contracts.filter((c) => c.commAmount !== null);
 
@@ -41,28 +43,28 @@ export default function AgentCommissionClient() {
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-base font-semibold text-brand">💰 我的佣金</h3>
+          <h3 className="text-base font-semibold text-brand">💰 {t("我的佣金", "My Commission")}</h3>
           <Link href="/agent-payslip" className="btn-soft px-3.5 py-1.5 text-xs">
-            📑 查看 Payslip
+            📑 {t("查看 Payslip", "View Payslip")}
           </Link>
         </div>
         <div className="flex flex-wrap gap-3.5">
-          <Box n={fmtMoney(data.stats.commissionPaid)} l="佣金已发" color="text-green-700" />
-          <Box n={fmtMoney(data.stats.commissionPending)} l="佣金待发" color="text-amber-600" />
+          <Box n={fmtMoney(data.stats.commissionPaid)} l={t("佣金已发", "Commission Paid")} color="text-green-700" />
+          <Box n={fmtMoney(data.stats.commissionPending)} l={t("佣金待发", "Commission Pending")} color="text-amber-600" />
         </div>
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
         {rows.length === 0 ? (
-          <div className="py-6 text-center text-sm text-gray-400">Admin 还没有帮任何合同填佣金金额</div>
+          <div className="py-6 text-center text-sm text-gray-400">{t("Admin 还没有帮任何合同填佣金金额", "Admin hasn't filled in a commission amount for any contract yet")}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">合同</th>
-                <th className="px-2.5 py-1.5 font-semibold">租客</th>
-                <th className="px-2.5 py-1.5 font-semibold">佣金</th>
-                <th className="px-2.5 py-1.5 font-semibold">状态</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("合同", "Contract")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("租客", "Tenant")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("佣金", "Commission")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("状态", "Status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -77,7 +79,7 @@ export default function AgentCommissionClient() {
                         c.commStatus === "Paid" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
                       }`}
                     >
-                      {c.commStatus === "Paid" ? "已发" : "待发"}
+                      {c.commStatus === "Paid" ? t("已发", "Paid") : t("待发", "Pending")}
                     </span>
                   </td>
                 </tr>

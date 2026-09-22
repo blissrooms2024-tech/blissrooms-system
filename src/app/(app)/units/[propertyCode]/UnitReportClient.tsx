@@ -1,9 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { COMPANY, CONTRACT_IMAGES, PAYMENT_TYPE_LABELS, EXPENSE_CATEGORY_LABELS } from "@/lib/config";
+import {
+  COMPANY,
+  CONTRACT_IMAGES,
+  PAYMENT_TYPE_LABELS,
+  paymentTypeLabelLocale,
+  expenseCategoryLabelLocale,
+} from "@/lib/config";
 import { fmtMoney, fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
+import { useLanguage } from "@/components/LanguageProvider";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { REPORT_DOC_STYLE } from "@/lib/reportDocStyle";
 
@@ -62,6 +69,7 @@ function today() {
 
 export default function UnitReportClient({ propertyCode, role }: { propertyCode: string; role: string }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [month, setMonth] = useState(currentMonth());
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState("");
@@ -90,9 +98,9 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
       }
       setReport(data);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
-  }, [propertyCode, month]);
+  }, [propertyCode, month, t]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -105,11 +113,11 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
     const html = printAreaRef.current.innerHTML;
     const w = window.open("", "_blank");
     if (!w) {
-      toast.warning("浏览器拦截了弹出式窗口，请允许弹窗后再试一次");
+      toast.warning(t("浏览器拦截了弹出式窗口，请允许弹窗后再试一次", "Your browser blocked the pop-up window — please allow pop-ups and try again"));
       return;
     }
     w.document.write(
-      `<html><head><title>楼盘月报 - ${propertyCode}</title><meta charset="utf-8">` +
+      `<html><head><title>${t("楼盘月报", "Property Monthly Report")} - ${propertyCode}</title><meta charset="utf-8">` +
         `<style>body{margin:0;padding:34px;max-width:820px;margin:auto;}@media print{@page{margin:14mm;}}</style>` +
         `</head><body>${html}</body></html>`
     );
@@ -119,11 +127,11 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
 
   async function submitExpense() {
     if (!expenseForm.amount || Number(expenseForm.amount) <= 0) {
-      toast.warning("请填金额");
+      toast.warning(t("请填金额", "Please enter an amount"));
       return;
     }
     if (expenseForm.category === "OTHER" && !expenseForm.customLabel.trim()) {
-      toast.warning("「其他」类型要填支出名称");
+      toast.warning(t("「其他」类型要填支出名称", "Please enter an expense name for the \"Other\" category"));
       return;
     }
     setSubmitting(true);
@@ -143,7 +151,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSubmitting(false);
     }
@@ -168,7 +176,9 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5 no-print">
-        <h3 className="text-base font-semibold text-brand">📊 楼盘月报 — {propertyCode}</h3>
+        <h3 className="text-base font-semibold text-brand">
+          {t("📊 楼盘月报", "📊 Property Monthly Report")} — {propertyCode}
+        </h3>
         <div className="flex items-center gap-2.5">
           <input
             type="month"
@@ -184,12 +194,12 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
               }}
               className="rounded-lg bg-amber-600 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-amber-700"
             >
-              ➕ 登记支出
+              {t("➕ 登记支出", "➕ Record Expense")}
             </button>
           )}
           {report && (
             <button onClick={printReport} className="rounded-lg bg-green-700 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-green-800">
-              🖨️ 打印 / 存 PDF
+              {t("🖨️ 打印 / 存 PDF", "🖨️ Print / Save as PDF")}
             </button>
           )}
         </div>
@@ -198,7 +208,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
       {canManageExpenses && addingExpense && (
         <div className="no-print mb-3.5 flex flex-wrap items-end gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
           <div className="min-w-[110px]">
-            <label className="mb-1.5 block text-sm text-gray-600">类型</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("类型", "Type")}</label>
             <select
               className="input"
               value={expenseForm.category}
@@ -206,24 +216,24 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
             >
               {EXPENSE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
-                  {EXPENSE_CATEGORY_LABELS[c]}
+                  {expenseCategoryLabelLocale(c, undefined, locale)}
                 </option>
               ))}
             </select>
           </div>
           {expenseForm.category === "OTHER" && (
             <div className="min-w-[110px]">
-              <label className="mb-1.5 block text-sm text-gray-600">支出名称</label>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("支出名称", "Expense Name")}</label>
               <input
                 className="input"
-                placeholder="例: 灭虫费"
+                placeholder={t("例: 灭虫费", "e.g. Pest control fee")}
                 value={expenseForm.customLabel}
                 onChange={(e) => setExpenseForm({ ...expenseForm, customLabel: e.target.value })}
               />
             </div>
           )}
           <div className="min-w-[100px]">
-            <label className="mb-1.5 block text-sm text-gray-600">金额 RM</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("金额 RM", "Amount RM")}</label>
             <input
               type="number"
               className="input"
@@ -232,7 +242,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
             />
           </div>
           <div className="min-w-[130px]">
-            <label className="mb-1.5 block text-sm text-gray-600">支出日期</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("支出日期", "Expense Date")}</label>
             <input
               type="date"
               className="input"
@@ -241,7 +251,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
             />
           </div>
           <div className="min-w-[120px]">
-            <label className="mb-1.5 block text-sm text-gray-600">算入哪个月份</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("算入哪个月份", "Counted Toward Month")}</label>
             <input
               type="month"
               className="input"
@@ -250,7 +260,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
             />
           </div>
           <div className="min-w-[140px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">备注 (选填)</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("备注 (选填)", "Notes (optional)")}</label>
             <input
               className="input"
               value={expenseForm.notes}
@@ -258,13 +268,13 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
             />
           </div>
           <button onClick={submitExpense} disabled={submitting} className="btn-primary">
-            {submitting ? "登记中..." : "登记"}
+            {submitting ? t("登记中...", "Recording...") : t("登记", "Record")}
           </button>
         </div>
       )}
 
       {error && <div className="text-sm text-red-600">{error}</div>}
-      {!report && !error && <div className="text-sm text-gray-500">载入中...</div>}
+      {!report && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
 
       {report && (
         <div ref={printAreaRef}>
@@ -277,7 +287,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
               <div>
                 <div className="nm">{COMPANY.NAME}</div>
                 <div className="sub">
-                  {report.property.name} · 楼盘号: {report.property.propertyCode}
+                  {report.property.name} · {t("楼盘号", "Property Code")}: {report.property.propertyCode}
                   {report.property.address && ` · ${report.property.address}`}
                 </div>
               </div>
@@ -291,7 +301,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
                     <br />
                   </>
                 )}
-                月报月份: {report.month}
+                {t("月报月份", "Report Month")}: {report.month}
               </div>
             </div>
           </div>
@@ -299,21 +309,21 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
           <table>
             <thead>
               <tr>
-                <th>房间</th>
-                <th>租客</th>
+                <th>{t("房间", "Room")}</th>
+                <th>{t("租客", "Tenant")}</th>
                 {typeKeys.map((k) => (
                   <th key={k} className="num">
-                    {PAYMENT_TYPE_LABELS[k]}
+                    {paymentTypeLabelLocale(k, null, locale)}
                   </th>
                 ))}
-                <th className="num">小计</th>
+                <th className="num">{t("小计", "Subtotal")}</th>
               </tr>
             </thead>
             <tbody>
               {report.rooms.length === 0 && (
                 <tr>
                   <td colSpan={3 + typeKeys.length} className="empty">
-                    这个楼盘还没有房间
+                    {t("这个楼盘还没有房间", "This property has no rooms yet")}
                   </td>
                 </tr>
               )}
@@ -338,14 +348,14 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
 
           {(report.expenses.items.length > 0 || report.maintenance.items.length > 0) && (
             <>
-              <h4>💸 本月支出 Expenses</h4>
+              <h4>{t("💸 本月支出 Expenses", "💸 Monthly Expenses")}</h4>
               <table>
                 <thead>
                   <tr>
-                    <th>日期</th>
-                    <th>类型</th>
-                    <th>备注</th>
-                    <th className="num">金额</th>
+                    <th>{t("日期", "Date")}</th>
+                    <th>{t("类型", "Type")}</th>
+                    <th>{t("备注", "Notes")}</th>
+                    <th className="num">{t("金额", "Amount")}</th>
                     {canManageExpenses && <th className="num no-print"> </th>}
                   </tr>
                 </thead>
@@ -353,7 +363,9 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
                   {report.maintenance.items.map((m) => (
                     <tr key={m.requestCode}>
                       <td>{fmtDate(m.costPaidAt)}</td>
-                      <td>维修 (报修工单 {m.requestCode})</td>
+                      <td>
+                        {t("维修 (报修工单", "Maintenance (Ticket")} {m.requestCode})
+                      </td>
                       <td>
                         {m.roomCode} · {m.title}
                       </td>
@@ -373,7 +385,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
                             onClick={() => setDeletingCode(e.expenseCode)}
                             className="text-xs font-semibold text-red-600 hover:underline"
                           >
-                            删除
+                            {t("删除", "Delete")}
                           </button>
                         </td>
                       )}
@@ -381,7 +393,7 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
                   ))}
                   <tr>
                     <td colSpan={canManageExpenses ? 4 : 3}>
-                      <b>支出总额</b>
+                      <b>{t("支出总额", "Total Expenses")}</b>
                     </td>
                     <td className="num">
                       <b>{fmtMoney(report.totalExpenses)}</b>
@@ -394,23 +406,25 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
 
           <div className="summary">
             <div className="row">
-              <span>本月总收</span>
+              <span>{t("本月总收", "Total Income This Month")}</span>
               <b>{fmtMoney(report.total)}</b>
             </div>
             {report.totalExpenses > 0 && (
               <div className="row">
-                <span>支出 Expenses</span>
+                <span>{t("支出 Expenses", "Expenses")}</span>
                 <span className="neg">- {fmtMoney(report.totalExpenses)}</span>
               </div>
             )}
             {report.property.managementFeeRate !== null && (
               <>
                 <div className="row">
-                  <span>管理费 ({(report.property.managementFeeRate * 100).toFixed(1)}%)</span>
+                  <span>
+                    {t("管理费", "Management Fee")} ({(report.property.managementFeeRate * 100).toFixed(1)}%)
+                  </span>
                   <span className="neg">- {fmtMoney(report.managementFee)}</span>
                 </div>
                 <div className="total">
-                  <span>应付 Landlord 净额</span>
+                  <span>{t("应付 Landlord 净额", "Net Amount Payable to Landlord")}</span>
                   <span className={(report.netToLandlord ?? 0) < 0 ? "neg" : ""}>{fmtMoney(report.netToLandlord ?? 0)}</span>
                 </div>
               </>
@@ -418,18 +432,18 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
             {report.property.ownerRentalAmount !== null && (
               <>
                 <div className="row">
-                  <span>付 Owner 租金</span>
+                  <span>{t("付 Owner 租金", "Rent Paid to Owner")}</span>
                   <span className="neg">- {fmtMoney(report.property.ownerRentalAmount)}</span>
                 </div>
                 <div className="total">
-                  <span>本月净利</span>
+                  <span>{t("本月净利", "Net Profit This Month")}</span>
                   <span className={(report.netProfit ?? 0) < 0 ? "neg" : ""}>{fmtMoney(report.netProfit ?? 0)}</span>
                 </div>
               </>
             )}
             {neitherManagedNorLeased && report.totalExpenses > 0 && (
               <div className="total">
-                <span>净额 (扣除支出)</span>
+                <span>{t("净额 (扣除支出)", "Net Amount (After Expenses)")}</span>
                 <span className={report.total - report.totalExpenses < 0 ? "neg" : ""}>
                   {fmtMoney(report.total - report.totalExpenses)}
                 </span>
@@ -443,8 +457,8 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
       <ConfirmDialog
         open={!!deletingCode}
         danger
-        message="确定删除这笔支出记录？这个操作不能撤销。"
-        confirmLabel="确定删除"
+        message={t("确定删除这笔支出记录？这个操作不能撤销。", "Are you sure you want to delete this expense record? This action cannot be undone.")}
+        confirmLabel={t("确定删除", "Confirm Delete")}
         onConfirm={confirmDeleteExpense}
         onCancel={() => setDeletingCode(null)}
       />

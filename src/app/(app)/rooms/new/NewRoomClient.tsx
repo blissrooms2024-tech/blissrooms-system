@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 import { ROOM_TYPE_OPTIONS } from "@/lib/config";
 
 interface PropertyOption {
@@ -14,6 +15,7 @@ interface PropertyOption {
 export default function NewRoomClient() {
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [form, setForm] = useState({
     roomCode: "",
@@ -40,7 +42,7 @@ export default function NewRoomClient() {
   async function addRoom(e: FormEvent) {
     e.preventDefault();
     if (!form.roomCode || !form.propertyCode) {
-      toast.warning("Room Code 和楼盘一定要选");
+      toast.warning(t("Room Code 和楼盘一定要选", "Room Code and Property are required"));
       return;
     }
     setSubmitting(true);
@@ -58,7 +60,7 @@ export default function NewRoomClient() {
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSubmitting(false);
     }
@@ -68,19 +70,19 @@ export default function NewRoomClient() {
     <div className="mx-auto max-w-2xl">
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-brand">➕ 加新房间</h3>
+          <h3 className="text-base font-semibold text-brand">➕ {t("加新房间", "Add New Room")}</h3>
           <Link href="/rooms" className="text-sm text-gray-500 hover:underline">
-            ← 返回房间清单
+            ← {t("返回房间清单", "Back to Room List")}
           </Link>
         </div>
 
         {properties.length === 0 && (
           <div className="mb-3.5 text-sm text-gray-500">
-            还没有楼盘, 先去{" "}
+            {t("还没有楼盘, 先去", "No properties yet, go to")}{" "}
             <Link href="/units" className="text-brand underline">
-              楼盘管理
+              {t("楼盘管理", "Property Management")}
             </Link>{" "}
-            建一个
+            {t("建一个", "to create one first")}
           </div>
         )}
 
@@ -91,7 +93,7 @@ export default function NewRoomClient() {
                 value={form.roomCode}
                 onChange={(e) => setForm({ ...form, roomCode: e.target.value })}
                 className="input"
-                placeholder="例: MMB-01"
+                placeholder={t("例: MMB-01", "e.g. MMB-01")}
               />
             </Field>
             <Field label="楼盘 Unit">
@@ -100,7 +102,7 @@ export default function NewRoomClient() {
                 onChange={(e) => setForm({ ...form, propertyCode: e.target.value })}
                 className="input"
               >
-                <option value="">-- 选楼盘 --</option>
+                <option value="">-- {t("选楼盘", "Select Property")} --</option>
                 {properties.map((p) => (
                   <option key={p.propertyCode} value={p.propertyCode}>
                     {p.propertyCode} ({p.name})
@@ -108,7 +110,7 @@ export default function NewRoomClient() {
                 ))}
               </select>
             </Field>
-            <Field label="类型">
+            <Field label={t("类型", "Type")}>
               <select
                 value={useCustomType ? "__custom__" : form.roomType}
                 onChange={(e) => {
@@ -121,24 +123,24 @@ export default function NewRoomClient() {
                 }}
                 className="input"
               >
-                <option value="">-- 选类型 --</option>
-                {ROOM_TYPE_OPTIONS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                <option value="">-- {t("选类型", "Select Type")} --</option>
+                {ROOM_TYPE_OPTIONS.map((rt) => (
+                  <option key={rt} value={rt}>
+                    {rt}
                   </option>
                 ))}
-                <option value="__custom__">其他 (自己填)</option>
+                <option value="__custom__">{t("其他 (自己填)", "Other (Custom)")}</option>
               </select>
               {useCustomType && (
                 <input
                   value={customType}
                   onChange={(e) => setCustomType(e.target.value)}
                   className="input mt-2"
-                  placeholder="自己填类型"
+                  placeholder={t("自己填类型", "Enter custom type")}
                 />
               )}
             </Field>
-            <Field label="房租 RM">
+            <Field label={`${t("房租", "Rental")} RM`}>
               <input
                 type="number"
                 value={form.roomRental}
@@ -162,7 +164,7 @@ export default function NewRoomClient() {
               checked={form.hasAircon}
               onChange={(e) => setForm({ ...form, hasAircon: e.target.checked })}
             />
-            ❄️ 有冷气
+            ❄️ {t("有冷气", "Has Aircon")}
           </label>
           <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
             <input
@@ -170,7 +172,7 @@ export default function NewRoomClient() {
               checked={form.isCarpark}
               onChange={(e) => setForm({ ...form, isCarpark: e.target.checked })}
             />
-            🅿️ 这是车位专用 (不是房间，只租车位)
+            🅿️ {t("这是车位专用 (不是房间，只租车位)", "This is a carpark-only lot (not a room, rented as carpark only)")}
           </label>
           {form.isCarpark && (
             <Field label="车位编号 Carpark Lot">
@@ -178,13 +180,13 @@ export default function NewRoomClient() {
                 value={form.carparkLotNumber}
                 onChange={(e) => setForm({ ...form, carparkLotNumber: e.target.value })}
                 className="input"
-                placeholder="例: B-123"
+                placeholder={t("例: B-123", "e.g. B-123")}
               />
             </Field>
           )}
 
           <button type="submit" disabled={submitting} className="btn-primary w-full">
-            {submitting ? "加入中..." : "加入房间"}
+            {submitting ? t("加入中...", "Adding...") : t("加入房间", "Add Room")}
           </button>
         </form>
       </div>

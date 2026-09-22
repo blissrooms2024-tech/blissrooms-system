@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
-import { ROOM_STATUS_LABELS, ROOM_STATUS_BADGE, CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface RoomDetail {
   roomCode: string;
@@ -45,6 +46,7 @@ interface ContractRow {
 
 export default function RoomDetailClient({ roomCode, role }: { roomCode: string; role: string }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [room, setRoom] = useState<RoomDetail | null>(null);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [error, setError] = useState("");
@@ -62,9 +64,9 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
       setRoom(data.room);
       setContracts(data.contracts);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
-  }, [roomCode]);
+  }, [roomCode, t]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -74,7 +76,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
 
   async function uploadPhoto(file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      toast.warning("图片太大(超过3MB)，请压缩");
+      toast.warning(t("图片太大(超过3MB)，请压缩", "Image is too large (over 3MB) — please compress it"));
       return;
     }
     setUploading(true);
@@ -93,7 +95,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setUploading(false);
     }
@@ -115,7 +117,8 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
   }
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!room) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!room)
+    return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -125,7 +128,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
             {room.isCarpark ? "🅿️" : "🏠"} {room.roomCode}
           </h3>
           <Link href="/rooms" className="text-sm text-gray-500 hover:underline">
-            ← 返回房间清单
+            ← {t("返回房间清单", "Back to Room List")}
           </Link>
         </div>
 
@@ -136,25 +139,27 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
                 {room.propertyName}
               </Link>
             ) : (
-              room.propertyName || "未分配"
+              room.propertyName || t("未分配", "Unassigned")
             )}
           </Info>
-          <Info label="类型">{room.roomType || "-"}</Info>
-          <Info label="状态">
+          <Info label={t("类型", "Type")}>{room.roomType || "-"}</Info>
+          <Info label={t("状态", "Status")}>
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROOM_STATUS_BADGE[room.status]}`}>
-              {ROOM_STATUS_LABELS[room.status] ?? room.status}
+              {roomStatusLabel(room.status, locale) ?? room.status}
             </span>
           </Info>
-          {!room.isCarpark && <Info label="房租">RM{room.roomRental}</Info>}
-          <Info label="车位租金">RM{room.carparkRental}</Info>
+          {!room.isCarpark && <Info label={t("房租", "Rental")}>RM{room.roomRental}</Info>}
+          <Info label={t("车位租金", "Carpark Rental")}>RM{room.carparkRental}</Info>
           <Info label="押金 Deposit (可退还)">RM{room.securityDeposit}</Info>
-          {room.isCarpark && <Info label="车位编号">{room.carparkLotNumber || "-"}</Info>}
-          {!room.isCarpark && <Info label="冷气">{room.hasAircon ? "❄️ 有" : "- 没有"}</Info>}
+          {room.isCarpark && <Info label={t("车位编号", "Carpark Lot")}>{room.carparkLotNumber || "-"}</Info>}
+          {!room.isCarpark && (
+            <Info label={t("冷气", "Aircon")}>{room.hasAircon ? `❄️ ${t("有", "Yes")}` : `- ${t("没有", "No")}`}</Info>
+          )}
         </div>
 
         {room.currentTenant && (
           <div className="mt-3.5 rounded-lg bg-brand-light/40 p-3 text-sm">
-            <b className="text-brand">👤 现在的租客</b>
+            <b className="text-brand">👤 {t("现在的租客", "Current Tenant")}</b>
             <div className="mt-1">{room.currentTenant.name}</div>
             <div className="text-xs text-gray-500">
               {room.currentTenant.email}
@@ -164,28 +169,32 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
         )}
 
         <div className="mt-3.5">
-          <b className="mb-1.5 block text-sm text-gray-600">📷 房间照片</b>
+          <b className="mb-1.5 block text-sm text-gray-600">📷 {t("房间照片", "Room Photos")}</b>
           {room.photos.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {room.photos.map((url) => (
                 <div key={url} className="group relative">
                   <button type="button" onClick={() => setZoomUrl(url)} className="block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="房间照片" className="h-20 w-20 rounded-lg border border-gray-200 object-cover" />
+                    <img
+                      src={url}
+                      alt={t("房间照片", "Room Photo")}
+                      className="h-20 w-20 rounded-lg border border-gray-200 object-cover"
+                    />
                   </button>
                   <a
                     href={url}
                     download
                     className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/60 py-0.5 text-center text-[11px] text-white opacity-0 group-hover:opacity-100"
                   >
-                    ⬇️ 下载
+                    ⬇️ {t("下载", "Download")}
                   </a>
                   {role === "ADMIN" && (
                     <button
                       type="button"
                       onClick={() => deletePhoto(url)}
                       className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white opacity-0 group-hover:opacity-100"
-                      title="删除照片"
+                      title={t("删除照片", "Delete Photo")}
                     >
                       ×
                     </button>
@@ -194,7 +203,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">还没有照片</p>
+            <p className="text-sm text-gray-400">{t("还没有照片", "No photos yet")}</p>
           )}
           {role === "ADMIN" && (
             <div className="mt-2">
@@ -205,17 +214,17 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
                 onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])}
                 className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
               />
-              {uploading && <span className="ml-2 text-sm text-gray-500">上传中...</span>}
+              {uploading && <span className="ml-2 text-sm text-gray-500">{t("上传中...", "Uploading...")}</span>}
             </div>
           )}
           {room.photoLink && (
             <a href={room.photoLink} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-block text-sm text-brand underline">
-              🔗 查看相册链接
+              🔗 {t("查看相册链接", "View Album Link")}
             </a>
           )}
         </div>
 
-        {zoomUrl && <Lightbox src={zoomUrl} alt="房间照片" onClose={() => setZoomUrl(null)} />}
+        {zoomUrl && <Lightbox src={zoomUrl} alt={t("房间照片", "Room Photo")} onClose={() => setZoomUrl(null)} />}
 
         {room.notes && (
           <div className="mt-3.5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">📝 {room.notes}</div>
@@ -223,9 +232,13 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">📄 合同记录 ({contracts.length})</h3>
+        <h3 className="mb-3.5 text-base font-semibold text-brand">
+          📄 {t("合同记录", "Contract Records")} ({contracts.length})
+        </h3>
         {contracts.length === 0 ? (
-          <div className="py-6 text-center text-sm text-gray-400">这间房还没有任何合同记录</div>
+          <div className="py-6 text-center text-sm text-gray-400">
+            {t("这间房还没有任何合同记录", "This room has no contract records yet")}
+          </div>
         ) : (
           <div className="space-y-2">
             {contracts.map((c) => (
@@ -242,7 +255,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
                   )}
                 </div>
                 <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
-                  {CONTRACT_STATUS_LABELS[c.status] ?? c.status}
+                  {contractStatusLabel(c.status, locale) ?? c.status}
                 </span>
               </div>
             ))}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 
 export interface EditableProperty {
   propertyCode: string;
@@ -31,6 +32,7 @@ export default function PropertyEditModal({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const t = useT();
   const [name, setName] = useState(property.name);
   const [address, setAddress] = useState(property.address ?? "");
   const [region, setRegion] = useState(property.region ?? "");
@@ -55,7 +57,7 @@ export default function PropertyEditModal({
 
   async function save() {
     if (!name.trim()) {
-      toast.warning("楼盘名字一定要填");
+      toast.warning(t("楼盘名字一定要填", "Property name is required"));
       return;
     }
     setSaving(true);
@@ -86,7 +88,7 @@ export default function PropertyEditModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSaving(false);
     }
@@ -94,28 +96,30 @@ export default function PropertyEditModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="mb-3.5 text-lg font-bold text-brand">✏️ 编辑楼盘 — {property.propertyCode}</h3>
+      <h3 className="mb-3.5 text-lg font-bold text-brand">
+        {t("✏️ 编辑楼盘", "✏️ Edit Property")} — {property.propertyCode}
+      </h3>
       <div className="space-y-3">
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">楼盘名字</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("楼盘名字", "Property Name")}</label>
           <input value={name} onChange={(e) => setName(e.target.value)} className="input" />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">地址</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("地址", "Address")}</label>
           <input value={address} onChange={(e) => setAddress(e.target.value)} className="input" />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">地区</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("地区", "Region")}</label>
           <input value={region} onChange={(e) => setRegion(e.target.value)} className="input" />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">楼盘性质</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("楼盘性质", "Property Type")}</label>
           <div className="grid grid-cols-1 gap-2">
             {(
               [
-                { v: "OWN", l: "自己名下" },
-                { v: "MANAGED", l: "帮人管理 (收管理费%)" },
-                { v: "MASTER_LEASE", l: "跟 Owner 租 (付固定租金)" },
+                { v: "OWN", l: t("自己名下", "Self-owned") },
+                { v: "MANAGED", l: t("帮人管理 (收管理费%)", "Managed for Owner (% Management Fee)") },
+                { v: "MASTER_LEASE", l: t("跟 Owner 租 (付固定租金)", "Master Lease from Owner (Fixed Rent)") },
               ] as { v: DealType; l: string }[]
             ).map((opt) => (
               <label
@@ -134,13 +138,13 @@ export default function PropertyEditModal({
           <>
             <div>
               <label className="mb-1.5 block text-sm text-gray-600">
-                {dealType === "MASTER_LEASE" ? "Owner (业主)" : "Landlord"}
+                {dealType === "MASTER_LEASE" ? t("Owner (业主)", "Owner") : "Landlord"}
               </label>
               <input value={landlord} onChange={(e) => setLandlord(e.target.value)} className="input" />
             </div>
             {dealType === "MANAGED" ? (
               <div>
-                <label className="mb-1.5 block text-sm text-gray-600">管理费 % (例10)</label>
+                <label className="mb-1.5 block text-sm text-gray-600">{t("管理费 % (例10)", "Management Fee % (e.g. 10)")}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -152,7 +156,7 @@ export default function PropertyEditModal({
             ) : (
               <>
                 <div>
-                  <label className="mb-1.5 block text-sm text-gray-600">每月付 Owner 租金 RM</label>
+                  <label className="mb-1.5 block text-sm text-gray-600">{t("每月付 Owner 租金 RM", "Monthly Rent to Owner RM")}</label>
                   <input
                     type="number"
                     step="1"
@@ -162,7 +166,9 @@ export default function PropertyEditModal({
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm text-gray-600">付 Owner 押金 RM (可退还)</label>
+                  <label className="mb-1.5 block text-sm text-gray-600">
+                    {t("付 Owner 押金 RM (可退还)", "Deposit to Owner RM (Refundable)")}
+                  </label>
                   <input
                     type="number"
                     step="1"
@@ -176,19 +182,19 @@ export default function PropertyEditModal({
           </>
         )}
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">状态</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("状态", "Status")}</label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="input">
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">备注 Notes</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("备注 Notes", "Notes")}</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input" />
         </div>
         <div className="flex gap-3 rounded-lg bg-gray-50 p-3">
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">房间数量</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("房间数量", "Room Count")}</label>
             <input
               type="number"
               min="0"
@@ -198,7 +204,7 @@ export default function PropertyEditModal({
             />
           </div>
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">车位数量</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("车位数量", "Parking Count")}</label>
             <input
               type="number"
               min="0"
@@ -209,10 +215,13 @@ export default function PropertyEditModal({
           </div>
         </div>
         <p className="-mt-2 text-xs text-gray-400">
-          数字改大了保存后，会自动加新的房间/车位，接着现有的编号继续；改小不会删除现有房间
+          {t(
+            "数字改大了保存后，会自动加新的房间/车位，接着现有的编号继续；改小不会删除现有房间",
+            "Increasing the number and saving will automatically add new rooms/parking, continuing from the existing numbering; decreasing it will not delete existing rooms"
+          )}
         </p>
         <button onClick={save} disabled={saving} className="btn-primary w-full">
-          {saving ? "保存中..." : "保存"}
+          {saving ? t("保存中...", "Saving...") : t("保存", "Save")}
         </button>
       </div>
     </Modal>

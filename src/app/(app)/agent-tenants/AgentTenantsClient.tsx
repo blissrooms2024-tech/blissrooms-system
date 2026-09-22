@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { contractStatusLabel } from "@/lib/config";
 import { fmtMoney } from "@/lib/format";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface ContractRow {
   contractCode: string;
@@ -24,6 +25,7 @@ function Check({ ok }: { ok: boolean }) {
 }
 
 export default function AgentTenantsClient() {
+  const { locale, t } = useLanguage();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
 
@@ -37,11 +39,11 @@ export default function AgentTenantsClient() {
         }
         setData(d);
       })
-      .catch(() => setError("出错，请稍后再试"));
-  }, []);
+      .catch(() => setError(t("出错，请稍后再试", "Something went wrong, please try again later")));
+  }, [t]);
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!data) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!data) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
 
   const pending = data.contracts.filter(
     (c) => c.status !== "ACTIVE" || !c.tenantSigned || !c.icDone || !c.moveInDone || c.depositOutstanding > 0
@@ -49,21 +51,21 @@ export default function AgentTenantsClient() {
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="mb-3.5 text-base font-semibold text-brand">📋 Tenant 进度 (还没完成的)</h3>
+      <h3 className="mb-3.5 text-base font-semibold text-brand">📋 {t("Tenant 进度 (还没完成的)", "Tenant Progress (Not Completed)")}</h3>
       {pending.length === 0 ? (
-        <div className="py-8 text-center text-sm text-gray-400">🎉 全部都完成了</div>
+        <div className="py-8 text-center text-sm text-gray-400">🎉 {t("全部都完成了", "Everything is completed")}</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">合同</th>
-                <th className="px-2.5 py-1.5 font-semibold">租客</th>
-                <th className="px-2.5 py-1.5 font-semibold">状态</th>
-                <th className="px-2.5 py-1.5 font-semibold">Tenant 签名</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("合同", "Contract")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("租客", "Tenant")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("状态", "Status")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("Tenant 签名", "Tenant Signature")}</th>
                 <th className="px-2.5 py-1.5 font-semibold">IC</th>
                 <th className="px-2.5 py-1.5 font-semibold">Move-in</th>
-                <th className="px-2.5 py-1.5 font-semibold">押金</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("押金", "Deposit")}</th>
               </tr>
             </thead>
             <tbody>
@@ -76,7 +78,7 @@ export default function AgentTenantsClient() {
                     · {c.roomCode}
                   </td>
                   <td className="px-2.5 py-1.5">{c.tenantName}</td>
-                  <td className="px-2.5 py-1.5">{CONTRACT_STATUS_LABELS[c.status] ?? c.status}</td>
+                  <td className="px-2.5 py-1.5">{contractStatusLabel(c.status, locale)}</td>
                   <td className="px-2.5 py-1.5">
                     <Check ok={c.tenantSigned} />
                   </td>
@@ -88,9 +90,9 @@ export default function AgentTenantsClient() {
                   </td>
                   <td className="px-2.5 py-1.5">
                     {c.depositOutstanding > 0 ? (
-                      <span className="font-semibold text-red-600">欠 {fmtMoney(c.depositOutstanding)}</span>
+                      <span className="font-semibold text-red-600">{t("欠", "Owes")} {fmtMoney(c.depositOutstanding)}</span>
                     ) : (
-                      <span className="text-green-600">✅ 收齐</span>
+                      <span className="text-green-600">✅ {t("收齐", "Fully Collected")}</span>
                     )}
                   </td>
                 </tr>
