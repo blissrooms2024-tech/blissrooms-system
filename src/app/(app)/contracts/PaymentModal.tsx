@@ -79,6 +79,9 @@ export default function PaymentModal({
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -241,6 +244,38 @@ export default function PaymentModal({
     else toast.danger(data.message);
     load();
     onChanged();
+  }
+
+  function startEditDate(p: PaymentRow) {
+    setEditingId(p.id);
+    setEditDate(p.paidDate ? p.paidDate.slice(0, 10) : "");
+  }
+
+  async function saveEditDate(id: string) {
+    if (!editDate) {
+      toast.warning("请选日期");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/payments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paidDate: editDate }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setEditingId(null);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger("系统出错，请稍后再试");
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   const paidHistory = payments.filter((p) => p.status === "Paid");
@@ -594,7 +629,45 @@ export default function PaymentModal({
             <tr key={p.paymentCode} className="border-b border-gray-100">
               <td className="px-2.5 py-1.5">{paymentTypeLabel(p.type, p.customLabel)}</td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
-              <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
+              <td className="px-2.5 py-1.5">
+                {editingId === p.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                      className="input h-7 py-0 text-xs"
+                    />
+                    <button
+                      onClick={() => saveEditDate(p.id)}
+                      disabled={editSaving}
+                      className="rounded-md bg-green-700 px-2 py-1 text-xs font-semibold text-white"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600"
+                    >
+                      ✗
+                    </button>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    {fmtDate(p.paidDate)}
+                    {role === "ADMIN" && (
+                      <button
+                        type="button"
+                        onClick={() => startEditDate(p)}
+                        className="text-xs text-gray-400 hover:text-brand"
+                        title="改日期"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </span>
+                )}
+              </td>
               <td className="px-2.5 py-1.5">{p.method || (p.receiptLink ? "交易单上传" : "-")}</td>
               <td className="px-2.5 py-1.5">
                 <Link href={`/receipt/${p.paymentCode}`} target="_blank" className="text-xs font-semibold text-brand underline">
