@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import DashboardClient from "./DashboardClient";
 
 export default async function DashboardPage() {
   const session = await getCurrentUser();
@@ -22,12 +22,12 @@ export default async function DashboardPage() {
     const total = counts.VACANT + counts.OCCUPIED + counts.RESERVED + counts.MAINTENANCE;
     const rate = total ? Math.round((counts.OCCUPIED / total) * 100) : 0;
     return [
-      { n: counts.VACANT, l: "空房" },
-      { n: counts.OCCUPIED, l: "已出租" },
-      { n: counts.RESERVED, l: "已订" },
-      { n: counts.MAINTENANCE, l: "维修中" },
-      { n: counts.STORE, l: "储藏室" },
-      { n: `${rate}%`, l: "出租率" },
+      { n: counts.VACANT, l: "空房", lEn: "Vacant" },
+      { n: counts.OCCUPIED, l: "已出租", lEn: "Occupied" },
+      { n: counts.RESERVED, l: "已订", lEn: "Reserved" },
+      { n: counts.MAINTENANCE, l: "维修中", lEn: "Maintenance" },
+      { n: counts.STORE, l: "储藏室", lEn: "Storage" },
+      { n: `${rate}%`, l: "出租率", lEn: "Occupancy Rate" },
     ];
   }
 
@@ -71,80 +71,17 @@ export default async function DashboardPage() {
     .sort((a, b) => b.total - a.total);
 
   const revBoxes = [
-    { n: fmtRM(revenueMonth._sum.amountPaid), l: "本月营业额", href: "/revenue-report?period=month" },
-    { n: fmtRM(revenueYear._sum.amountPaid), l: "本年营业额", href: "/revenue-report?period=year" },
-    { n: fmtRM(revenueAll._sum.amountPaid), l: "累计总营业额", href: "/revenue-report?period=all" },
+    { n: fmtRM(revenueMonth._sum.amountPaid), l: "本月营业额", lEn: "This Month", href: "/revenue-report?period=month" },
+    { n: fmtRM(revenueYear._sum.amountPaid), l: "本年营业额", lEn: "This Year", href: "/revenue-report?period=year" },
+    { n: fmtRM(revenueAll._sum.amountPaid), l: "累计总营业额", lEn: "All Time", href: "/revenue-report?period=all" },
   ];
-  const MEDAL = ["🥇", "🥈", "🥉"];
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">💰 营业额</h3>
-        <div className="flex flex-wrap gap-3.5">
-          {revBoxes.map((b) => (
-            <Link
-              key={b.l}
-              href={b.href}
-              className="min-w-[140px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center transition hover:bg-brand-light"
-            >
-              <div className="text-2xl font-bold text-brand">{b.n}</div>
-              <div className="text-xs text-gray-500">{b.l}</div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">🏠 房间总览</h3>
-        <div className="flex flex-wrap gap-3.5">
-          {roomBoxes.map((b) => (
-            <div key={b.l} className="min-w-[110px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center">
-              <div className="text-2xl font-bold text-brand">{b.n}</div>
-              <div className="text-xs text-gray-500">{b.l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">🅿️ 车位总览</h3>
-        <div className="flex flex-wrap gap-3.5">
-          {carparkBoxes.map((b) => (
-            <div key={b.l} className="min-w-[110px] flex-1 rounded-xl bg-gray-50 p-3.5 text-center">
-              <div className="text-2xl font-bold text-brand">{b.n}</div>
-              <div className="text-xs text-gray-500">{b.l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">🏆 Top Sales 排行榜</h3>
-        {leaderboard.length === 0 ? (
-          <div className="py-8 text-center text-sm text-gray-400">还没有成交记录</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">排名</th>
-                <th className="px-2.5 py-1.5 font-semibold">Agent</th>
-                <th className="px-2.5 py-1.5 font-semibold">总成交合同</th>
-                <th className="px-2.5 py-1.5 font-semibold">本月新增</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboard.map((a, i) => (
-                <tr key={a.userCode} className="border-b border-gray-100">
-                  <td className="px-2.5 py-1.5 font-semibold">{MEDAL[i] ?? `#${i + 1}`}</td>
-                  <td className="px-2.5 py-1.5">{a.name}</td>
-                  <td className="px-2.5 py-1.5 font-semibold text-brand">{a.total}</td>
-                  <td className="px-2.5 py-1.5">{a.thisMonth}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
+    <DashboardClient
+      revBoxes={revBoxes}
+      roomBoxes={roomBoxes}
+      carparkBoxes={carparkBoxes}
+      leaderboard={leaderboard}
+    />
   );
 }

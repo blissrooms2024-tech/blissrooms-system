@@ -58,6 +58,16 @@ export const USER_STATUS_LABELS: Record<string, string> = {
   PENDING: "待审核",
 };
 
+export const USER_STATUS_LABELS_EN: Record<string, string> = {
+  ACTIVE: "Active",
+  DISABLED: "Disabled",
+  PENDING: "Pending",
+};
+
+export function userStatusLabel(status: string, locale: "zh" | "en"): string {
+  return (locale === "en" ? USER_STATUS_LABELS_EN : USER_STATUS_LABELS)[status] ?? status;
+}
+
 export const ROOM_STATUS_LABELS: Record<string, string> = {
   VACANT: "空房",
   OCCUPIED: "已出租",
@@ -65,6 +75,18 @@ export const ROOM_STATUS_LABELS: Record<string, string> = {
   MAINTENANCE: "维修中",
   STORE: "储藏室",
 };
+
+export const ROOM_STATUS_LABELS_EN: Record<string, string> = {
+  VACANT: "Vacant",
+  OCCUPIED: "Occupied",
+  RESERVED: "Reserved",
+  MAINTENANCE: "Maintenance",
+  STORE: "Storage",
+};
+
+export function roomStatusLabel(status: string, locale: "zh" | "en"): string {
+  return (locale === "en" ? ROOM_STATUS_LABELS_EN : ROOM_STATUS_LABELS)[status] ?? status;
+}
 
 /** Room status badge colors, shared across the rooms list/detail and unit detail pages —
  * 空房 (needs attention, still losing rent) is the one Admin wants to spot first, so it gets
@@ -217,4 +239,26 @@ export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
 export function expenseCategoryLabel(category: string, customLabel?: string | null): string {
   if (category === "OTHER" && customLabel) return customLabel;
   return EXPENSE_CATEGORY_LABELS[category] ?? category;
+}
+
+export const EXPENSE_CATEGORY_LABELS_EN: Record<string, string> = {
+  WATER: "Water",
+  ELECTRIC: "Electricity",
+  WIFI: "Wifi",
+  CLEANING: "Cleaning",
+  MAINTENANCE: "Maintenance",
+  OTHER: "Other",
+};
+
+export function expenseCategoryLabelEn(category: string, customLabel?: string | null): string {
+  if (category === "OTHER" && customLabel) return customLabel;
+  return EXPENSE_CATEGORY_LABELS_EN[category] ?? category;
+}
+
+export function expenseCategoryLabelLocale(
+  category: string,
+  customLabel: string | null | undefined,
+  locale: "zh" | "en"
+): string {
+  return locale === "en" ? expenseCategoryLabelEn(category, customLabel) : expenseCategoryLabel(category, customLabel);
 }
