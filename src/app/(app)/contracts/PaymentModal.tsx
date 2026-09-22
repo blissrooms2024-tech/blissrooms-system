@@ -81,6 +81,7 @@ export default function PaymentModal({
   const [rejectReason, setRejectReason] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
+  const [editMethod, setEditMethod] = useState("Bank Transfer");
   const [editSaving, setEditSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -249,6 +250,7 @@ export default function PaymentModal({
   function startEditDate(p: PaymentRow) {
     setEditingId(p.id);
     setEditDate(p.paidDate ? p.paidDate.slice(0, 10) : "");
+    setEditMethod(p.method || "Bank Transfer");
   }
 
   async function saveEditDate(id: string) {
@@ -261,7 +263,7 @@ export default function PaymentModal({
       const res = await fetch(`/api/payments/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paidDate: editDate }),
+        body: JSON.stringify({ paidDate: editDate, method: editMethod }),
       });
       const data = await res.json();
       if (data.success) {
@@ -668,7 +670,21 @@ export default function PaymentModal({
                   </span>
                 )}
               </td>
-              <td className="px-2.5 py-1.5">{p.method || (p.receiptLink ? "交易单上传" : "-")}</td>
+              <td className="px-2.5 py-1.5">
+                {editingId === p.id ? (
+                  <select
+                    value={editMethod}
+                    onChange={(e) => setEditMethod(e.target.value)}
+                    className="input h-7 py-0 text-xs"
+                  >
+                    <option>Bank Transfer</option>
+                    <option>Cash</option>
+                    <option>Cheque</option>
+                  </select>
+                ) : (
+                  p.method || (p.receiptLink ? "交易单上传" : "-")
+                )}
+              </td>
               <td className="px-2.5 py-1.5">
                 <Link href={`/receipt/${p.paymentCode}`} target="_blank" className="text-xs font-semibold text-brand underline">
                   🧾 Receipt
