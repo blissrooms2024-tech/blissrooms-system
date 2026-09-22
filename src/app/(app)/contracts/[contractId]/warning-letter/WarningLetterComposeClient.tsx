@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { useLanguage } from "@/components/LanguageProvider";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { fmtDate } from "@/lib/format";
 
 const TEMPLATES = [
   {
-    label: "拖欠房租 Overdue Rental",
+    labelZh: "拖欠房租",
+    labelEn: "Overdue Rental",
     text: `In reference to the Tenancy Agreement, which was duly signed and acknowledged by you as the tenant, we regret to inform you that you have breached one of the agreed tenancy terms and house rules despite our repeated attempts to reach you.
 
 Breach of Tenancy Clause
@@ -28,11 +30,13 @@ We trust you understand the seriousness of this matter and urge you to settle th
 If payment has already been made, kindly disregard this letter and contact our office with proof of payment for our records.`,
   },
   {
-    label: "违反 House Rules",
+    labelZh: "违反 House Rules",
+    labelEn: "House Rules Violation",
     text: "Based on an on-site inspection / feedback from other residents, your conduct has violated the House Rules. Please correct this immediately, or the contract may be terminated.",
   },
   {
-    label: "长期未上传交易单",
+    labelZh: "长期未上传交易单",
+    labelEn: "Transaction Slip Not Uploaded",
     text: "You have an outstanding bill with no transaction slip uploaded for an extended period. Please submit it within 3 days, or a late payment penalty will apply.",
   },
 ];
@@ -47,6 +51,7 @@ interface Letter {
 
 export default function WarningLetterComposeClient({ contractCode }: { contractCode: string }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [tenantName, setTenantName] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -70,9 +75,9 @@ export default function WarningLetterComposeClient({ contractCode }: { contractC
       setTenantName(contractData.contract.tenantName);
       if (lettersData.success) setLetters(lettersData.letters);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
-  }, [contractCode]);
+  }, [contractCode, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -81,7 +86,7 @@ export default function WarningLetterComposeClient({ contractCode }: { contractC
 
   async function send() {
     if (!message.trim()) {
-      toast.warning("请填警告内容");
+      toast.warning(t("请填警告内容", "Please enter the warning content"));
       return;
     }
     setSending(true);
@@ -100,7 +105,7 @@ export default function WarningLetterComposeClient({ contractCode }: { contractC
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSending(false);
     }
@@ -124,44 +129,46 @@ export default function WarningLetterComposeClient({ contractCode }: { contractC
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-base font-semibold text-brand">
-            ⚠️ 警告信 — {contractCode} {tenantName ? `(${tenantName})` : ""}
+            ⚠️ {t("警告信", "Warning Letter")} — {contractCode} {tenantName ? `(${tenantName})` : ""}
           </h3>
           <Link href={`/contracts/${contractCode}`} className="text-sm text-gray-500 hover:underline">
-            ← 返回合同
+            ← {t("返回合同", "Back to Contract")}
           </Link>
         </div>
-        <p className="mb-3.5 text-sm text-gray-500">会直接发邮件给租客登录邮箱。</p>
+        <p className="mb-3.5 text-sm text-gray-500">
+          {t("会直接发邮件给租客登录邮箱。", "This is emailed directly to the tenant's login email.")}
+        </p>
 
         <div className="mb-2.5 flex flex-wrap gap-1.5">
-          {TEMPLATES.map((t) => (
+          {TEMPLATES.map((tpl) => (
             <button
-              key={t.label}
+              key={tpl.labelZh}
               type="button"
-              onClick={() => setMessage(t.text)}
+              onClick={() => setMessage(tpl.text)}
               className="rounded-md bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200"
             >
-              模板: {t.label}
+              {t("模板", "Template")}: {locale === "en" ? tpl.labelEn : tpl.labelZh}
             </button>
           ))}
         </div>
 
         <textarea
           className="input h-[420px] resize-y font-mono text-[13px] leading-relaxed"
-          placeholder="警告内容..."
+          placeholder={t("警告内容...", "Warning content...")}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
 
         <button onClick={send} disabled={sending} className="btn-primary mt-3">
-          {sending ? "发送中..." : "发送警告信"}
+          {sending ? t("发送中...", "Sending...") : t("发送警告信", "Send Warning Letter")}
         </button>
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <b className="mb-2.5 block text-sm text-brand">📜 警告信记录</b>
-        {!letters && <div className="py-3 text-center text-sm text-gray-500">载入中...</div>}
+        <b className="mb-2.5 block text-sm text-brand">📜 {t("警告信记录", "Warning Letter History")}</b>
+        {!letters && <div className="py-3 text-center text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
         {letters && letters.length === 0 && (
-          <div className="py-3 text-center text-sm text-gray-400">还没有发过警告信</div>
+          <div className="py-3 text-center text-sm text-gray-400">{t("还没有发过警告信", "No warning letters sent yet")}</div>
         )}
         <div className="space-y-2">
           {letters?.map((l) => (
@@ -169,7 +176,10 @@ export default function WarningLetterComposeClient({ contractCode }: { contractC
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-gray-400">
-                    {fmtDate(l.createdAt)} · {l.triggeredBy === "system-cron" ? "系统自动 (逾期提醒)" : `Admin: ${l.sentBy}`}
+                    {fmtDate(l.createdAt)} ·{" "}
+                    {l.triggeredBy === "system-cron"
+                      ? t("系统自动 (逾期提醒)", "Automatic (overdue reminder)")
+                      : `Admin: ${l.sentBy}`}
                   </div>
                   <div className="mt-1 max-h-24 overflow-hidden whitespace-pre-wrap text-sm text-gray-700">
                     {l.message}
@@ -179,14 +189,14 @@ export default function WarningLetterComposeClient({ contractCode }: { contractC
                     target="_blank"
                     className="mt-1 inline-block text-xs font-semibold text-brand underline"
                   >
-                    📄 查看正式信件
+                    📄 {t("查看正式信件", "View Formal Letter")}
                   </Link>
                 </div>
                 <button
                   onClick={() => setDeleting(l.letterCode)}
                   className="shrink-0 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
                 >
-                  撤销
+                  {t("撤销", "Revoke")}
                 </button>
               </div>
             </div>
@@ -197,8 +207,11 @@ export default function WarningLetterComposeClient({ contractCode }: { contractC
       <ConfirmDialog
         open={!!deleting}
         danger
-        message="确定撤销这封警告信记录？（邮件已经发出去了, 这只会移除系统里的记录）"
-        confirmLabel="确定撤销"
+        message={t(
+          "确定撤销这封警告信记录？（邮件已经发出去了, 这只会移除系统里的记录）",
+          "Revoke this warning letter record? (The email has already been sent — this only removes the system record.)"
+        )}
+        confirmLabel={t("确定撤销", "Confirm Revoke")}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
       />

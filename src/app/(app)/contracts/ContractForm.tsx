@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { monthsBetween, endDateFromTenure } from "@/lib/tenure";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 import TenantPicker, { TenantOption } from "./TenantPicker";
 
 interface VacantRoom {
@@ -51,6 +52,7 @@ export default function ContractForm({
   onCreated: () => void;
 }) {
   const toast = useToast();
+  const t = useT();
   const [form, setForm] = useState(initialForm);
   const [tenant, setTenant] = useState<TenantOption | null>(null);
   const [utils, setUtils] = useState({ electric: false, aircond: false, dryer: false });
@@ -89,7 +91,7 @@ export default function ContractForm({
     e.preventDefault();
     if (!form.roomCode || !tenant) {
       setErrors({ roomCode: !form.roomCode, tenant: !tenant });
-      toast.warning("房间和租客一定要选");
+      toast.warning(t("房间和租客一定要选", "Room and tenant are both required"));
       return;
     }
     setLoading(true);
@@ -116,7 +118,7 @@ export default function ContractForm({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setLoading(false);
     }
@@ -124,16 +126,16 @@ export default function ContractForm({
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="mb-3.5 text-base font-semibold text-brand">📝 开新合同</h3>
+      <h3 className="mb-3.5 text-base font-semibold text-brand">📝 {t("开新合同", "New Contract")}</h3>
       <form onSubmit={submit} className="space-y-2.5">
         <Row>
-          <Field label="选空房">
+          <Field label={t("选空房", "Select Vacant Room")}>
             <select
               className={`input ${errors.roomCode ? "border-red-500 ring-1 ring-red-500" : ""}`}
               value={form.roomCode}
               onChange={(e) => set("roomCode", e.target.value)}
             >
-              <option value="">-- 选房间 --</option>
+              <option value="">-- {t("选房间", "Select Room")} --</option>
               {vacantRooms.map((r) => (
                 <option key={r.roomCode} value={r.roomCode}>
                   {r.roomCode} ({r.propertyName})
@@ -142,9 +144,9 @@ export default function ContractForm({
             </select>
           </Field>
           {role === "ADMIN" && (
-            <Field label="负责 Agent">
+            <Field label={t("负责 Agent", "Assigned Agent")}>
               <select className="input" value={form.agentId} onChange={(e) => set("agentId", e.target.value)}>
-                <option value="">-- 选 Agent --</option>
+                <option value="">-- {t("选 Agent", "Select Agent")} --</option>
                 {agents.map((a) => (
                   <option key={a.userCode} value={a.userCode}>
                     {a.name}
@@ -153,7 +155,7 @@ export default function ContractForm({
               </select>
             </Field>
           )}
-          <Field label="租客" wide>
+          <Field label={t("租客", "Tenant")} wide>
             <TenantPicker value={tenant} onChange={selectTenant} error={errors.tenant} />
           </Field>
         </Row>
@@ -162,7 +164,7 @@ export default function ContractForm({
           <Field label="Move-in">
             <input type="date" className="input" value={form.moveInDate} onChange={(e) => set("moveInDate", e.target.value)} />
           </Field>
-          <Field label="开始日">
+          <Field label={t("开始日", "Start Date")}>
             <input
               type="date"
               className="input"
@@ -170,7 +172,7 @@ export default function ContractForm({
               onChange={(e) => onDateChange("commencementDate", e.target.value)}
             />
           </Field>
-          <Field label="到期日">
+          <Field label={t("到期日", "Expiry Date")}>
             <input
               type="date"
               className="input"
@@ -178,7 +180,7 @@ export default function ContractForm({
               onChange={(e) => onDateChange("expiredDate", e.target.value)}
             />
           </Field>
-          <Field label="租期(月)">
+          <Field label={t("租期(月)", "Tenure (months)")}>
             <input
               type="number"
               className="input"
@@ -189,15 +191,15 @@ export default function ContractForm({
         </Row>
 
         <Row>
-          <Field label="房租 RM">
+          <Field label={t("房租 RM", "Rent RM")}>
             <input type="number" className="input" value={form.roomRental} onChange={(e) => set("roomRental", e.target.value)} />
           </Field>
-          <Field label="车位 RM">
+          <Field label={t("车位 RM", "Carpark RM")}>
             <input type="number" className="input" value={form.carparkRental} onChange={(e) => set("carparkRental", e.target.value)} />
           </Field>
-          <Field label="选车位 (可选，免费也可以选)">
+          <Field label={t("选车位 (可选，免费也可以选)", "Select Carpark (optional, can be free)")}>
             <select className="input" value={form.carparkRoomCode} onChange={(e) => set("carparkRoomCode", e.target.value)}>
-              <option value="">-- 没有车位 --</option>
+              <option value="">-- {t("没有车位", "No Carpark")} --</option>
               {vacantCarparks.map((r) => (
                 <option key={r.roomCode} value={r.roomCode}>
                   {r.roomCode} ({r.propertyName})
@@ -205,31 +207,36 @@ export default function ContractForm({
               ))}
             </select>
           </Field>
-          <Field label="押金 Security">
+          <Field label={t("押金 Security", "Security Deposit")}>
             <input type="number" className="input" value={form.securityDeposit} onChange={(e) => set("securityDeposit", e.target.value)} />
           </Field>
-          <Field label="水电押 Utilities">
+          <Field label={t("水电押 Utilities", "Utilities Deposit")}>
             <input type="number" className="input" value={form.utilitiesDeposit} onChange={(e) => set("utilitiesDeposit", e.target.value)} />
           </Field>
         </Row>
 
         <Row>
-          <Field label="门卡押 RM">
+          <Field label={t("门卡押 RM", "Access Card Deposit RM")}>
             <input type="number" className="input" value={form.accessCardDeposit} onChange={(e) => set("accessCardDeposit", e.target.value)} />
           </Field>
           <Field label="Admin Fee RM">
             <input type="number" className="input" value={form.adminFee} onChange={(e) => set("adminFee", e.target.value)} />
           </Field>
-          <Field label="备注" wide>
+          <Field label={t("备注", "Remarks")} wide>
             <input className="input" value={form.remarks} onChange={(e) => set("remarks", e.target.value)} />
           </Field>
         </Row>
 
         <p className="pt-1 text-xs text-gray-400">
-          国籍/职业/公司/车牌/紧急联络人等资料，租客签名前会自己在「我的租约」补填；银行资料（退押金用）在「我的资料」自己填。
+          {t(
+            "国籍/职业/公司/车牌/紧急联络人等资料，租客签名前会自己在「我的租约」补填；银行资料（退押金用）在「我的资料」自己填。",
+            "Nationality/occupation/company/car plate/emergency contact will be filled in by the tenant themselves under \"My Tenancy\" before signing; bank details (for deposit refunds) are filled in under \"My Profile\"."
+          )}
         </p>
 
-        <div className="pt-2 text-sm font-semibold text-brand">⚡ 适用水电项目 (勾了才写进合同)</div>
+        <div className="pt-2 text-sm font-semibold text-brand">
+          ⚡ {t("适用水电项目 (勾了才写进合同)", "Applicable Utilities (only checked items go into the contract)")}
+        </div>
         <div className="flex flex-col gap-2 pt-1">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -259,7 +266,7 @@ export default function ContractForm({
 
         <div className="pt-3 text-right">
           <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? "建立中..." : "建立合同"}
+            {loading ? t("建立中...", "Creating...") : t("建立合同", "Create Contract")}
           </button>
         </div>
       </form>

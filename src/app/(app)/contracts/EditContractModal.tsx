@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 import { monthsBetween, endDateFromTenure } from "@/lib/tenure";
 
 function dv(v: unknown) {
@@ -19,6 +20,7 @@ export default function EditContractModal({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const t = useT();
   const [form, setForm] = useState<Record<string, string> | null>(null);
   const [utils, setUtils] = useState({ electric: false, aircond: false, dryer: false });
   const [message, setMessage] = useState("");
@@ -115,7 +117,7 @@ export default function EditContractModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setLoading(false);
     }
@@ -123,15 +125,15 @@ export default function EditContractModal({
 
   return (
     <Modal onClose={onClose} wide>
-      <h3 className="text-lg font-bold text-brand">✏️ 编辑合同 {contractCode}</h3>
-      {!form && <div className="mt-3 text-sm text-gray-500">{message || "载入中..."}</div>}
+      <h3 className="text-lg font-bold text-brand">✏️ {t("编辑合同", "Edit Contract")} {contractCode}</h3>
+      {!form && <div className="mt-3 text-sm text-gray-500">{message || t("载入中...", "Loading...")}</div>}
       {form && (
         <div className="mt-3.5 space-y-2.5">
           <Row>
-            <Field label="租客姓名">
+            <Field label={t("租客姓名", "Tenant Name")}>
               <input className="input" value={form.tenantName} onChange={(e) => set("tenantName", e.target.value)} />
             </Field>
-            <Field label="租客 IC">
+            <Field label={t("租客 IC", "Tenant IC")}>
               <input className="input" value={form.tenantIc} onChange={(e) => set("tenantIc", e.target.value)} />
             </Field>
             <Field label="Email">
@@ -142,7 +144,7 @@ export default function EditContractModal({
             <Field label="Move-in">
               <input type="date" className="input" value={form.moveInDate} onChange={(e) => set("moveInDate", e.target.value)} />
             </Field>
-            <Field label="开始日">
+            <Field label={t("开始日", "Start Date")}>
               <input
                 type="date"
                 className="input"
@@ -150,7 +152,7 @@ export default function EditContractModal({
                 onChange={(e) => onDateChange("commencementDate", e.target.value)}
               />
             </Field>
-            <Field label="到期日">
+            <Field label={t("到期日", "Expiry Date")}>
               <input
                 type="date"
                 className="input"
@@ -158,7 +160,7 @@ export default function EditContractModal({
                 onChange={(e) => onDateChange("expiredDate", e.target.value)}
               />
             </Field>
-            <Field label="租期(月)">
+            <Field label={t("租期(月)", "Tenure (months)")}>
               <input
                 type="number"
                 className="input"
@@ -168,15 +170,15 @@ export default function EditContractModal({
             </Field>
           </Row>
           <Row>
-            <Field label="房租 RM">
+            <Field label={t("房租 RM", "Rent RM")}>
               <input type="number" className="input" value={form.roomRental} onChange={(e) => set("roomRental", e.target.value)} />
             </Field>
-            <Field label="车位 RM">
+            <Field label={t("车位 RM", "Carpark RM")}>
               <input type="number" className="input" value={form.carparkRental} onChange={(e) => set("carparkRental", e.target.value)} />
             </Field>
-            <Field label="选车位 (可选)">
+            <Field label={t("选车位 (可选)", "Select Carpark (optional)")}>
               <select className="input" value={form.carparkRoomCode} onChange={(e) => set("carparkRoomCode", e.target.value)}>
-                <option value="">-- 没有车位 --</option>
+                <option value="">-- {t("没有车位", "No Carpark")} --</option>
                 {vacantCarparks.map((r) => (
                   <option key={r.roomCode} value={r.roomCode}>
                     {r.roomCode} ({r.propertyName})
@@ -184,51 +186,51 @@ export default function EditContractModal({
                 ))}
               </select>
             </Field>
-            <Field label="押金 Security">
+            <Field label={t("押金 Security", "Security Deposit")}>
               <input type="number" className="input" value={form.securityDeposit} onChange={(e) => set("securityDeposit", e.target.value)} />
             </Field>
-            <Field label="水电押">
+            <Field label={t("水电押", "Utilities Deposit")}>
               <input type="number" className="input" value={form.utilitiesDeposit} onChange={(e) => set("utilitiesDeposit", e.target.value)} />
             </Field>
           </Row>
           <Row>
-            <Field label="门卡押 RM">
+            <Field label={t("门卡押 RM", "Access Card Deposit RM")}>
               <input type="number" className="input" value={form.accessCardDeposit} onChange={(e) => set("accessCardDeposit", e.target.value)} />
             </Field>
             <Field label="Admin Fee RM">
               <input type="number" className="input" value={form.adminFee} onChange={(e) => set("adminFee", e.target.value)} />
             </Field>
-            <Field label="备注" wide>
+            <Field label={t("备注", "Remarks")} wide>
               <input className="input" value={form.remarks} onChange={(e) => set("remarks", e.target.value)} />
             </Field>
           </Row>
 
-          <div className="pt-1 text-sm font-semibold text-brand">👤 个人资料</div>
+          <div className="pt-1 text-sm font-semibold text-brand">👤 {t("个人资料", "Personal Information")}</div>
           <Row>
-            <Field label="国籍">
+            <Field label={t("国籍", "Nationality")}>
               <input className="input" value={form.nationality} onChange={(e) => set("nationality", e.target.value)} />
             </Field>
-            <Field label="电话">
+            <Field label={t("电话", "Phone")}>
               <input className="input" value={form.contactNumber} onChange={(e) => set("contactNumber", e.target.value)} />
             </Field>
-            <Field label="职业">
+            <Field label={t("职业", "Occupation")}>
               <input className="input" value={form.occupation} onChange={(e) => set("occupation", e.target.value)} />
             </Field>
-            <Field label="公司/大学">
+            <Field label={t("公司/大学", "Company/University")}>
               <input className="input" value={form.company} onChange={(e) => set("company", e.target.value)} />
             </Field>
           </Row>
           <Row>
-            <Field label="车牌">
+            <Field label={t("车牌", "Car Plate")}>
               <input className="input" value={form.carPlate} onChange={(e) => set("carPlate", e.target.value)} />
             </Field>
-            <Field label="紧急联络人">
+            <Field label={t("紧急联络人", "Emergency Contact Name")}>
               <input className="input" value={form.emergencyName} onChange={(e) => set("emergencyName", e.target.value)} />
             </Field>
-            <Field label="紧急电话">
+            <Field label={t("紧急电话", "Emergency Phone")}>
               <input className="input" value={form.emergencyContact} onChange={(e) => set("emergencyContact", e.target.value)} />
             </Field>
-            <Field label="关系">
+            <Field label={t("关系", "Relationship")}>
               <input
                 className="input"
                 value={form.emergencyRelationship}
@@ -239,7 +241,7 @@ export default function EditContractModal({
 
           <div className="pt-1 text-sm font-semibold text-brand">💰 佣金 Commission</div>
           <Row>
-            <Field label="佣金金额 RM">
+            <Field label={t("佣金金额 RM", "Commission Amount RM")}>
               <input
                 type="number"
                 className="input"
@@ -247,7 +249,7 @@ export default function EditContractModal({
                 onChange={(e) => set("commAmount", e.target.value)}
               />
             </Field>
-            <Field label="发放状态">
+            <Field label={t("发放状态", "Payout Status")}>
               <select className="input" value={form.commStatus} onChange={(e) => set("commStatus", e.target.value)}>
                 <option value="Pending">待发 Pending</option>
                 <option value="Paid">已发 Paid</option>
@@ -271,7 +273,7 @@ export default function EditContractModal({
           </div>
 
           <button onClick={save} disabled={loading} className="btn-primary">
-            保存修改
+            {t("保存修改", "Save Changes")}
           </button>
         </div>
       )}

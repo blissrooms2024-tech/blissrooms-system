@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EditContractModal from "./EditContractModal";
 import SignatureModal from "./SignatureModal";
@@ -37,6 +38,7 @@ export default function ContractActions({
   variant?: "compact" | "full";
 }) {
   const toast = useToast();
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [signing, setSigning] = useState(false);
   const [icUploading, setIcUploading] = useState(false);
@@ -100,43 +102,43 @@ export default function ContractActions({
   const items: Item[] = [];
 
   if (role === "ADMIN" || role === "AGENT") {
-    items.push({ key: "pay", label: "💰 收款", color: "bg-amber-500", onClick: () => setPaying(true), primary: true });
+    items.push({ key: "pay", label: `💰 ${t("收款", "Payments")}`, color: "bg-amber-500", onClick: () => setPaying(true), primary: true });
   }
   // status === "ACTIVE" is deliberately excluded here: under the normal sign flow, ACTIVE
   // only happens once both signatures already exist, so an ACTIVE contract with no
   // agentSignature is a legacy-imported one (signed on paper before import) — it doesn't
   // need a digital signature, only a fresh renewal contract would go through PENDING_SIGN.
   if (role === "AGENT" && !c.agentSignature && c.status === "PENDING_SIGN") {
-    items.push({ key: "sign", label: "✍️ 签名", color: "bg-pink-600", onClick: () => setSigning(true), primary: true });
+    items.push({ key: "sign", label: `✍️ ${t("签名", "Sign")}`, color: "bg-pink-600", onClick: () => setSigning(true), primary: true });
   }
   if ((role === "AGENT" || role === "ADMIN") && c.status === "DRAFT") {
-    items.push({ key: "submit", label: "📤 提交", color: "bg-brand", onClick: () => doAction("submit"), primary: true });
+    items.push({ key: "submit", label: `📤 ${t("提交", "Submit")}`, color: "bg-brand", onClick: () => doAction("submit"), primary: true });
   }
   if (role === "ADMIN" && c.status === "PENDING_APPROVE") {
-    items.push({ key: "approve", label: "✅ 批准", color: "bg-green-700", onClick: () => doAction("approve"), primary: true });
+    items.push({ key: "approve", label: `✅ ${t("批准", "Approve")}`, color: "bg-green-700", onClick: () => doAction("approve"), primary: true });
   }
   if (role === "ADMIN" && c._rentEscalated && notClosed) {
     items.push({
       key: "terminate",
-      label: "🔒 终止+没收押金",
+      label: `🔒 ${t("终止+没收押金", "Terminate + Forfeit Deposit")}`,
       color: "bg-red-800",
       onClick: () => setTerminating(true),
       primary: true,
     });
   }
   if (role === "ADMIN") {
-    items.push({ key: "ic", label: "🪪 查看IC", color: "bg-violet-600", onClick: () => setIcUploading(true) });
-    items.push({ key: "pdf", label: "📎 旧合同 PDF", color: "bg-teal-600", onClick: () => setUploadingPdf(true) });
+    items.push({ key: "ic", label: `🪪 ${t("查看IC", "View IC")}`, color: "bg-violet-600", onClick: () => setIcUploading(true) });
+    items.push({ key: "pdf", label: `📎 ${t("旧合同 PDF", "Legacy Contract PDF")}`, color: "bg-teal-600", onClick: () => setUploadingPdf(true) });
   }
   if (role === "ADMIN" && c.status === "ACTIVE") {
     items.push({ key: "movein", label: "📋 Move-in", color: "bg-cyan-600", onClick: () => setMoveForm(true) });
   }
   if (role === "ADMIN" && notClosed) {
-    items.push({ key: "edit", label: "✏️ 编辑", color: "bg-brand", onClick: () => setEditing(true) });
+    items.push({ key: "edit", label: `✏️ ${t("编辑", "Edit")}`, color: "bg-brand", onClick: () => setEditing(true) });
   }
   if (role === "ADMIN") {
-    items.push({ key: "warning", label: "⚠️ 警告信", color: "bg-orange-600", href: `/contracts/${c.contractCode}/warning-letter` });
-    items.push({ key: "delete", label: "🗑️ 删除", color: "bg-red-600", onClick: () => setDeleting(true) });
+    items.push({ key: "warning", label: `⚠️ ${t("警告信", "Warning Letter")}`, color: "bg-orange-600", href: `/contracts/${c.contractCode}/warning-letter` });
+    items.push({ key: "delete", label: `🗑️ ${t("删除", "Delete")}`, color: "bg-red-600", onClick: () => setDeleting(true) });
   }
 
   const primaryItems = items.filter((i) => i.primary);
@@ -147,7 +149,7 @@ export default function ContractActions({
       href={`/agreement/${c.contractCode}`}
       className="flex items-center gap-1 rounded-md bg-gray-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-600"
     >
-      📄 合同
+      📄 {t("合同", "Contract")}
     </Link>
   );
 
@@ -185,16 +187,22 @@ export default function ContractActions({
       <ConfirmDialog
         open={deleting}
         danger
-        message={`确定删除合同 ${c.contractCode}？房间会放回空房，这个操作不能撤销。`}
-        confirmLabel="确定删除"
+        message={t(
+          `确定删除合同 ${c.contractCode}？房间会放回空房，这个操作不能撤销。`,
+          `Delete contract ${c.contractCode}? The room will be set back to vacant — this action cannot be undone.`
+        )}
+        confirmLabel={t("确定删除", "Confirm Delete")}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(false)}
       />
       <ConfirmDialog
         open={terminating}
         danger
-        message={`确定终止合同 ${c.contractCode}（${c.tenantName}）？押金会标记没收，房间放回空房，这个操作不能撤销。`}
-        confirmLabel="确定终止+没收押金"
+        message={t(
+          `确定终止合同 ${c.contractCode}（${c.tenantName}）？押金会标记没收，房间放回空房，这个操作不能撤销。`,
+          `Terminate contract ${c.contractCode} (${c.tenantName})? The deposit will be marked forfeited and the room set back to vacant — this action cannot be undone.`
+        )}
+        confirmLabel={t("确定终止+没收押金", "Confirm Terminate + Forfeit Deposit")}
         onConfirm={confirmTerminate}
         onCancel={() => setTerminating(false)}
       />
@@ -244,7 +252,7 @@ export default function ContractActions({
             onClick={() => (menuOpen ? setMenuOpen(false) : openMenu())}
             className="rounded-md bg-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-300"
           >
-            ⋯ 更多
+            ⋯ {t("更多", "More")}
           </button>
           {menuOpen && menuPos && (
             <>
