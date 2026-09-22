@@ -16,6 +16,7 @@ interface ContractDetail extends ActionableContract {
   moveInDate: string | null;
   commencementDate: string | null;
   expiredDate: string | null;
+  moveOutNoticeDate: string | null;
   tenureMonths: number | null;
   roomRental: number;
   carparkRental: number;
@@ -140,6 +141,11 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <h3 className="mb-3.5 text-base font-semibold text-brand">📋 合同 & 付款流程</h3>
+        {c.moveOutNoticeDate && (
+          <div className="mb-3.5 rounded-lg bg-violet-50 px-3.5 py-2.5 text-sm text-violet-800">
+            <span className="font-semibold">📤 租客不续约:</span> 登记搬出日期 {fmtDate(c.moveOutNoticeDate)}，请跟进安排
+          </div>
+        )}
         {flow.nextAction && (
           <div
             className={`mb-3.5 rounded-lg px-3.5 py-2.5 text-sm ${

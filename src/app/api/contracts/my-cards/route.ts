@@ -99,6 +99,7 @@ export async function GET() {
       warningLetterCount: warningLetterCount.get(c.id) ?? 0,
       expiredDate: c.expiredDate,
       daysToExpiry,
+      moveOutNoticeDate: c.moveOutNoticeDate,
       nationality: c.nationality,
       contactNumber: c.contactNumber,
       email: c.email,

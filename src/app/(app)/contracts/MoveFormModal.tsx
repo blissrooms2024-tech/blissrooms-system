@@ -167,6 +167,13 @@ export function MoveFormPanel({
         📋 {type === "MoveIn" ? "Move-in" : "Move-out"} Form — {contractCode}
       </h3>
 
+      {type === "MoveOut" && (
+        <div className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+          📌 Admin 会在检查房间状况后处理退押金：交回钥匙后 30 个工作天内退还押金 (Security/Utilities
+          Deposit)，会先扣除任何欠款或损坏赔偿 — 跟合同条款一致。
+        </div>
+      )}
+
       {loadingState === "loading" && <div className="mt-3 text-sm text-gray-500">载入中...</div>}
       {loadingState === "blocked" && (
         <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{reason}</div>

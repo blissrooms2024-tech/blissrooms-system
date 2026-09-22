@@ -296,6 +296,28 @@ export async function notifyAdminsRentEscalation(
   );
 }
 
+export async function notifyAdminsMoveOutNotice(
+  contractCode: string,
+  roomCode: string,
+  tenantName: string,
+  moveOutDate: string,
+  triggeredBy: string
+) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
+  const link = `${APP_URL}/contracts/${contractCode}`;
+  const html = wrap(
+    "Tenant Won't Renew — Move-Out Notice",
+    `<p><b>${tenantName}</b> (Contract <b>${contractCode}</b>, Room ${roomCode}) has given notice they will not be renewing and expect to move out on <b>${fmtDate(moveOutDate)}</b>.</p>
+     <p>Please follow up to confirm and start re-marketing the room.</p>
+     <p><a href="${link}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View Contract</a></p>`
+  );
+  return Promise.all(
+    admins.map((a) =>
+      send(a.email, `Bliss Rooms — ${contractCode} Move-Out Notice`, html, "MoveOutNotice", contractCode, triggeredBy)
+    )
+  );
+}
+
 /** Admin manually confirms terminating a contract for rent arrears (deposit forfeited). */
 export async function notifyTenantContractTerminated(
   tenant: { name: string; email: string },

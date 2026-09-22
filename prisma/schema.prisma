@@ -218,6 +218,12 @@ model Contract {
   commencementDate   DateTime?
   expiredDate        DateTime?
   tenureMonths        Int?
+  /// Tenant's declared intent NOT to renew, with the date they expect to move out — set by the
+  /// tenant themself near lease expiry (the alternative to contacting Admin about renewal).
+  /// Distinct from the actual move-out condition report (MoveInOutForm), which only gets filled
+  /// once they're physically checking out — this is just a heads-up so Admin can follow up and
+  /// start re-marketing the room ahead of time.
+  moveOutNoticeDate DateTime?
 
   roomRental        Decimal @db.Decimal(10, 2)
   carparkRental     Decimal @default(0) @db.Decimal(10, 2)

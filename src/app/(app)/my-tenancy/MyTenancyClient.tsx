@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { CONTRACT_STATUS_LABELS, RULES } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
+import { useToast } from "@/components/Toast";
 import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import TenantInfoEditModal from "./TenantInfoEditModal";
@@ -22,6 +23,7 @@ interface Card {
   isLegacy: boolean;
   expiredDate: string | null;
   daysToExpiry: number | null;
+  moveOutNoticeDate: string | null;
   warningLetterCount: number;
   hasICFront: boolean;
   hasICBack: boolean;
@@ -50,12 +52,16 @@ function Pill({ tone, children }: { tone: "done" | "wait" | "lock" | "due"; chil
 }
 
 export default function MyTenancyClient() {
+  const toast = useToast();
   const [cards, setCards] = useState<Card[] | null>(null);
   const [error, setError] = useState("");
   const [signing, setSigning] = useState<string | null>(null);
   const [icUploading, setIcUploading] = useState<string | null>(null);
   const [editingInfo, setEditingInfo] = useState<Card | null>(null);
   const [viewingLetters, setViewingLetters] = useState<string | null>(null);
+  const [movingOutId, setMovingOutId] = useState<string | null>(null);
+  const [moveOutDate, setMoveOutDate] = useState("");
+  const [movingOutSaving, setMovingOutSaving] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -74,6 +80,33 @@ export default function MyTenancyClient() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  async function submitMoveOutNotice(contractCode: string) {
+    if (!moveOutDate) {
+      toast.warning("请选日期");
+      return;
+    }
+    setMovingOutSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${contractCode}/move-out-notice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: moveOutDate }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setMovingOutId(null);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger("系统出错，请稍后再试");
+    } finally {
+      setMovingOutSaving(false);
+    }
+  }
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
   if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
@@ -155,12 +188,16 @@ export default function MyTenancyClient() {
                   icon="📅"
                   name="租约到期 Lease Expiry"
                   desc={
-                    c.daysToExpiry !== null && c.daysToExpiry <= RULES.NOTICE_MONTHS * 30
-                      ? `${fmtDate(c.expiredDate)} · 请联系 Agent/Admin 商量续约`
-                      : fmtDate(c.expiredDate)
+                    c.moveOutNoticeDate
+                      ? `${fmtDate(c.expiredDate)} · 已登记搬出日期: ${fmtDate(c.moveOutNoticeDate)}`
+                      : c.daysToExpiry !== null && c.daysToExpiry <= RULES.NOTICE_MONTHS * 30
+                        ? `${fmtDate(c.expiredDate)} · 要续约请联系 Agent/Admin`
+                        : fmtDate(c.expiredDate)
                   }
                   status={
-                    c.daysToExpiry !== null && c.daysToExpiry < 0 ? (
+                    c.moveOutNoticeDate ? (
+                      <Pill tone="done">📤 不续约</Pill>
+                    ) : c.daysToExpiry !== null && c.daysToExpiry < 0 ? (
                       <Pill tone="due">⚠️ 已过期 {Math.abs(c.daysToExpiry)} 天</Pill>
                     ) : c.daysToExpiry !== null && c.daysToExpiry <= RULES.NOTICE_MONTHS * 30 ? (
                       <Pill tone="wait">⏰ 还剩 {c.daysToExpiry} 天</Pill>
@@ -168,7 +205,47 @@ export default function MyTenancyClient() {
                       <Pill tone="done">还剩 {c.daysToExpiry} 天</Pill>
                     )
                   }
+                  action={
+                    !c.moveOutNoticeDate &&
+                    c.daysToExpiry !== null &&
+                    c.daysToExpiry <= RULES.NOTICE_MONTHS * 30 &&
+                    movingOutId !== c.contractCode && (
+                      <button
+                        onClick={() => {
+                          setMovingOutId(c.contractCode);
+                          setMoveOutDate("");
+                        }}
+                        className="btn-soft px-3.5 py-1.5 text-xs"
+                      >
+                        不续约, 我要搬出
+                      </button>
+                    )
+                  }
                 />
+              )}
+
+              {movingOutId === c.contractCode && (
+                <div className="flex flex-wrap items-end gap-2.5 border-b border-gray-50 px-5 py-3.5">
+                  <div>
+                    <label className="mb-1.5 block text-sm text-gray-600">预计搬出日期</label>
+                    <input
+                      type="date"
+                      value={moveOutDate}
+                      onChange={(e) => setMoveOutDate(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <button
+                    onClick={() => submitMoveOutNotice(c.contractCode)}
+                    disabled={movingOutSaving}
+                    className="btn-primary px-3.5 py-1.5 text-xs"
+                  >
+                    {movingOutSaving ? "提交中..." : "确认登记"}
+                  </button>
+                  <button onClick={() => setMovingOutId(null)} className="btn-soft px-3.5 py-1.5 text-xs">
+                    取消
+                  </button>
+                </div>
               )}
 
               {c.pdfLink && (
