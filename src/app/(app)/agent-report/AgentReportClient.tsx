@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { COMPANY, CONTRACT_IMAGES, CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { COMPANY, CONTRACT_IMAGES, contractStatusLabel } from "@/lib/config";
 import { fmtMoney, fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
+import { useLanguage } from "@/components/LanguageProvider";
 import { REPORT_DOC_STYLE } from "@/lib/reportDocStyle";
 
 type Period = "month" | "year" | "all";
@@ -34,10 +35,14 @@ function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
-const PERIOD_LABELS: Record<Period, string> = { month: "本月", year: "本年", all: "累计" };
-
 export default function AgentReportClient() {
   const toast = useToast();
+  const { locale, t } = useLanguage();
+  const PERIOD_LABELS: Record<Period, string> = {
+    month: t("本月", "This Month"),
+    year: t("本年", "This Year"),
+    all: t("累计", "Cumulative"),
+  };
   const searchParams = useSearchParams();
   const initialPeriod = (searchParams.get("period") as Period) || "all";
 
@@ -62,9 +67,9 @@ export default function AgentReportClient() {
       }
       setReport(data);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Something went wrong, please try again later"));
     }
-  }, [period, month, year]);
+  }, [period, month, year, t]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -77,11 +82,11 @@ export default function AgentReportClient() {
     const html = printAreaRef.current.innerHTML;
     const w = window.open("", "_blank");
     if (!w) {
-      toast.warning("浏览器拦截了弹出式窗口，请允许弹窗后再试一次");
+      toast.warning(t("浏览器拦截了弹出式窗口，请允许弹窗后再试一次", "Your browser blocked the pop-up window — please allow pop-ups and try again"));
       return;
     }
     w.document.write(
-      `<html><head><title>我的合同报告 - Bliss Rooms</title><meta charset="utf-8">` +
+      `<html><head><title>${t("我的合同报告", "My Contract Report")} - Bliss Rooms</title><meta charset="utf-8">` +
         `<style>body{margin:0;padding:34px;max-width:820px;margin:auto;}@media print{@page{margin:14mm;}}</style>` +
         `</head><body>${html}</body></html>`
     );
@@ -94,7 +99,7 @@ export default function AgentReportClient() {
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5 no-print">
-        <h3 className="text-base font-semibold text-brand">📊 我的合同报告</h3>
+        <h3 className="text-base font-semibold text-brand">📊 {t("我的合同报告", "My Contract Report")}</h3>
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex gap-1.5">
             {(["month", "year", "all"] as Period[]).map((p) => (
@@ -132,14 +137,14 @@ export default function AgentReportClient() {
           )}
           {report && (
             <button onClick={printReport} className="rounded-lg bg-green-700 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-green-800">
-              🖨️ 打印 / 存 PDF
+              🖨️ {t("打印 / 存 PDF", "Print / Save PDF")}
             </button>
           )}
         </div>
       </div>
 
       {error && <div className="text-sm text-red-600">{error}</div>}
-      {!report && !error && <div className="text-sm text-gray-500">载入中...</div>}
+      {!report && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
 
       {report && (
         <div ref={printAreaRef}>
@@ -151,15 +156,15 @@ export default function AgentReportClient() {
               {CONTRACT_IMAGES.logo && <img src={CONTRACT_IMAGES.logo} alt="logo" />}
               <div>
                 <div className="nm">{COMPANY.NAME}</div>
-                <div className="sub">我的合同报告</div>
+                <div className="sub">{t("我的合同报告", "My Contract Report")}</div>
               </div>
             </div>
             <div className="titleBlock">
               <div className="title">AGENT REPORT</div>
               <div className="titleMeta">
-                {period === "month" && `报告月份: ${report.month}`}
-                {period === "year" && `报告年份: ${report.year}`}
-                {period === "all" && "累计 (至今)"}
+                {period === "month" && `${t("报告月份", "Report Month")}: ${report.month}`}
+                {period === "year" && `${t("报告年份", "Report Year")}: ${report.year}`}
+                {period === "all" && t("累计 (至今)", "Cumulative (to date)")}
               </div>
             </div>
           </div>
@@ -167,34 +172,34 @@ export default function AgentReportClient() {
           <div className="statRow">
             <div className="stat">
               <div className="n">{report.stats.newContracts}</div>
-              <div className="l">{period === "all" ? "总成交合同" : "新增合同"}</div>
+              <div className="l">{period === "all" ? t("总成交合同", "Total Contracts") : t("新增合同", "New Contracts")}</div>
             </div>
             <div className="stat">
               <div className="n">{report.stats.activeRooms}</div>
-              <div className="l">出租中房间</div>
+              <div className="l">{t("出租中房间", "Occupied Rooms")}</div>
             </div>
             <div className="stat alt">
               <div className="n">{fmtMoney(report.stats.totalRent)}</div>
-              <div className="l">出租中总租金/月</div>
+              <div className="l">{t("出租中总租金/月", "Total Rent (Occupied) / Month")}</div>
             </div>
           </div>
 
           <table>
             <thead>
               <tr>
-                <th>合同</th>
-                <th>租客</th>
-                <th>状态</th>
-                <th>开始~到期</th>
-                <th className="num">租金</th>
-                <th className="num">押金</th>
+                <th>{t("合同", "Contract")}</th>
+                <th>{t("租客", "Tenant")}</th>
+                <th>{t("状态", "Status")}</th>
+                <th>{t("开始~到期", "Start ~ Expiry")}</th>
+                <th className="num">{t("租金", "Rent")}</th>
+                <th className="num">{t("押金", "Deposit")}</th>
               </tr>
             </thead>
             <tbody>
               {report.contracts.length === 0 && (
                 <tr>
                   <td colSpan={6} className="empty">
-                    这段时间没有合同记录
+                    {t("这段时间没有合同记录", "No contract records for this period")}
                   </td>
                 </tr>
               )}
@@ -207,16 +212,16 @@ export default function AgentReportClient() {
                     · {c.roomCode}
                   </td>
                   <td>{c.tenantName}</td>
-                  <td>{CONTRACT_STATUS_LABELS[c.status] ?? c.status}</td>
+                  <td>{contractStatusLabel(c.status, locale)}</td>
                   <td>
                     {fmtDate(c.commencementDate)} ~ {fmtDate(c.expiredDate)}
                   </td>
                   <td className="num">{fmtMoney(c.roomRental + c.carparkRental)}</td>
                   <td className="num">
                     {c.depositOutstanding > 0 ? (
-                      <span style={{ color: "#dc2626", fontWeight: 700 }}>欠 {fmtMoney(c.depositOutstanding)}</span>
+                      <span style={{ color: "#dc2626", fontWeight: 700 }}>{t("欠", "Owes")} {fmtMoney(c.depositOutstanding)}</span>
                     ) : (
-                      <span style={{ color: "#15803d" }}>✅ 收齐</span>
+                      <span style={{ color: "#15803d" }}>✅ {t("收齐", "Fully Collected")}</span>
                     )}
                   </td>
                 </tr>

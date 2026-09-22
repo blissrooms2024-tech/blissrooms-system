@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fmtMoney } from "@/lib/format";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface LeaderRow {
   userCode: string;
@@ -19,6 +20,7 @@ interface Data {
 const MEDAL = ["🥇", "🥈", "🥉"];
 
 export default function AgentDashboardClient() {
+  const { t } = useLanguage();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
 
@@ -32,37 +34,37 @@ export default function AgentDashboardClient() {
         }
         setData(d);
       })
-      .catch(() => setError("出错，请稍后再试"));
-  }, []);
+      .catch(() => setError(t("出错，请稍后再试", "Something went wrong, please try again later")));
+  }, [t]);
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!data) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!data) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
 
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">📊 我的总览</h3>
+        <h3 className="mb-3.5 text-base font-semibold text-brand">📊 {t("我的总览", "My Overview")}</h3>
         <div className="flex flex-wrap gap-3.5">
-          <Box n={data.stats.totalContracts} l="总成交合同" href="/agent-report?period=all" />
-          <Box n={data.stats.thisMonth} l="本月新增" href="/agent-report?period=month" />
-          <Box n={data.stats.occupiedRooms} l="出租中房间" href="/agent-report?period=all" />
-          <Box n={fmtMoney(data.stats.commissionPaid)} l="佣金已发" color="text-green-700" href="/agent-commission" />
-          <Box n={fmtMoney(data.stats.commissionPending)} l="佣金待发" color="text-amber-600" href="/agent-commission" />
+          <Box n={data.stats.totalContracts} l={t("总成交合同", "Total Contracts")} href="/agent-report?period=all" />
+          <Box n={data.stats.thisMonth} l={t("本月新增", "This Month")} href="/agent-report?period=month" />
+          <Box n={data.stats.occupiedRooms} l={t("出租中房间", "Occupied Rooms")} href="/agent-report?period=all" />
+          <Box n={fmtMoney(data.stats.commissionPaid)} l={t("佣金已发", "Commission Paid")} color="text-green-700" href="/agent-commission" />
+          <Box n={fmtMoney(data.stats.commissionPending)} l={t("佣金待发", "Commission Pending")} color="text-amber-600" href="/agent-commission" />
         </div>
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">🏆 Top Sales 排行榜</h3>
+        <h3 className="mb-3.5 text-base font-semibold text-brand">🏆 {t("Top Sales 排行榜", "Top Sales Leaderboard")}</h3>
         {data.leaderboard.length === 0 ? (
-          <div className="py-8 text-center text-sm text-gray-400">还没有成交记录</div>
+          <div className="py-8 text-center text-sm text-gray-400">{t("还没有成交记录", "No deals yet")}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">排名</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("排名", "Rank")}</th>
                 <th className="px-2.5 py-1.5 font-semibold">Agent</th>
-                <th className="px-2.5 py-1.5 font-semibold">总成交合同</th>
-                <th className="px-2.5 py-1.5 font-semibold">本月新增</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("总成交合同", "Total Contracts")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("本月新增", "This Month")}</th>
               </tr>
             </thead>
             <tbody>
@@ -71,7 +73,7 @@ export default function AgentDashboardClient() {
                   <td className="px-2.5 py-1.5 font-semibold">{MEDAL[i] ?? `#${i + 1}`}</td>
                   <td className="px-2.5 py-1.5">
                     {a.name}
-                    {a.isMe && <span className="ml-1.5 text-xs font-semibold text-brand">(我)</span>}
+                    {a.isMe && <span className="ml-1.5 text-xs font-semibold text-brand">({t("我", "me")})</span>}
                   </td>
                   <td className="px-2.5 py-1.5 font-semibold text-brand">{a.total}</td>
                   <td className="px-2.5 py-1.5">{a.thisMonth}</td>
