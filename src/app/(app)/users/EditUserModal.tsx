@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
-import { ROLE_LABELS } from "@/lib/config";
+import { ROLE_LABELS, userStatusLabel } from "@/lib/config";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export interface EditableUser {
   userCode: string;
@@ -29,6 +30,7 @@ export default function EditUserModal({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [form, setForm] = useState({
     name: user.name,
     email: user.email,
@@ -46,7 +48,7 @@ export default function EditUserModal({
 
   async function save() {
     if (form.newPassword && form.newPassword.length < 4) {
-      toast.warning("新密码至少要4位");
+      toast.warning(t("新密码至少要4位", "New password must be at least 4 characters"));
       return;
     }
     setLoading(true);
@@ -67,7 +69,7 @@ export default function EditUserModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setLoading(false);
     }
@@ -75,9 +77,11 @@ export default function EditUserModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="text-lg font-bold text-brand">✏️ 编辑用户</h3>
+      <h3 className="text-lg font-bold text-brand">
+        ✏️ {t("编辑用户", "Edit User")}
+      </h3>
       <div className="mt-3.5 flex flex-wrap gap-2.5">
-        <Field label="姓名">
+        <Field label={t("姓名", "Name")}>
           <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </Field>
         <Field label="Email">
@@ -85,7 +89,7 @@ export default function EditUserModal({
         </Field>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-2.5">
-        <Field label="电话">
+        <Field label={t("电话", "Phone")}>
           <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         </Field>
         <Field label="IC">
@@ -93,7 +97,7 @@ export default function EditUserModal({
         </Field>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-2.5">
-        <Field label="角色">
+        <Field label={t("角色", "Role")}>
           <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
             {Object.entries(ROLE_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
@@ -102,14 +106,14 @@ export default function EditUserModal({
             ))}
           </select>
         </Field>
-        <Field label="状态">
+        <Field label={t("状态", "Status")}>
           <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            <option value="ACTIVE">Active</option>
-            <option value="DISABLED">Disabled</option>
-            <option value="PENDING">Pending (待审核)</option>
+            <option value="ACTIVE">{userStatusLabel("ACTIVE", locale)}</option>
+            <option value="DISABLED">{userStatusLabel("DISABLED", locale)}</option>
+            <option value="PENDING">{userStatusLabel("PENDING", locale)}</option>
           </select>
         </Field>
-        <Field label="佣金率">
+        <Field label={t("佣金率", "Commission Rate")}>
           <input
             type="number"
             step="0.01"
@@ -120,22 +124,22 @@ export default function EditUserModal({
         </Field>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-2.5">
-        <Field label="银行名称">
+        <Field label={t("银行名称", "Bank Name")}>
           <input
             className="input"
-            placeholder="例: Maybank"
+            placeholder={t("例: Maybank", "e.g. Maybank")}
             value={form.bankName}
             onChange={(e) => setForm({ ...form, bankName: e.target.value })}
           />
         </Field>
-        <Field label="户口名">
+        <Field label={t("户口名", "Account Name")}>
           <input
             className="input"
             value={form.bankAccountName}
             onChange={(e) => setForm({ ...form, bankAccountName: e.target.value })}
           />
         </Field>
-        <Field label="户口号码">
+        <Field label={t("户口号码", "Account Number")}>
           <input
             className="input"
             value={form.bankAccountNumber}
@@ -144,10 +148,10 @@ export default function EditUserModal({
         </Field>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-2.5">
-        <Field label="重设密码 (留空不改)">
+        <Field label={t("重设密码 (留空不改)", "Reset Password (leave blank to keep unchanged)")}>
           <input
             type="text"
-            placeholder="新密码，至少4位"
+            placeholder={t("新密码，至少4位", "New password, at least 4 characters")}
             className="input"
             value={form.newPassword}
             onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
@@ -155,7 +159,7 @@ export default function EditUserModal({
         </Field>
       </div>
       <button onClick={save} disabled={loading} className="btn-primary mt-4">
-        保存修改
+        {t("保存修改", "Save Changes")}
       </button>
     </Modal>
   );

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
-import { MAINTENANCE_STATUS_LABELS } from "@/lib/config";
+import { useLanguage } from "@/components/LanguageProvider";
+import { maintenanceStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 
 interface MaintenanceRow {
@@ -38,21 +39,21 @@ interface Worker {
 
 const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING_REVIEW", "COMPLETED"];
 
-const NEXT_ACTION: Record<string, { status: string; label: string; color: string } | undefined> = {
-  SUBMITTED: { status: "ACKNOWLEDGED", label: "受理", color: "bg-brand" },
-  ACKNOWLEDGED: { status: "IN_PROGRESS", label: "开始处理", color: "bg-amber-500" },
+const NEXT_ACTION: Record<string, { status: string; labelZh: string; labelEn: string; color: string } | undefined> = {
+  SUBMITTED: { status: "ACKNOWLEDGED", labelZh: "受理", labelEn: "Accept", color: "bg-brand" },
+  ACKNOWLEDGED: { status: "IN_PROGRESS", labelZh: "开始处理", labelEn: "Start Processing", color: "bg-amber-500" },
 };
 
-function buildSteps(r: MaintenanceRow): TimelineStep[] {
+function buildSteps(r: MaintenanceRow, locale: "zh" | "en", t: (zh: string, en: string) => string): TimelineStep[] {
   if (r.status === "CANCELLED") {
     return [
-      { label: "已提交", sublabel: fmtDate(r.createdAt), state: "done" },
-      { label: "已取消", sublabel: r.adminNote ?? undefined, state: "rejected" },
+      { label: maintenanceStatusLabel("SUBMITTED", locale), sublabel: fmtDate(r.createdAt), state: "done" },
+      { label: t("已取消", "Cancelled"), sublabel: r.adminNote ?? undefined, state: "rejected" },
     ];
   }
   const currentIndex = FLOW.indexOf(r.status);
   return FLOW.map((s, i) => ({
-    label: MAINTENANCE_STATUS_LABELS[s],
+    label: maintenanceStatusLabel(s, locale),
     sublabel: i === 0 ? fmtDate(r.createdAt) : undefined,
     state: i < currentIndex || (i === currentIndex && s === "COMPLETED") ? "done" : i === currentIndex ? "active" : "pending",
   }));
@@ -81,6 +82,7 @@ interface AssignDraft {
 
 export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [items, setItems] = useState<MaintenanceRow[] | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [error, setError] = useState("");
@@ -103,9 +105,9 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         }))
       );
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -148,11 +150,11 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   async function saveAssignment(r: MaintenanceRow) {
     const d = draftFor(r);
     if (d.workerType === "IN_HOUSE" && !d.assignedWorkerId) {
-      toast.warning("请选一个员工");
+      toast.warning(t("请选一个员工", "Please select a worker"));
       return;
     }
     if (d.workerType === "OUTSOURCED" && !d.contractorName.trim()) {
-      toast.warning("请填外包工人/公司名字");
+      toast.warning(t("请填外包工人/公司名字", "Please enter the outsourced worker/company name"));
       return;
     }
     const workerName = workers.find((w) => w.id === d.assignedWorkerId)?.name;
@@ -183,7 +185,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
     });
   }
 
-  if (!items && !error) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!items && !error) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
 
   const open = items!.filter((r) => r.status !== "COMPLETED" && r.status !== "CANCELLED");
@@ -192,8 +194,12 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">🔧 报修管理 — 处理中 ({open.length})</h3>
-        {open.length === 0 && <div className="py-8 text-center text-gray-400">🎉 没有待处理的报修</div>}
+        <h3 className="mb-3.5 text-base font-semibold text-brand">
+          {t(`🔧 报修管理 — 处理中 (${open.length})`, `🔧 Maintenance Management — In Progress (${open.length})`)}
+        </h3>
+        {open.length === 0 && (
+          <div className="py-8 text-center text-gray-400">{t("🎉 没有待处理的报修", "🎉 No pending maintenance requests")}</div>
+        )}
         <div className="space-y-3">
           {open.map((r) => {
             const next = NEXT_ACTION[r.status];
@@ -203,7 +209,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-[220px] flex-1">
                     <div className="text-xs text-gray-400">
-                      🧾 {r.requestCode} · 收到日期 {fmtDate(r.createdAt)}
+                      🧾 {r.requestCode} · {t("收到日期", "Received")} {fmtDate(r.createdAt)}
                     </div>
                     <div className="text-sm font-semibold">
                       <Link href={`/contracts/${r.contractCode}`} className="text-brand hover:underline">
@@ -231,7 +237,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     )}
                   </div>
                   <div className="w-full sm:w-auto sm:min-w-[160px]">
-                    <StepTimeline steps={buildSteps(r)} />
+                    <StepTimeline steps={buildSteps(r, locale, t)} />
                   </div>
                 </div>
 
@@ -239,7 +245,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                   <div className="mt-2 flex flex-wrap gap-4 border-t border-gray-100 pt-2">
                     {r.workerBeforePhotos.length > 0 && (
                       <div>
-                        <div className="mb-1 text-xs text-gray-400">工人拍的 Before</div>
+                        <div className="mb-1 text-xs text-gray-400">{t("工人拍的 Before", "Worker's Before Photos")}</div>
                         <div className="flex gap-1.5">
                           {r.workerBeforePhotos.map((p, i) => (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -250,7 +256,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     )}
                     {r.workerAfterPhotos.length > 0 && (
                       <div>
-                        <div className="mb-1 text-xs text-gray-400">工人拍的 After</div>
+                        <div className="mb-1 text-xs text-gray-400">{t("工人拍的 After", "Worker's After Photos")}</div>
                         <div className="flex gap-1.5">
                           {r.workerAfterPhotos.map((p, i) => (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -267,7 +273,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     <div className="flex flex-wrap items-center gap-1.5">
                       <input
                         className="input min-w-[220px] flex-1 text-xs"
-                        placeholder="备注给租客看，例如: 配件还没到，预计延迟3天"
+                        placeholder={t("备注给租客看，例如: 配件还没到，预计延迟3天", "Note visible to tenant, e.g.: Parts haven't arrived, expect a 3-day delay")}
                         value={d.note}
                         onChange={(e) => setDraftFor(r.requestCode, { note: e.target.value })}
                       />
@@ -275,11 +281,13 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                         onClick={() => saveNote(r)}
                         className="rounded-md bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200"
                       >
-                        💾 保存备注
+                        {t("💾 保存备注", "💾 Save Note")}
                       </button>
                     </div>
                     {r.adminNote && (
-                      <div className="rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">📝 租客会看到: {r.adminNote}</div>
+                      <div className="rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">
+                        {t("📝 租客会看到", "📝 Tenant will see")}: {r.adminNote}
+                      </div>
                     )}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <select
@@ -287,8 +295,8 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                         value={d.workerType}
                         onChange={(e) => setDraftFor(r.requestCode, { workerType: e.target.value as "IN_HOUSE" | "OUTSOURCED" })}
                       >
-                        <option value="IN_HOUSE">在职员工</option>
-                        <option value="OUTSOURCED">外包</option>
+                        <option value="IN_HOUSE">{t("在职员工", "In-house Staff")}</option>
+                        <option value="OUTSOURCED">{t("外包", "Outsourced")}</option>
                       </select>
                       {d.workerType === "IN_HOUSE" ? (
                         <select
@@ -296,7 +304,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                           value={d.assignedWorkerId}
                           onChange={(e) => setDraftFor(r.requestCode, { assignedWorkerId: e.target.value })}
                         >
-                          <option value="">选员工...</option>
+                          <option value="">{t("选员工...", "Select worker...")}</option>
                           {workers.map((w) => (
                             <option key={w.id} value={w.id}>
                               {w.name}
@@ -306,7 +314,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                       ) : (
                         <input
                           className="input w-[140px] text-xs"
-                          placeholder="外包公司/工人名字"
+                          placeholder={t("外包公司/工人名字", "Outsourced company/worker name")}
                           value={d.contractorName}
                           onChange={(e) => setDraftFor(r.requestCode, { contractorName: e.target.value })}
                         />
@@ -315,9 +323,13 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                         onClick={() => saveAssignment(r)}
                         className="rounded-md bg-brand px-2.5 py-1.5 text-xs font-semibold text-white"
                       >
-                        指派
+                        {t("指派", "Assign")}
                       </button>
-                      {r.assignedTo && <span className="text-xs text-gray-500">当前: {r.assignedTo}</span>}
+                      {r.assignedTo && (
+                        <span className="text-xs text-gray-500">
+                          {t("当前", "Current")}: {r.assignedTo}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -326,12 +338,12 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                           onClick={() => patchRequest(r.requestCode, { status: next.status })}
                           className={`rounded-md ${next.color} px-3 py-1.5 text-xs font-semibold text-white`}
                         >
-                          {next.label}
+                          {t(next.labelZh, next.labelEn)}
                         </button>
                       )}
                       {r.status === "PENDING_REVIEW" && (
                         <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">
-                          ⏳ 工人已提交，请检查后完成
+                          {t("⏳ 工人已提交，请检查后完成", "⏳ Worker has submitted — please review and complete")}
                         </span>
                       )}
                       {(r.status === "IN_PROGRESS" || r.status === "PENDING_REVIEW") && (
@@ -339,13 +351,13 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                           <input
                             className="input w-[100px] text-xs"
                             type="number"
-                            placeholder="费用 RM"
+                            placeholder={t("费用 RM", "Cost RM")}
                             value={d.cost}
                             onChange={(e) => setDraftFor(r.requestCode, { cost: e.target.value })}
                           />
                           {d.workerType === "OUTSOURCED" && (
                             <label className="cursor-pointer rounded-md bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">
-                              📎 上传单据
+                              {t("📎 上传单据", "📎 Upload Invoice")}
                               <input
                                 type="file"
                                 accept="image/*"
@@ -356,14 +368,15 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                           )}
                           {r.invoiceUrl && (
                             <button onClick={() => setZoomUrl(r.invoiceUrl)} className="text-xs font-semibold text-brand underline">
-                              查看单据
+                              {t("查看单据", "View Invoice")}
                             </button>
                           )}
                           <button
                             onClick={() => complete(r)}
                             className="rounded-md bg-green-700 px-3 py-1.5 text-xs font-semibold text-white"
                           >
-                            ✅ 标记完成{d.cost.trim() ? " + 出工钱" : ""}
+                            {t("✅ 标记完成", "✅ Mark Complete")}
+                            {d.cost.trim() ? t(" + 出工钱", " + Pay Worker") : ""}
                           </button>
                         </>
                       )}
@@ -371,7 +384,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                         onClick={() => patchRequest(r.requestCode, { status: "CANCELLED" })}
                         className="rounded-md bg-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600"
                       >
-                        取消
+                        {t("取消", "Cancel")}
                       </button>
                     </div>
                   </div>
@@ -384,7 +397,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
 
       {closed.length > 0 && (
         <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3.5 text-base font-semibold text-gray-500">📁 已结束 ({closed.length})</h3>
+          <h3 className="mb-3.5 text-base font-semibold text-gray-500">{t(`📁 已结束 (${closed.length})`, `📁 Closed (${closed.length})`)}</h3>
           <div className="space-y-2">
             {closed.map((r) => (
               <div key={r.requestCode} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-50 py-2 text-sm last:border-none">
@@ -400,7 +413,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     r.status === "COMPLETED" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  {MAINTENANCE_STATUS_LABELS[r.status] ?? r.status}
+                  {maintenanceStatusLabel(r.status, locale)}
                 </span>
               </div>
             ))}
@@ -408,7 +421,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         </div>
       )}
 
-      {zoomUrl && <Lightbox src={zoomUrl} alt="报修照片" onClose={() => setZoomUrl(null)} />}
+      {zoomUrl && <Lightbox src={zoomUrl} alt={t("报修照片", "Maintenance Photo")} onClose={() => setZoomUrl(null)} />}
     </div>
   );
 }
