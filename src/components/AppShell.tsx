@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { MENUS } from "@/lib/menus";
 import { ROLE_LABELS } from "@/lib/config";
 import ChangePasswordModal from "./ChangePasswordModal";
+import LanguageToggle from "./LanguageToggle";
+import { useLanguage } from "./LanguageProvider";
 
 const MAINTENANCE_SEEN_KEY = "mtce_seen_resolved_at";
 
@@ -28,6 +30,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { locale, t } = useLanguage();
   const [showChangePw, setShowChangePw] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mtceOpenCount, setMtceOpenCount] = useState(0);
@@ -78,7 +81,7 @@ export default function AppShell({
 
   const menu = MENUS[user.role] ?? [];
   const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT] : menu;
-  const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料" }];
+  const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料", labelEn: "👤 My Profile" }];
 
   const sidebarLinks = menuWithProfile.map((m) => {
     const active = pathname === m.href || pathname.startsWith(m.href + "/");
@@ -95,7 +98,7 @@ export default function AppShell({
             : "border-transparent text-gray-700 hover:bg-gray-50"
         }`}
       >
-        <span>{m.label}</span>
+        <span>{locale === "en" ? m.labelEn : m.label}</span>
         {isMaintenance && (
           <span className="flex items-center gap-1">
             {mtceHasUnseenCompleted && <span className="h-2 w-2 rounded-full bg-teal-500" />}
@@ -121,7 +124,7 @@ export default function AppShell({
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => setMenuOpen(true)}
-            aria-label="打开菜单"
+            aria-label={t("打开菜单", "Open menu")}
             className="rounded-lg p-1.5 hover:bg-white/15 md:hidden"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -133,28 +136,34 @@ export default function AppShell({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-sm sm:gap-3">
-          <span className="hidden truncate md:inline">你好, {user.name}</span>
+          <span className="hidden truncate md:inline">
+            {t("你好", "Hi")}, {user.name}
+          </span>
           <span className="hidden rounded-full bg-white/20 px-2.5 py-0.5 text-xs sm:inline">
             {ROLE_LABELS[user.role] ?? user.role}
           </span>
+          <LanguageToggle />
           <button
             onClick={() => setShowChangePw(true)}
             className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"
           >
-            改密码
+            {t("改密码", "Password")}
           </button>
           <button
             onClick={logout}
             className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"
           >
-            登出
+            {t("登出", "Logout")}
           </button>
         </div>
       </div>
 
       {!user.verified && (
         <div className="border-b border-yellow-400 bg-yellow-50 px-3 py-2.5 text-center text-sm text-yellow-800 sm:px-5">
-          ⚠️ 你的邮箱还没验证。请检查邮件点验证链接（或叫 Admin 重发）。
+          {t(
+            "⚠️ 你的邮箱还没验证。请检查邮件点验证链接（或叫 Admin 重发）。",
+            "⚠️ Your email isn't verified yet. Check your inbox for the verification link (or ask Admin to resend it)."
+          )}
         </div>
       )}
 
@@ -171,7 +180,7 @@ export default function AppShell({
                 <span className="text-sm font-semibold text-brand">🏠 Bliss Rooms</span>
                 <button
                   onClick={() => setMenuOpen(false)}
-                  aria-label="关闭菜单"
+                  aria-label={t("关闭菜单", "Close menu")}
                   className="rounded-lg p-1 text-gray-500 hover:bg-gray-100"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
