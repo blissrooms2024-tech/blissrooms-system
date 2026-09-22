@@ -225,23 +225,27 @@ export async function POST(req: NextRequest) {
         d.roomRental + d.securityDeposit + d.utilitiesDeposit + d.accessCardDeposit + d.adminFee + d.carparkRental;
       const contractCode = await newId("CT");
 
-      // A legacy tenant has always already handed over the one-time move-in items (deposit,
-      // utilities deposit, admin fee, access card) long before this system existed — only the
-      // recurring rental/carpark rent is a genuinely still-open bill. Mark those as Paid right
-      // away instead of importing every old contract as if nothing had ever been collected.
-      // No exact collection date survives in the spreadsheet, so move-in date (falling back to
-      // the commencement date, then today) stands in as a placeholder; Admin can correct it
-      // later on the contract's payment history if the real date matters.
-      const oneTimeItems = (
+      // Every row here is an existing tenant, not a fresh sign-up — they've already handed over
+      // the deposit, utilities deposit, admin fee, access card AND the first month's rent
+      // (and carpark rent, if any) long before this system existed. Only a brand-new contract
+      // signed through the app still has a genuinely open move-in bill. Mark all of this as
+      // Paid right away instead of importing every old contract as if nothing had ever been
+      // collected. No exact collection date survives in the spreadsheet, so move-in date
+      // (falling back to the commencement date, then today) stands in as a placeholder; Admin
+      // can correct it later on the contract's payment history if the real date matters.
+      // Rent/carpark due going forward is generated separately by the monthly rent job.
+      const settledItems = (
         [
           { type: "DEPOSIT", amount: d.securityDeposit },
           { type: "UTILITIES", amount: d.utilitiesDeposit },
           { type: "ADMIN_FEE", amount: d.adminFee },
           { type: "ACCESS_CARD", amount: d.accessCardDeposit },
+          { type: "RENTAL", amount: d.roomRental },
+          { type: "CARPARK", amount: d.carparkRental },
         ] as const
       ).filter((it) => it.amount > 0);
       const settledDate = d.moveInDate ?? d.commencementDate ?? new Date();
-      const oneTimePaymentCodes = await Promise.all(oneTimeItems.map(() => newId("PY")));
+      const settledPaymentCodes = await Promise.all(settledItems.map(() => newId("PY")));
 
       await prisma.$transaction(async (tx) => {
         const contract = await tx.contract.create({
@@ -286,11 +290,11 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        for (let j = 0; j < oneTimeItems.length; j++) {
-          const it = oneTimeItems[j];
+        for (let j = 0; j < settledItems.length; j++) {
+          const it = settledItems[j];
           await tx.payment.create({
             data: {
-              paymentCode: oneTimePaymentCodes[j],
+              paymentCode: settledPaymentCodes[j],
               contractId: contract.id,
               roomCode: room.roomCode,
               tenantId: tenant.id,
