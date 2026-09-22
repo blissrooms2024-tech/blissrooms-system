@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ROLE_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 
 const emptyForm = {
   name: "",
@@ -22,13 +23,14 @@ const emptyForm = {
 export default function NewUserClient() {
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
 
   async function addUser(e: FormEvent) {
     e.preventDefault();
     if (!form.name || !form.email) {
-      toast.warning("姓名和 Email 一定要填");
+      toast.warning(t("姓名和 Email 一定要填", "Name and Email are required"));
       return;
     }
     setSubmitting(true);
@@ -46,7 +48,7 @@ export default function NewUserClient() {
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSubmitting(false);
     }
@@ -56,17 +58,17 @@ export default function NewUserClient() {
     <div className="mx-auto max-w-2xl">
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-brand">➕ 加新用户</h3>
+          <h3 className="text-base font-semibold text-brand">➕ {t("加新用户", "Add User")}</h3>
           <Link href="/users" className="text-sm text-gray-500 hover:underline">
-            ← 返回用户清单
+            ← {t("返回用户清单", "Back to User List")}
           </Link>
         </div>
 
         <form onSubmit={addUser} className="space-y-5">
           <section>
-            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">基本资料</h4>
+            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">{t("基本资料", "Basic Information")}</h4>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="姓名">
+              <Field label={t("姓名", "Name")}>
                 <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </Field>
               <Field label="Email">
@@ -77,7 +79,7 @@ export default function NewUserClient() {
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
               </Field>
-              <Field label="电话">
+              <Field label={t("电话", "Phone")}>
                 <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </Field>
               <Field label="IC">
@@ -87,9 +89,9 @@ export default function NewUserClient() {
           </section>
 
           <section>
-            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">角色与登入</h4>
+            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">{t("角色与登入", "Role & Login")}</h4>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Field label="角色">
+              <Field label={t("角色", "Role")}>
                 <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                   {Object.entries(ROLE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>
@@ -98,7 +100,7 @@ export default function NewUserClient() {
                   ))}
                 </select>
               </Field>
-              <Field label="初始密码">
+              <Field label={t("初始密码", "Initial Password")}>
                 <input
                   className="input"
                   value={form.password}
@@ -106,7 +108,7 @@ export default function NewUserClient() {
                 />
               </Field>
               {form.role === "AGENT" && (
-                <Field label="佣金率(例0.5)">
+                <Field label={t("佣金率(例0.5)", "Commission Rate (e.g. 0.5)")}>
                   <input
                     type="number"
                     step="0.01"
@@ -120,24 +122,26 @@ export default function NewUserClient() {
           </section>
 
           <section>
-            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">银行资料 (选填，佣金/工钱用)</h4>
+            <h4 className="mb-2.5 text-sm font-semibold text-gray-500">
+              {t("银行资料 (选填，佣金/工钱用)", "Bank Details (optional, for commission/salary payouts)")}
+            </h4>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Field label="银行名称">
+              <Field label={t("银行名称", "Bank Name")}>
                 <input
                   className="input"
-                  placeholder="例: Maybank"
+                  placeholder={t("例: Maybank", "e.g. Maybank")}
                   value={form.bankName}
                   onChange={(e) => setForm({ ...form, bankName: e.target.value })}
                 />
               </Field>
-              <Field label="户口名">
+              <Field label={t("户口名", "Account Name")}>
                 <input
                   className="input"
                   value={form.bankAccountName}
                   onChange={(e) => setForm({ ...form, bankAccountName: e.target.value })}
                 />
               </Field>
-              <Field label="户口号码">
+              <Field label={t("户口号码", "Account Number")}>
                 <input
                   className="input"
                   value={form.bankAccountNumber}
@@ -148,7 +152,7 @@ export default function NewUserClient() {
           </section>
 
           <button type="submit" disabled={submitting} className="btn-primary w-full">
-            {submitting ? "建立中..." : "建立用户"}
+            {submitting ? t("建立中...", "Creating...") : t("建立用户", "Create User")}
           </button>
         </form>
       </div>
