@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 
 export interface TenantOption {
   userCode: string;
@@ -21,6 +22,7 @@ export default function TenantPicker({
   error?: boolean;
 }) {
   const toast = useToast();
+  const t = useT();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<TenantOption[]>([]);
   const [searching, setSearching] = useState(false);
@@ -45,7 +47,7 @@ export default function TenantPicker({
 
   async function submitNewTenant() {
     if (!newTenant.name.trim() || !newTenant.ic.trim() || !newTenant.email.trim()) {
-      toast.warning("姓名/IC/Email 一定要填");
+      toast.warning(t("姓名/IC/Email 一定要填", "Name/IC/Email are all required"));
       return;
     }
     setSaving(true);
@@ -67,7 +69,7 @@ export default function TenantPicker({
       setQ("");
       setResults([]);
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSaving(false);
     }
@@ -85,7 +87,7 @@ export default function TenantPicker({
           onClick={() => onChange(null)}
           className="ml-auto text-xs font-semibold text-brand underline hover:text-brand-dark"
         >
-          换一个
+          {t("换一个", "Change")}
         </button>
       </div>
     );
@@ -95,15 +97,15 @@ export default function TenantPicker({
     <div className="relative">
       <input
         className={`input ${error ? "border-red-500 ring-1 ring-red-500" : ""}`}
-        placeholder="输入 IC / 姓名 / Email 搜索租客"
+        placeholder={t("输入 IC / 姓名 / Email 搜索租客", "Enter IC / Name / Email to search tenants")}
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
       {q.trim() && (
         <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
-          {searching && <div className="px-3 py-2 text-sm text-gray-400">搜索中...</div>}
+          {searching && <div className="px-3 py-2 text-sm text-gray-400">{t("搜索中...", "Searching...")}</div>}
           {!searching && results.length === 0 && (
-            <div className="px-3 py-2 text-sm text-gray-400">没找到，可以新建租客资料</div>
+            <div className="px-3 py-2 text-sm text-gray-400">{t("没找到，可以新建租客资料", "Not found — you can create a new tenant profile")}</div>
           )}
           {results.map((t) => (
             <button
@@ -130,14 +132,14 @@ export default function TenantPicker({
           onClick={() => setCreating(true)}
           className="mt-1.5 text-xs font-semibold text-brand underline hover:text-brand-dark"
         >
-          找不到？点击这里，创建新租客资料。
+          {t("找不到？点击这里，创建新租客资料。", "Can't find them? Click here to create a new tenant profile.")}
         </button>
       ) : (
         <div className="mt-2 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
           <div className="flex flex-wrap gap-2">
             <input
               className="input flex-1"
-              placeholder="租客姓名"
+              placeholder={t("租客姓名", "Tenant Name")}
               value={newTenant.name}
               onChange={(e) => setNewTenant((f) => ({ ...f, name: e.target.value }))}
             />
@@ -158,17 +160,17 @@ export default function TenantPicker({
             />
             <input
               className="input flex-1"
-              placeholder="电话 (可不填)"
+              placeholder={t("电话 (可不填)", "Phone (optional)")}
               value={newTenant.phone}
               onChange={(e) => setNewTenant((f) => ({ ...f, phone: e.target.value }))}
             />
           </div>
           <div className="flex items-center justify-between">
             <button type="button" onClick={() => setCreating(false)} className="text-xs text-gray-500 hover:underline">
-              取消
+              {t("取消", "Cancel")}
             </button>
             <button type="button" onClick={submitNewTenant} disabled={saving} className="btn-soft text-xs">
-              {saving ? "建立中..." : "建立租客资料并选用"}
+              {saving ? t("建立中...", "Creating...") : t("建立租客资料并选用", "Create Tenant Profile & Select")}
             </button>
           </div>
         </div>

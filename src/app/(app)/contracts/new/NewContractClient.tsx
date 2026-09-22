@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/LanguageProvider";
 import ContractForm from "../ContractForm";
 
 export default function NewContractClient({ role }: { role: string }) {
   const router = useRouter();
+  const t = useT();
   const [vacant, setVacant] = useState<{ roomCode: string; propertyName: string }[]>([]);
   const [vacantCarparks, setVacantCarparks] = useState<{ roomCode: string; propertyName: string }[]>([]);
   const [agents, setAgents] = useState<{ userCode: string; name: string }[]>([]);
@@ -28,7 +30,7 @@ export default function NewContractClient({ role }: { role: string }) {
     <div className="space-y-4">
       <div className="flex items-center gap-2.5">
         <Link href="/contracts" className="text-sm text-brand hover:underline">
-          ← 返回合同清单
+          ← {t("返回合同清单", "Back to Contracts")}
         </Link>
       </div>
       {loaded && (

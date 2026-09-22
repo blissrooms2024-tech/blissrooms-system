@@ -5,7 +5,8 @@ import Link from "next/link";
 import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
-import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
+import { useLanguage } from "@/components/LanguageProvider";
+import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 
 interface Breakdown {
@@ -44,11 +45,14 @@ function readAsDataURL(file: File): Promise<string> {
 const PAY_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"];
 const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "OTHER"];
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: "待上传交易单", cls: "bg-gray-100 text-gray-600" },
-  PENDING_REVIEW: { label: "待审核", cls: "bg-yellow-50 text-yellow-800" },
-  REJECTED: { label: "已拒绝", cls: "bg-red-50 text-red-700" },
-};
+function statusBadge(status: string, t: (zh: string, en: string) => string): { label: string; cls: string } {
+  const map: Record<string, { label: string; cls: string }> = {
+    PENDING: { label: t("待上传交易单", "Pending Upload"), cls: "bg-gray-100 text-gray-600" },
+    PENDING_REVIEW: { label: t("待审核", "Pending Review"), cls: "bg-yellow-50 text-yellow-800" },
+    REJECTED: { label: t("已拒绝", "Rejected"), cls: "bg-red-50 text-red-700" },
+  };
+  return map[status] ?? { label: status, cls: "bg-gray-100 text-gray-600" };
+}
 
 export default function PaymentModal({
   contractCode,
@@ -64,6 +68,7 @@ export default function PaymentModal({
   onChanged: () => void;
 }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [breakdown, setBreakdown] = useState<Breakdown[] | null>(null);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [totals, setTotals] = useState({ due: 0, paid: 0, outstanding: 0 });
@@ -105,11 +110,11 @@ export default function PaymentModal({
 
   async function submitPay() {
     if (!form.amountPaid) {
-      toast.warning("请填金额");
+      toast.warning(t("请填金额", "Please enter an amount"));
       return;
     }
     if (form.type === "OTHER" && !form.customLabel.trim()) {
-      toast.warning("「其他」类型要填费用名称");
+      toast.warning(t("「其他」类型要填费用名称", "\"Other\" type needs a charge name"));
       return;
     }
     setLoading(true);
@@ -132,7 +137,7 @@ export default function PaymentModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setLoading(false);
     }
@@ -140,11 +145,11 @@ export default function PaymentModal({
 
   async function submitLump() {
     if (!lumpForm.amount) {
-      toast.warning("请填金额");
+      toast.warning(t("请填金额", "Please enter an amount"));
       return;
     }
     if (lumpFile && lumpFile.size > 3 * 1024 * 1024) {
-      toast.warning("图片太大(超过3MB)，请压缩");
+      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }
     setLumpLoading(true);
@@ -172,7 +177,7 @@ export default function PaymentModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setLumpLoading(false);
     }
@@ -180,11 +185,11 @@ export default function PaymentModal({
 
   async function createBill() {
     if (!billForm.amountDue || !billForm.dueDate) {
-      toast.warning("金额和到期日一定要填");
+      toast.warning(t("金额和到期日一定要填", "Amount and due date are both required"));
       return;
     }
     if (billForm.type === "OTHER" && !billForm.customLabel.trim()) {
-      toast.warning("「其他」类型要填费用名称");
+      toast.warning(t("「其他」类型要填费用名称", "\"Other\" type needs a charge name"));
       return;
     }
     setBillLoading(true);
@@ -204,7 +209,7 @@ export default function PaymentModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setBillLoading(false);
     }
@@ -221,7 +226,7 @@ export default function PaymentModal({
 
   async function rejectBill(id: string) {
     if (!rejectReason.trim()) {
-      toast.warning("请填拒绝原因");
+      toast.warning(t("请填拒绝原因", "Please enter a rejection reason"));
       return;
     }
     const res = await fetch(`/api/payments/${id}/reject`, {
@@ -255,7 +260,7 @@ export default function PaymentModal({
 
   async function saveEditDate(id: string) {
     if (!editDate) {
-      toast.warning("请选日期");
+      toast.warning(t("请选日期", "Please select a date"));
       return;
     }
     setEditSaving(true);
@@ -274,7 +279,7 @@ export default function PaymentModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setEditSaving(false);
     }
@@ -287,37 +292,37 @@ export default function PaymentModal({
   return (
     <Modal onClose={onClose} wide>
       <h3 className="text-lg font-bold text-brand">
-        💰 收款 — {contractCode} ({tenantName})
+        💰 {t("收款", "Payments")} — {contractCode} ({tenantName})
       </h3>
 
       <div className="my-3 flex gap-2.5">
-        <Box label="总款" value={fmt(totals.due)} />
-        <Box label="已收" value={fmt(totals.paid)} />
-        <Box label="还欠" value={fmt(totals.outstanding)} color="text-red-600" />
+        <Box label={t("总款", "Total")} value={fmt(totals.due)} />
+        <Box label={t("已收", "Paid")} value={fmt(totals.paid)} />
+        <Box label={t("还欠", "Owing")} value={fmt(totals.outstanding)} color="text-red-600" />
       </div>
 
       {breakdown && (
         <table className="mb-3.5 w-full text-sm">
           <thead>
             <tr className="bg-gray-50 text-left text-gray-600">
-              <th className="px-2.5 py-1.5 font-semibold">项目</th>
-              <th className="px-2.5 py-1.5 font-semibold">应收</th>
-              <th className="px-2.5 py-1.5 font-semibold">已收</th>
-              <th className="px-2.5 py-1.5 font-semibold">状态</th>
+              <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
+              <th className="px-2.5 py-1.5 font-semibold">{t("应收", "Due")}</th>
+              <th className="px-2.5 py-1.5 font-semibold">{t("已收", "Paid")}</th>
+              <th className="px-2.5 py-1.5 font-semibold">{t("状态", "Status")}</th>
             </tr>
           </thead>
           <tbody>
             {breakdown.map((b) => (
               <tr key={b.item} className="border-b border-gray-100">
-                <td className="px-2.5 py-1.5">{PAYMENT_TYPE_LABELS[b.item] ?? b.item}</td>
+                <td className="px-2.5 py-1.5">{paymentTypeLabelLocale(b.item, null, locale)}</td>
                 <td className="px-2.5 py-1.5">{fmt(b.due)}</td>
                 <td className="px-2.5 py-1.5">{fmt(b.paid)}</td>
                 <td className="px-2.5 py-1.5">
                   {b.outstanding <= 0 ? (
-                    <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">✅已付</span>
+                    <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">✅{t("已付", "Paid")}</span>
                   ) : (
                     <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700">
-                      欠 {fmt(b.outstanding)}
+                      {t("欠", "Owing")} {fmt(b.outstanding)}
                     </span>
                   )}
                 </td>
@@ -328,10 +333,16 @@ export default function PaymentModal({
       )}
 
       <div className="rounded-lg bg-brand-light/40 p-3.5">
-        <b className="text-sm">💰 一笔过收款 (租客一次过转账/现金, 按 押金→水电押→Admin Fee→门卡押→车位→房租 顺序分配)</b>
+        <b className="text-sm">
+          💰{" "}
+          {t(
+            "一笔过收款 (租客一次过转账/现金, 按 押金→水电押→Admin Fee→门卡押→车位→房租 顺序分配)",
+            "Lump-Sum Payment (tenant pays a single transfer/cash amount, allocated in order: Deposit → Utilities Deposit → Admin Fee → Access Card Deposit → Carpark → Rent)"
+          )}
+        </b>
         <div className="mt-2 flex flex-wrap items-end gap-2.5">
           <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">总金额 RM</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("总金额 RM", "Total Amount RM")}</label>
             <input
               type="number"
               className="input"
@@ -340,7 +351,7 @@ export default function PaymentModal({
             />
           </div>
           <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">收款日期</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("收款日期", "Payment Date")}</label>
             <input
               type="date"
               className="input"
@@ -349,7 +360,7 @@ export default function PaymentModal({
             />
           </div>
           <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">方式</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("方式", "Method")}</label>
             <select className="input" value={lumpForm.method} onChange={(e) => setLumpForm({ ...lumpForm, method: e.target.value })}>
               <option>Bank Transfer</option>
               <option>Cash</option>
@@ -357,7 +368,7 @@ export default function PaymentModal({
             </select>
           </div>
           <div className="min-w-[160px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">交易单 (选填)</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("交易单 (选填)", "Transaction Slip (optional)")}</label>
             <input
               ref={lumpFileInputRef}
               type="file"
@@ -366,43 +377,46 @@ export default function PaymentModal({
               onChange={(e) => setLumpFile(e.target.files?.[0] ?? null)}
               className="block w-full text-xs text-gray-500 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
             />
-            {lumpFile && <div className="mt-1 text-xs text-gray-500">已选择: {lumpFile.name}</div>}
+            {lumpFile && <div className="mt-1 text-xs text-gray-500">{t("已选择", "Selected")}: {lumpFile.name}</div>}
           </div>
           <button onClick={submitLump} disabled={lumpLoading} className="btn-primary">
-            记录
+            {t("记录", "Record")}
           </button>
         </div>
         <p className="mt-1.5 text-xs text-gray-500">
-          金额没付完全部项目时，会按上面的顺序分配，付不完的项目部分已收，还欠剩下的差额。
+          {t(
+            "金额没付完全部项目时，会按上面的顺序分配，付不完的项目部分已收，还欠剩下的差额。",
+            "If the amount doesn't cover every item, it's allocated in the order above — a partially-covered item is marked partly paid, with the remaining balance still owing."
+          )}
         </p>
       </div>
 
       <div className="mt-3.5 rounded-lg bg-gray-50 p-3.5">
-        <b className="text-sm">➕ 记一笔新收款 (单一项目, 直接确认已收, 不用再审核)</b>
+        <b className="text-sm">➕ {t("记一笔新收款 (单一项目, 直接确认已收, 不用再审核)", "Record a New Payment (single item, confirmed as paid immediately, no review needed)")}</b>
         <div className="mt-2 flex flex-wrap items-end gap-2.5">
           <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">项目</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("项目", "Item")}</label>
             <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-              {PAY_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {PAYMENT_TYPE_LABELS[t] ?? t}
+              {PAY_TYPES.map((pt) => (
+                <option key={pt} value={pt}>
+                  {paymentTypeLabelLocale(pt, null, locale)}
                 </option>
               ))}
             </select>
           </div>
           {form.type === "OTHER" && (
             <div className="min-w-[130px] flex-1">
-              <label className="mb-1.5 block text-sm text-gray-600">费用名称</label>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("费用名称", "Charge Name")}</label>
               <input
                 className="input"
-                placeholder="例: 清洁费"
+                placeholder={t("例: 清洁费", "e.g. Cleaning Fee")}
                 value={form.customLabel}
                 onChange={(e) => setForm({ ...form, customLabel: e.target.value })}
               />
             </div>
           )}
           <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">金额 RM</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("金额 RM", "Amount RM")}</label>
             <input
               type="number"
               className="input"
@@ -411,7 +425,7 @@ export default function PaymentModal({
             />
           </div>
           <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">收款日期</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("收款日期", "Payment Date")}</label>
             <input
               type="date"
               className="input"
@@ -420,7 +434,7 @@ export default function PaymentModal({
             />
           </div>
           <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">方式</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("方式", "Method")}</label>
             <select className="input" value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value })}>
               <option>Bank Transfer</option>
               <option>Cash</option>
@@ -428,42 +442,42 @@ export default function PaymentModal({
             </select>
           </div>
           <button onClick={submitPay} disabled={loading} className="btn-primary">
-            记录
+            {t("记录", "Record")}
           </button>
         </div>
       </div>
 
       {role === "ADMIN" && (
       <div className="mt-3.5 rounded-lg bg-violet-50 p-3.5">
-        <b className="text-sm">🧾 开新账单 (租客要上传交易单, Admin 审核后才算已付)</b>
+        <b className="text-sm">🧾 {t("开新账单 (租客要上传交易单, Admin 审核后才算已付)", "Create New Bill (tenant must upload a transaction slip; only counted as paid after Admin review)")}</b>
         <div className="mt-2 flex flex-wrap items-end gap-2.5">
           <div className="min-w-[110px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">项目</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("项目", "Item")}</label>
             <select
               className="input"
               value={billForm.type}
               onChange={(e) => setBillForm({ ...billForm, type: e.target.value })}
             >
-              {billTypeOptions.map((t) => (
-                <option key={t} value={t}>
-                  {PAYMENT_TYPE_LABELS[t] ?? t}
+              {billTypeOptions.map((bt) => (
+                <option key={bt} value={bt}>
+                  {paymentTypeLabelLocale(bt, null, locale)}
                 </option>
               ))}
             </select>
           </div>
           {billForm.type === "OTHER" && (
             <div className="min-w-[110px] flex-1">
-              <label className="mb-1.5 block text-sm text-gray-600">费用名称</label>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("费用名称", "Charge Name")}</label>
               <input
                 className="input"
-                placeholder="例: 清洁费"
+                placeholder={t("例: 清洁费", "e.g. Cleaning Fee")}
                 value={billForm.customLabel}
                 onChange={(e) => setBillForm({ ...billForm, customLabel: e.target.value })}
               />
             </div>
           )}
           <div className="min-w-[110px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">金额 RM</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("金额 RM", "Amount RM")}</label>
             <input
               type="number"
               className="input"
@@ -472,7 +486,7 @@ export default function PaymentModal({
             />
           </div>
           <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">到期日</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("到期日", "Due Date")}</label>
             <input
               type="date"
               className="input"
@@ -481,7 +495,7 @@ export default function PaymentModal({
             />
           </div>
           <div className="min-w-[110px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">月份 (选填)</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("月份 (选填)", "Month (optional)")}</label>
             <input
               type="month"
               className="input"
@@ -490,33 +504,37 @@ export default function PaymentModal({
             />
           </div>
           <button onClick={createBill} disabled={billLoading} className="btn-primary">
-            开账单
+            {t("开账单", "Create Bill")}
           </button>
         </div>
-        {!hasAircon && <div className="mt-1.5 text-xs text-gray-500">这间房没有冷气，冷气账单不会出现在选项里</div>}
+        {!hasAircon && (
+          <div className="mt-1.5 text-xs text-gray-500">
+            {t("这间房没有冷气，冷气账单不会出现在选项里", "This room has no air-conditioner — the AC bill option won't appear")}
+          </div>
+        )}
       </div>
       )}
 
       {bills.length > 0 && (
         <>
-          <b className="mt-3.5 block text-sm">📋 账单 (待处理)</b>
+          <b className="mt-3.5 block text-sm">📋 {t("账单 (待处理)", "Bills (Pending)")}</b>
           <table className="mt-1.5 w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">项目</th>
-                <th className="px-2.5 py-1.5 font-semibold">金额</th>
-                <th className="px-2.5 py-1.5 font-semibold">到期日</th>
-                <th className="px-2.5 py-1.5 font-semibold">状态</th>
-                <th className="px-2.5 py-1.5 font-semibold">操作</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("金额", "Amount")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("到期日", "Due Date")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("状态", "Status")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("操作", "Actions")}</th>
               </tr>
             </thead>
             <tbody>
               {bills.map((b) => {
-                const badge = STATUS_BADGE[b.status] ?? { label: b.status, cls: "bg-gray-100 text-gray-600" };
+                const badge = statusBadge(b.status, t);
                 return (
                   <tr key={b.id} className="border-b border-gray-100 align-top">
                     <td className="px-2.5 py-1.5">
-                      {paymentTypeLabel(b.type, b.customLabel)}
+                      {paymentTypeLabelLocale(b.type, b.customLabel, locale)}
                       <Link href={`/invoice/${b.paymentCode}`} target="_blank" className="block text-xs font-semibold text-brand underline">
                         📄 Invoice
                       </Link>
@@ -526,7 +544,7 @@ export default function PaymentModal({
                     <td className="px-2.5 py-1.5">
                       <span className={`rounded-full px-2 py-0.5 text-xs ${badge.cls}`}>{badge.label}</span>
                       {b.status === "REJECTED" && b.reviewNote && (
-                        <div className="mt-1 max-w-[160px] text-xs text-red-600">原因: {b.reviewNote}</div>
+                        <div className="mt-1 max-w-[160px] text-xs text-red-600">{t("原因", "Reason")}: {b.reviewNote}</div>
                       )}
                     </td>
                     <td className="px-2.5 py-1.5">
@@ -538,16 +556,16 @@ export default function PaymentModal({
                               onClick={() => setZoomUrl(b.receiptLink)}
                               className="text-xs font-semibold text-brand underline"
                             >
-                              🧾 查看交易单
+                              🧾 {t("查看交易单", "View Transaction Slip")}
                             </button>
                           )}
                           {role !== "ADMIN" ? (
-                            <span className="text-xs text-gray-400">等 Admin 审核</span>
+                            <span className="text-xs text-gray-400">{t("等 Admin 审核", "Waiting for Admin review")}</span>
                           ) : rejectingId === b.id ? (
                             <div className="flex flex-col gap-1.5">
                               <input
                                 className="input text-xs"
-                                placeholder="拒绝原因"
+                                placeholder={t("拒绝原因", "Rejection Reason")}
                                 value={rejectReason}
                                 onChange={(e) => setRejectReason(e.target.value)}
                               />
@@ -556,7 +574,7 @@ export default function PaymentModal({
                                   onClick={() => rejectBill(b.id)}
                                   className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white"
                                 >
-                                  确定拒绝
+                                  {t("确定拒绝", "Confirm Reject")}
                                 </button>
                                 <button
                                   onClick={() => {
@@ -565,7 +583,7 @@ export default function PaymentModal({
                                   }}
                                   className="rounded-md bg-gray-100 px-2.5 py-1 text-xs text-gray-600"
                                 >
-                                  取消
+                                  {t("取消", "Cancel")}
                                 </button>
                               </div>
                             </div>
@@ -575,13 +593,13 @@ export default function PaymentModal({
                                 onClick={() => approveBill(b.id)}
                                 className="rounded-md bg-green-700 px-2.5 py-1 text-xs font-semibold text-white"
                               >
-                                ✅ 批准
+                                ✅ {t("批准", "Approve")}
                               </button>
                               <button
                                 onClick={() => setRejectingId(b.id)}
                                 className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white"
                               >
-                                ✗ 拒绝
+                                ✗ {t("拒绝", "Reject")}
                               </button>
                             </div>
                           )}
@@ -592,12 +610,12 @@ export default function PaymentModal({
                           onClick={() => waiveLateFee(b.id)}
                           className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
                         >
-                          🗑️ 撤销罚款
+                          🗑️ {t("撤销罚款", "Waive Penalty")}
                         </button>
                       )}
                       {b.status !== "PENDING_REVIEW" &&
                         !(role === "ADMIN" && b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED")) && (
-                        <span className="text-xs text-gray-400">等租客上传</span>
+                        <span className="text-xs text-gray-400">{t("等租客上传", "Waiting for tenant to upload")}</span>
                       )}
                     </td>
                   </tr>
@@ -608,28 +626,28 @@ export default function PaymentModal({
         </>
       )}
 
-      <b className="mt-3.5 block text-sm">📜 收款历史</b>
+      <b className="mt-3.5 block text-sm">📜 {t("收款历史", "Payment History")}</b>
       <table className="mt-1.5 w-full text-sm">
         <thead>
           <tr className="bg-gray-50 text-left text-gray-600">
-            <th className="px-2.5 py-1.5 font-semibold">项目</th>
-            <th className="px-2.5 py-1.5 font-semibold">金额</th>
-            <th className="px-2.5 py-1.5 font-semibold">日期</th>
-            <th className="px-2.5 py-1.5 font-semibold">方式</th>
-            <th className="px-2.5 py-1.5 font-semibold">收据</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("金额", "Amount")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("日期", "Date")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("方式", "Method")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("收据", "Receipt")}</th>
           </tr>
         </thead>
         <tbody>
           {paidHistory.length === 0 && (
             <tr>
               <td colSpan={5} className="py-3 text-center text-gray-400">
-                还没有收款记录
+                {t("还没有收款记录", "No payment records yet")}
               </td>
             </tr>
           )}
           {paidHistory.map((p) => (
             <tr key={p.paymentCode} className="border-b border-gray-100">
-              <td className="px-2.5 py-1.5">{paymentTypeLabel(p.type, p.customLabel)}</td>
+              <td className="px-2.5 py-1.5">{paymentTypeLabelLocale(p.type, p.customLabel, locale)}</td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">
                 {editingId === p.id ? (
@@ -662,7 +680,7 @@ export default function PaymentModal({
                         type="button"
                         onClick={() => startEditDate(p)}
                         className="text-xs text-gray-400 hover:text-brand"
-                        title="改日期"
+                        title={t("改日期", "Edit Date")}
                       >
                         ✏️
                       </button>
@@ -682,7 +700,7 @@ export default function PaymentModal({
                     <option>Cheque</option>
                   </select>
                 ) : (
-                  p.method || (p.receiptLink ? "交易单上传" : "-")
+                  p.method || (p.receiptLink ? t("交易单上传", "Transaction Slip Uploaded") : "-")
                 )}
               </td>
               <td className="px-2.5 py-1.5">
@@ -695,7 +713,7 @@ export default function PaymentModal({
         </tbody>
       </table>
 
-      {zoomUrl && <Lightbox src={zoomUrl} alt="交易单" onClose={() => setZoomUrl(null)} />}
+      {zoomUrl && <Lightbox src={zoomUrl} alt={t("交易单", "Transaction Slip")} onClose={() => setZoomUrl(null)} />}
     </Modal>
   );
 }

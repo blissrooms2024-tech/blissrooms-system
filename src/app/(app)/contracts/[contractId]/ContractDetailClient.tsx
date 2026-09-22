@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CONTRACT_STATUS_LABELS } from "@/lib/config";
+import { contractStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
+import { useLanguage } from "@/components/LanguageProvider";
 import ContractActions, { type ActionableContract } from "../ContractActions";
 import StepTimeline from "@/components/StepTimeline";
 import { buildContractSteps } from "@/lib/contractSteps";
@@ -53,6 +54,7 @@ function fmt(v: number | null) {
   return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
 }
 export default function ContractDetailClient({ contractId, role }: { contractId: string; role: string }) {
+  const { locale, t } = useLanguage();
   const [contract, setContract] = useState<ContractDetail | null>(null);
   const [error, setError] = useState("");
 
@@ -66,9 +68,9 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
       }
       setContract(data.contract);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
-  }, [contractId]);
+  }, [contractId, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -76,10 +78,14 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
   }, [load]);
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!contract) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!contract) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
 
   const c = contract;
-  const utils = [c.utilElectric && "水电", c.utilAircond && "冷气", c.utilDryer && "干衣机"].filter(Boolean);
+  const utils = [
+    c.utilElectric && t("水电", "Electricity"),
+    c.utilAircond && t("冷气", "Air-Con"),
+    c.utilDryer && t("干衣机", "Dryer"),
+  ].filter(Boolean);
   const flow = buildContractSteps(
     {
       status: c.status,
@@ -90,7 +96,7 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
       outstanding: c._outstanding,
       isLegacy: c._isLegacy,
     },
-    (zh) => zh
+    t
   );
 
   return (
@@ -100,28 +106,28 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
           <h3 className="text-base font-semibold text-brand">
             📄 {c.contractCode}{" "}
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 align-middle">
-              {CONTRACT_STATUS_LABELS[c.status] ?? c.status}
+              {contractStatusLabel(c.status, locale)}
             </span>
           </h3>
           <Link href="/contracts" className="text-sm text-gray-500 hover:underline">
-            ← 返回合同清单
+            ← {t("返回合同清单", "Back to Contracts")}
           </Link>
         </div>
 
         {c._rentEscalated && (
           <div className="mb-3.5 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">
-            ⚠️ 租金逾期超10天
+            ⚠️ {t("租金逾期超10天", "Rent overdue 10+ days")}
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-          <Info label="房间">
+          <Info label={t("房间", "Room")}>
             <Link href={`/rooms/${c.room.roomCode}`} className="text-brand hover:underline">
               {c.room.roomCode}
             </Link>
           </Info>
-          <Info label="楼盘地址">{c.propertyAddress || c.room.propertyName}</Info>
-          <Info label="车位">
+          <Info label={t("楼盘地址", "Property Address")}>{c.propertyAddress || c.room.propertyName}</Info>
+          <Info label={t("车位", "Carpark")}>
             {c.carparkRoom ? (
               <Link href={`/rooms/${c.carparkRoom.roomCode}`} className="text-brand hover:underline">
                 {c.carparkRoom.roomCode}
@@ -132,21 +138,22 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
             )}
           </Info>
           <Info label="Agent">{c.agentName}</Info>
-          <Info label="Move-in 日期">{fmtDate(c.moveInDate)}</Info>
-          <Info label="租约开始日">{fmtDate(c.commencementDate)}</Info>
-          <Info label="到期日">{fmtDate(c.expiredDate)}</Info>
-          <Info label="租期">{c.tenureMonths ? `${c.tenureMonths} 个月` : "-"}</Info>
-          <Info label="佣金">
-            {fmt(c.commAmount)} {c.commAmount ? `(${c.commStatus === "Paid" ? "已付" : "待付"})` : ""}
+          <Info label={t("Move-in 日期", "Move-in Date")}>{fmtDate(c.moveInDate)}</Info>
+          <Info label={t("租约开始日", "Tenancy Start Date")}>{fmtDate(c.commencementDate)}</Info>
+          <Info label={t("到期日", "Expiry Date")}>{fmtDate(c.expiredDate)}</Info>
+          <Info label={t("租期", "Tenure")}>{c.tenureMonths ? `${c.tenureMonths} ${t("个月", "months")}` : "-"}</Info>
+          <Info label={t("佣金", "Commission")}>
+            {fmt(c.commAmount)} {c.commAmount ? `(${c.commStatus === "Paid" ? t("已付", "Paid") : t("待付", "Pending")})` : ""}
           </Info>
         </div>
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">📋 合同 & 付款流程</h3>
+        <h3 className="mb-3.5 text-base font-semibold text-brand">📋 {t("合同 & 付款流程", "Contract & Payment Progress")}</h3>
         {c.moveOutNoticeDate && (
           <div className="mb-3.5 rounded-lg bg-violet-50 px-3.5 py-2.5 text-sm text-violet-800">
-            <span className="font-semibold">📤 租客不续约:</span> 登记搬出日期 {fmtDate(c.moveOutNoticeDate)}，请跟进安排
+            <span className="font-semibold">📤 {t("租客不续约", "Tenant Not Renewing")}:</span>{" "}
+            {t(`登记搬出日期 ${fmtDate(c.moveOutNoticeDate)}，请跟进安排`, `Registered move-out date ${fmtDate(c.moveOutNoticeDate)} — please follow up on arrangements`)}
           </div>
         )}
         {flow.nextAction && (
@@ -157,11 +164,14 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
           >
             {flow.nextAction.who.toUpperCase() === role ? (
               <>
-                <span className="font-semibold">⏭️ 下一个步骤:</span> {flow.nextAction.text}
+                <span className="font-semibold">⏭️ {t("下一个步骤", "Next Step")}:</span> {flow.nextAction.text}
               </>
             ) : (
               <>
-                <span className="font-semibold">⏳ 下一个步骤 (等 {flow.nextAction.who}):</span> {flow.nextAction.text}
+                <span className="font-semibold">
+                  ⏳ {t("下一个步骤", "Next Step")} ({t("等", "waiting on")} {flow.nextAction.who}):
+                </span>{" "}
+                {flow.nextAction.text}
               </>
             )}
           </div>
@@ -170,56 +180,58 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">💰 财务</h3>
+        <h3 className="mb-3.5 text-base font-semibold text-brand">💰 {t("财务", "Finance")}</h3>
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-          <Info label="房租">{fmt(c.roomRental)}</Info>
-          <Info label="车位租金">{fmt(c.carparkRental)}</Info>
-          <Info label="押金">{fmt(c.securityDeposit)}</Info>
-          <Info label="水电押金">{fmt(c.utilitiesDeposit)}</Info>
-          <Info label="门卡押金">{fmt(c.accessCardDeposit)}</Info>
+          <Info label={t("房租", "Rent")}>{fmt(c.roomRental)}</Info>
+          <Info label={t("车位租金", "Carpark Rental")}>{fmt(c.carparkRental)}</Info>
+          <Info label={t("押金", "Deposit")}>{fmt(c.securityDeposit)}</Info>
+          <Info label={t("水电押金", "Utilities Deposit")}>{fmt(c.utilitiesDeposit)}</Info>
+          <Info label={t("门卡押金", "Access Card Deposit")}>{fmt(c.accessCardDeposit)}</Info>
           <Info label="Admin Fee">{fmt(c.adminFee)}</Info>
-          <Info label="总款">{fmt(c.totalOutstanding)}</Info>
-          <Info label="已收">
+          <Info label={t("总款", "Total")}>{fmt(c.totalOutstanding)}</Info>
+          <Info label={t("已收", "Paid")}>
             {fmt(c._paid)}
             {c._pendingReview > 0 && (
-              <span className="ml-1 text-xs font-normal text-amber-600">(含待审核 {fmt(c._pendingReview)})</span>
+              <span className="ml-1 text-xs font-normal text-amber-600">
+                ({t("含待审核", "incl. pending review")} {fmt(c._pendingReview)})
+              </span>
             )}
           </Info>
-          <Info label="还欠">
+          <Info label={t("还欠", "Owing")}>
             {c._outstanding > 0 ? (
               <span className="font-semibold text-red-600">{fmt(c._outstanding)}</span>
             ) : (
-              <span className="text-green-700">✅清</span>
+              <span className="text-green-700">✅{t("清", "Settled")}</span>
             )}
           </Info>
         </div>
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">👤 租客资料</h3>
+        <h3 className="mb-3.5 text-base font-semibold text-brand">👤 {t("租客资料", "Tenant Information")}</h3>
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-          <Info label="姓名">{c.tenantName}</Info>
+          <Info label={t("姓名", "Name")}>{c.tenantName}</Info>
           <Info label="IC">{c.tenantIc || "-"}</Info>
-          <Info label="国籍">{c.nationality || "-"}</Info>
-          <Info label="电话">{c.contactNumber || "-"}</Info>
+          <Info label={t("国籍", "Nationality")}>{c.nationality || "-"}</Info>
+          <Info label={t("电话", "Phone")}>{c.contactNumber || "-"}</Info>
           <Info label="Email">{c.email || "-"}</Info>
-          <Info label="职业">{c.occupation || "-"}</Info>
-          <Info label="公司/大学">{c.company || "-"}</Info>
-          <Info label="车牌">{c.carPlate || "-"}</Info>
-          <Info label="水电设施">{utils.length ? utils.join(", ") : "无勾选"}</Info>
+          <Info label={t("职业", "Occupation")}>{c.occupation || "-"}</Info>
+          <Info label={t("公司/大学", "Company/University")}>{c.company || "-"}</Info>
+          <Info label={t("车牌", "Car Plate")}>{c.carPlate || "-"}</Info>
+          <Info label={t("水电设施", "Utilities")}>{utils.length ? utils.join(", ") : t("无勾选", "None checked")}</Info>
         </div>
 
         <div className="mt-3.5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-          <Info label="紧急联络人">{c.emergencyName || "-"}</Info>
-          <Info label="联络人电话">{c.emergencyContact || "-"}</Info>
-          <Info label="关系">{c.emergencyRelationship || "-"}</Info>
+          <Info label={t("紧急联络人", "Emergency Contact Name")}>{c.emergencyName || "-"}</Info>
+          <Info label={t("联络人电话", "Emergency Contact Phone")}>{c.emergencyContact || "-"}</Info>
+          <Info label={t("关系", "Relationship")}>{c.emergencyRelationship || "-"}</Info>
         </div>
 
         {c.remarks && <div className="mt-3.5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">📝 {c.remarks}</div>}
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">🔧 操作</h3>
+        <h3 className="mb-3.5 text-base font-semibold text-brand">🔧 {t("操作", "Actions")}</h3>
         <ContractActions contract={c} role={role} onChanged={load} variant="full" />
       </div>
     </div>
