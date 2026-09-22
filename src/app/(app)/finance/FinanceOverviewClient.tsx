@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { COMPANY, CONTRACT_IMAGES } from "@/lib/config";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import { REPORT_DOC_STYLE } from "@/lib/reportDocStyle";
 
@@ -24,6 +24,18 @@ interface ManagedProperty {
   collected: number;
   payout: number;
 }
+interface Transaction {
+  paidDate: string | null;
+  roomCode: string | null;
+  carparkCode: string | null;
+  contractCode: string;
+  tenantName: string;
+  type: string;
+  typeLabel: string;
+  periodMonth: string | null;
+  amount: number;
+  method: string | null;
+}
 interface Overview {
   period: Period;
   month: string;
@@ -32,6 +44,7 @@ interface Overview {
     income: { rental: number; deposits: number; other: number; total: number };
     outflow: { commissionPaid: number; maintenancePaid: number; total: number };
     netCashFlow: number;
+    transactions: Transaction[];
   };
   obligations: {
     monthsInRange: number;
@@ -239,6 +252,53 @@ export default function FinanceOverviewClient() {
                   </tr>
                 </tbody>
               </table>
+
+              <h4>📑 收入明细 (Income Detail) — 逐笔对账用</h4>
+              {data.cashFlow.transactions.length === 0 ? (
+                <p style={{ fontSize: 12.5, color: "#94a3b8", margin: "0 0 10px" }}>这段时间没有收款记录</p>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>交易日期</th>
+                      <th>Room Code</th>
+                      <th>Carpark Code</th>
+                      <th>合同</th>
+                      <th>租客</th>
+                      <th>项目</th>
+                      <th>付款方式</th>
+                      <th className="num">金额</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.cashFlow.transactions.map((t, i) => (
+                      <tr key={i}>
+                        <td>
+                          <b>{fmtDate(t.paidDate)}</b>
+                        </td>
+                        <td>{t.roomCode || "-"}</td>
+                        <td>{t.carparkCode || "-"}</td>
+                        <td>{t.contractCode}</td>
+                        <td>{t.tenantName}</td>
+                        <td>
+                          {t.typeLabel}
+                          {t.periodMonth ? ` (${t.periodMonth})` : ""}
+                        </td>
+                        <td>{t.method || "-"}</td>
+                        <td className="num">{fmtMoney(t.amount)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={7}>
+                        <b>合计 ({data.cashFlow.transactions.length} 笔)</b>
+                      </td>
+                      <td className="num">
+                        <b>{fmtMoney(data.cashFlow.income.total)}</b>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
 
               <table>
                 <thead>

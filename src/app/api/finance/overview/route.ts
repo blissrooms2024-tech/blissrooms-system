@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { paymentTypeLabel } from "@/lib/config";
 
 const DEPOSIT_TYPES = ["DEPOSIT", "UTILITIES", "ACCESS_CARD"] as const;
 
@@ -55,7 +56,24 @@ export async function GET(req: NextRequest) {
   const [payments, rooms, properties, paidCommissions, paidMaintenance] = await Promise.all([
     prisma.payment.findMany({
       where: { status: "Paid", ...(rangeStart && rangeEnd ? { paidDate: { gte: rangeStart, lt: rangeEnd } } : {}) },
-      select: { type: true, amountPaid: true, roomCode: true },
+      select: {
+        type: true,
+        amountPaid: true,
+        roomCode: true,
+        paidDate: true,
+        method: true,
+        customLabel: true,
+        periodMonth: true,
+        contract: {
+          select: {
+            contractCode: true,
+            tenantName: true,
+            room: { select: { isCarpark: true } },
+            carparkRoom: { select: { roomCode: true } },
+          },
+        },
+      },
+      orderBy: { paidDate: "asc" },
     }),
     prisma.room.findMany({ select: { roomCode: true, propertyId: true, propertyName: true } }),
     prisma.property.findMany({
@@ -87,6 +105,23 @@ export async function GET(req: NextRequest) {
   ]);
 
   const roomToProperty = new Map(rooms.map((r) => [r.roomCode, r.propertyId]));
+
+  // --- Income transaction list (for reconciling against the bank statement line by line) ----
+  const transactions = payments.map((p) => {
+    const isCarpark = p.contract.room.isCarpark;
+    return {
+      paidDate: p.paidDate,
+      roomCode: isCarpark ? null : p.roomCode,
+      carparkCode: isCarpark ? p.roomCode : (p.contract.carparkRoom?.roomCode ?? null),
+      contractCode: p.contract.contractCode,
+      tenantName: p.contract.tenantName,
+      type: p.type,
+      typeLabel: paymentTypeLabel(p.type, p.customLabel),
+      periodMonth: p.periodMonth,
+      amount: Number(p.amountPaid),
+      method: p.method,
+    };
+  });
 
   // --- Income (actual, this period) ---------------------------------------------------------
   let rentalIncome = 0;
@@ -200,6 +235,7 @@ export async function GET(req: NextRequest) {
       income: { rental: rentalIncome, deposits: depositIncome, other: otherIncome, total: totalIncome },
       outflow: { commissionPaid, maintenancePaid, total: totalActualOutflow },
       netCashFlow,
+      transactions,
     },
     obligations: {
       monthsInRange,
