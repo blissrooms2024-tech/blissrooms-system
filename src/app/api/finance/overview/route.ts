@@ -221,13 +221,17 @@ export async function GET(req: NextRequest) {
   });
 
   const propertyNameByRoom = new Map(rooms.map((r) => [r.roomCode, r.propertyName]));
+  const propertyCodeById = new Map(properties.map((p) => [p.id, p.propertyCode]));
+  const propertyCodeByRoom = new Map(
+    rooms.map((r) => [r.roomCode, r.propertyId ? (propertyCodeById.get(r.propertyId) ?? "-") : "-"])
+  );
 
   const tenantByType: Record<string, { held: number; forfeited: number }> = {
     DEPOSIT: { held: 0, forfeited: 0 },
     UTILITIES: { held: 0, forfeited: 0 },
     ACCESS_CARD: { held: 0, forfeited: 0 },
   };
-  const heldByPropertyMap = new Map<string, number>();
+  const heldByPropertyMap = new Map<string, { propertyCode: string; name: string; amount: number }>();
   const heldContracts = new Set<string>();
   const forfeitedContracts = new Set<string>();
 
@@ -239,14 +243,14 @@ export async function GET(req: NextRequest) {
     else {
       heldContracts.add(p.contract.contractCode);
       const propName = propertyNameByRoom.get(p.roomCode) ?? "其他";
-      heldByPropertyMap.set(propName, (heldByPropertyMap.get(propName) ?? 0) + amt);
+      const propCode = propertyCodeByRoom.get(p.roomCode) ?? "-";
+      const existing = heldByPropertyMap.get(propCode);
+      heldByPropertyMap.set(propCode, { propertyCode: propCode, name: propName, amount: (existing?.amount ?? 0) + amt });
     }
   }
   const totalHeld = sum(Object.values(tenantByType).map((t) => t.held));
   const totalForfeited = sum(Object.values(tenantByType).map((t) => t.forfeited));
-  const heldByProperty = Array.from(heldByPropertyMap.entries())
-    .map(([name, amount]) => ({ name, amount }))
-    .sort((a, b) => b.amount - a.amount);
+  const heldByProperty = Array.from(heldByPropertyMap.values()).sort((a, b) => b.amount - a.amount);
 
   const totalOwnerDeposit = sum(masterLeaseProperties.map((p) => p.ownerDeposit));
 

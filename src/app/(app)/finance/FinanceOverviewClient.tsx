@@ -72,7 +72,7 @@ interface Overview {
       totalForfeited: number;
       heldContractCount: number;
       forfeitedContractCount: number;
-      byProperty: { name: string; amount: number }[];
+      byProperty: { propertyCode: string; name: string; amount: number }[];
     };
     owner: { total: number; properties: MasterLeaseProperty[] };
     netExposure: number;
@@ -348,7 +348,8 @@ export default function FinanceOverviewClient() {
                     <thead>
                       <tr>
                         <th>日期</th>
-                        <th>楼盘</th>
+                        <th>楼盘号</th>
+                        <th>楼盘名称</th>
                         <th>类型</th>
                         <th>备注</th>
                         <th className="num">金额</th>
@@ -361,15 +362,16 @@ export default function FinanceOverviewClient() {
                             <b>{fmtDate(e.expenseDate)}</b>
                           </td>
                           <td>
-                            {e.propertyName} <span style={{ color: "#94a3b8" }}>({e.propertyCode})</span>
+                            <b>{e.propertyCode}</b>
                           </td>
+                          <td>{e.propertyName}</td>
                           <td>{e.label}</td>
                           <td>{e.notes || "-"}</td>
                           <td className="num">{fmtMoney(e.amount)}</td>
                         </tr>
                       ))}
                       <tr>
-                        <td colSpan={4}>
+                        <td colSpan={5}>
                           <b>合计 ({data.cashFlow.expenseTransactions.length} 笔)</b>
                         </td>
                         <td className="num">
@@ -411,6 +413,7 @@ export default function FinanceOverviewClient() {
                 <table>
                   <thead>
                     <tr>
+                      <th>楼盘号</th>
                       <th>楼盘 (整租 Master Lease)</th>
                       <th>Owner</th>
                       <th className="num">月租金</th>
@@ -421,8 +424,9 @@ export default function FinanceOverviewClient() {
                     {data.obligations.masterLeaseProperties.map((p) => (
                       <tr key={p.propertyCode}>
                         <td>
-                          {p.name} <span style={{ color: "#94a3b8" }}>({p.propertyCode})</span>
+                          <b>{p.propertyCode}</b>
                         </td>
+                        <td>{p.name}</td>
                         <td>{p.landlord || "-"}</td>
                         <td className="num">{fmtMoney(p.ownerRentalAmount)}</td>
                         <td className="num">{p.ownerDeposit !== null ? fmtMoney(p.ownerDeposit) : "-"}</td>
@@ -436,6 +440,7 @@ export default function FinanceOverviewClient() {
                 <table>
                   <thead>
                     <tr>
+                      <th>楼盘号</th>
                       <th>楼盘 (代管 Managed)</th>
                       <th>Landlord</th>
                       <th className="num">管理费%</th>
@@ -447,8 +452,9 @@ export default function FinanceOverviewClient() {
                     {data.obligations.managedProperties.map((p) => (
                       <tr key={p.propertyCode}>
                         <td>
-                          {p.name} <span style={{ color: "#94a3b8" }}>({p.propertyCode})</span>
+                          <b>{p.propertyCode}</b>
                         </td>
+                        <td>{p.name}</td>
                         <td>{p.landlord || "-"}</td>
                         <td className="num">{(p.feeRate * 100).toFixed(1)}%</td>
                         <td className="num">{fmtMoney(p.collected)}</td>
@@ -519,13 +525,17 @@ export default function FinanceOverviewClient() {
                 <table>
                   <thead>
                     <tr>
+                      <th>楼盘号</th>
                       <th>按楼盘 — 租客押金持有中</th>
                       <th className="num">金额</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.deposits.tenant.byProperty.map((p) => (
-                      <tr key={p.name}>
+                      <tr key={p.propertyCode}>
+                        <td>
+                          <b>{p.propertyCode}</b>
+                        </td>
                         <td>{p.name}</td>
                         <td className="num">{fmtMoney(p.amount)}</td>
                       </tr>
