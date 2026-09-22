@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
@@ -33,6 +33,14 @@ interface PaymentRow {
 function fmt(v: number) {
   return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
 }
+function readAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 const PAY_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"];
 const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "OTHER"];
 
@@ -62,6 +70,10 @@ export default function PaymentModal({
   const [hasAircon, setHasAircon] = useState(false);
   const [form, setForm] = useState({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer", customLabel: "" });
   const [billForm, setBillForm] = useState({ type: "RENTAL", amountDue: "", dueDate: "", periodMonth: "", customLabel: "" });
+  const [lumpForm, setLumpForm] = useState({ amount: "", paidDate: "", method: "Bank Transfer" });
+  const [lumpFile, setLumpFile] = useState<File | null>(null);
+  const [lumpLoading, setLumpLoading] = useState(false);
+  const lumpFileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [billLoading, setBillLoading] = useState(false);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
@@ -119,6 +131,46 @@ export default function PaymentModal({
       toast.danger("系统出错，请稍后再试");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitLump() {
+    if (!lumpForm.amount) {
+      toast.warning("请填金额");
+      return;
+    }
+    if (lumpFile && lumpFile.size > 3 * 1024 * 1024) {
+      toast.warning("图片太大(超过3MB)，请压缩");
+      return;
+    }
+    setLumpLoading(true);
+    try {
+      const dataUrl = lumpFile ? await readAsDataURL(lumpFile) : undefined;
+      const res = await fetch(`/api/contracts/${contractCode}/collect-lump-sum`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: lumpForm.amount,
+          dataUrl,
+          method: lumpForm.method,
+          paidDate: lumpForm.paidDate || new Date().toISOString().slice(0, 10),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setLumpForm({ amount: "", paidDate: "", method: "Bank Transfer" });
+        setLumpFile(null);
+        if (lumpFileInputRef.current) lumpFileInputRef.current.value = "";
+        load();
+        onChanged();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger("系统出错，请稍后再试");
+    } finally {
+      setLumpLoading(false);
     }
   }
 
@@ -238,8 +290,58 @@ export default function PaymentModal({
         </table>
       )}
 
-      <div className="rounded-lg bg-gray-50 p-3.5">
-        <b className="text-sm">➕ 记一笔新收款 (直接确认已收, 不用再审核)</b>
+      <div className="rounded-lg bg-brand-light/40 p-3.5">
+        <b className="text-sm">💰 一笔过收款 (租客一次过转账/现金, 按 押金→水电押→Admin Fee→门卡押→车位→房租 顺序分配)</b>
+        <div className="mt-2 flex flex-wrap items-end gap-2.5">
+          <div className="min-w-[130px] flex-1">
+            <label className="mb-1.5 block text-sm text-gray-600">总金额 RM</label>
+            <input
+              type="number"
+              className="input"
+              value={lumpForm.amount}
+              onChange={(e) => setLumpForm({ ...lumpForm, amount: e.target.value })}
+            />
+          </div>
+          <div className="min-w-[130px] flex-1">
+            <label className="mb-1.5 block text-sm text-gray-600">收款日期</label>
+            <input
+              type="date"
+              className="input"
+              value={lumpForm.paidDate}
+              onChange={(e) => setLumpForm({ ...lumpForm, paidDate: e.target.value })}
+            />
+          </div>
+          <div className="min-w-[130px] flex-1">
+            <label className="mb-1.5 block text-sm text-gray-600">方式</label>
+            <select className="input" value={lumpForm.method} onChange={(e) => setLumpForm({ ...lumpForm, method: e.target.value })}>
+              <option>Bank Transfer</option>
+              <option>Cash</option>
+              <option>Cheque</option>
+            </select>
+          </div>
+          <div className="min-w-[160px] flex-1">
+            <label className="mb-1.5 block text-sm text-gray-600">交易单 (选填)</label>
+            <input
+              ref={lumpFileInputRef}
+              type="file"
+              accept="image/*"
+              disabled={lumpLoading}
+              onChange={(e) => setLumpFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-xs text-gray-500 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
+            />
+            {lumpFile && <div className="mt-1 text-xs text-gray-500">已选择: {lumpFile.name}</div>}
+          </div>
+          <button onClick={submitLump} disabled={lumpLoading} className="btn-primary">
+            记录
+          </button>
+        </div>
+        <p className="mt-1.5 text-xs text-gray-500">
+          金额没付完全部项目时，会按上面的顺序分配，付不完的项目部分已收，还欠剩下的差额。
+        </p>
+      </div>
+
+      <div className="mt-3.5 rounded-lg bg-gray-50 p-3.5">
+        <b className="text-sm">➕ 记一笔新收款 (单一项目, 直接确认已收, 不用再审核)</b>
         <div className="mt-2 flex flex-wrap items-end gap-2.5">
           <div className="min-w-[130px] flex-1">
             <label className="mb-1.5 block text-sm text-gray-600">项目</label>
