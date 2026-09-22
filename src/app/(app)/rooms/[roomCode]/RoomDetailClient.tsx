@@ -133,7 +133,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-          <Info label="楼盘 Unit">
+          <Info label={t("楼盘 Unit", "Property")}>
             {room.propertyCode ? (
               <Link href={`/units/${room.propertyCode}`} className="text-brand hover:underline">
                 {room.propertyName}
@@ -150,7 +150,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
           </Info>
           {!room.isCarpark && <Info label={t("房租", "Rental")}>RM{room.roomRental}</Info>}
           <Info label={t("车位租金", "Carpark Rental")}>RM{room.carparkRental}</Info>
-          <Info label="押金 Deposit (可退还)">RM{room.securityDeposit}</Info>
+          <Info label={t("押金 Deposit (可退还)", "Deposit (Refundable)")}>RM{room.securityDeposit}</Info>
           {room.isCarpark && <Info label={t("车位编号", "Carpark Lot")}>{room.carparkLotNumber || "-"}</Info>}
           {!room.isCarpark && (
             <Info label={t("冷气", "Aircon")}>{room.hasAircon ? `❄️ ${t("有", "Yes")}` : `- ${t("没有", "No")}`}</Info>

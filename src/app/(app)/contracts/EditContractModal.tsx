@@ -239,7 +239,7 @@ export default function EditContractModal({
             </Field>
           </Row>
 
-          <div className="pt-1 text-sm font-semibold text-brand">💰 佣金 Commission</div>
+          <div className="pt-1 text-sm font-semibold text-brand">💰 {t("佣金", "Commission")}</div>
           <Row>
             <Field label={t("佣金金额 RM", "Commission Amount RM")}>
               <input
@@ -251,8 +251,8 @@ export default function EditContractModal({
             </Field>
             <Field label={t("发放状态", "Payout Status")}>
               <select className="input" value={form.commStatus} onChange={(e) => set("commStatus", e.target.value)}>
-                <option value="Pending">待发 Pending</option>
-                <option value="Paid">已发 Paid</option>
+                <option value="Pending">{t("待发", "Pending")}</option>
+                <option value="Paid">{t("已发", "Paid")}</option>
               </select>
             </Field>
           </Row>

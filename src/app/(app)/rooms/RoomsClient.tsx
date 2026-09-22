@@ -217,7 +217,7 @@ export default function RoomsClient({ role }: { role: string }) {
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
                   <Th className="sticky left-0 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">Room Code</Th>
-                  <Th>楼盘 Unit</Th>
+                  <Th>{t("楼盘 Unit", "Property")}</Th>
                   <Th>{t("类型", "Type")}</Th>
                   <Th>{t("租金", "Rental")}</Th>
                   <Th>{t("冷气", "Aircon")}</Th>

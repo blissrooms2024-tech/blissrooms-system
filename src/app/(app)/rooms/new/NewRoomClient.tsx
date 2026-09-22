@@ -96,7 +96,7 @@ export default function NewRoomClient() {
                 placeholder={t("例: MMB-01", "e.g. MMB-01")}
               />
             </Field>
-            <Field label="楼盘 Unit">
+            <Field label={t("楼盘 Unit", "Property")}>
               <select
                 value={form.propertyCode}
                 onChange={(e) => setForm({ ...form, propertyCode: e.target.value })}
@@ -148,7 +148,7 @@ export default function NewRoomClient() {
                 className="input"
               />
             </Field>
-            <Field label="押金 Deposit RM (可退还)">
+            <Field label={t("押金 Deposit RM (可退还)", "Deposit RM (Refundable)")}>
               <input
                 type="number"
                 value={form.securityDeposit}
@@ -175,7 +175,7 @@ export default function NewRoomClient() {
             🅿️ {t("这是车位专用 (不是房间，只租车位)", "This is a carpark-only lot (not a room, rented as carpark only)")}
           </label>
           {form.isCarpark && (
-            <Field label="车位编号 Carpark Lot">
+            <Field label={t("车位编号 Carpark Lot", "Carpark Lot Number")}>
               <input
                 value={form.carparkLotNumber}
                 onChange={(e) => setForm({ ...form, carparkLotNumber: e.target.value })}

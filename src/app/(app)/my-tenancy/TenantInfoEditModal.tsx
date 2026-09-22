@@ -86,11 +86,11 @@ export default function TenantInfoEditModal({
       <div className="space-y-3">
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">国籍 Nationality</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("国籍 Nationality", "Nationality")}</label>
             <input value={nationality} onChange={(e) => setNationality(e.target.value)} className="input" />
           </div>
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">电话 Contact</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("电话 Contact", "Contact")}</label>
             <input value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} className="input" />
           </div>
         </div>
@@ -100,16 +100,16 @@ export default function TenantInfoEditModal({
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">职业 Occupation</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("职业 Occupation", "Occupation")}</label>
             <input value={occupation} onChange={(e) => setOccupation(e.target.value)} className="input" />
           </div>
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">公司/大学 Company</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("公司/大学 Company", "Company")}</label>
             <input value={company} onChange={(e) => setCompany(e.target.value)} className="input" />
           </div>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">车牌 Car Plate</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("车牌 Car Plate", "Car Plate")}</label>
           <input value={carPlate} onChange={(e) => setCarPlate(e.target.value)} className="input" />
         </div>
         <div className="flex gap-3">

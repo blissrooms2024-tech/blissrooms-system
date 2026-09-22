@@ -244,7 +244,7 @@ export default function ContractForm({
               checked={utils.electric}
               onChange={(e) => setUtils({ ...utils, electric: e.target.checked })}
             />
-            Electricity Usage 电费 (RM0.50/kWh)
+            {t("Electricity Usage 电费 (RM0.50/kWh)", "Electricity Usage (RM0.50/kWh)")}
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -252,7 +252,7 @@ export default function ContractForm({
               checked={utils.aircond}
               onChange={(e) => setUtils({ ...utils, aircond: e.target.checked })}
             />
-            Air-Conditioner Usage 冷气 (RM0.75/kWh)
+            {t("Air-Conditioner Usage 冷气 (RM0.75/kWh)", "Air-Conditioner Usage (RM0.75/kWh)")}
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -260,7 +260,7 @@ export default function ContractForm({
               checked={utils.dryer}
               onChange={(e) => setUtils({ ...utils, dryer: e.target.checked })}
             />
-            Dryer Usage 烘干机 (RM0.50/kWh)
+            {t("Dryer Usage 烘干机 (RM0.50/kWh)", "Dryer Usage (RM0.50/kWh)")}
           </label>
         </div>
 

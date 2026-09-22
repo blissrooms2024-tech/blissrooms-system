@@ -149,7 +149,7 @@ export default function RoomEditModal({
           </div>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">押金 Deposit RM (可退还)</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("押金 Deposit RM (可退还)", "Deposit RM (Refundable)")}</label>
           <input
             type="number"
             value={securityDeposit}
@@ -167,7 +167,7 @@ export default function RoomEditModal({
         </label>
         {isCarpark && (
           <div>
-            <label className="mb-1.5 block text-sm text-gray-600">车位编号 Carpark Lot</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("车位编号 Carpark Lot", "Carpark Lot Number")}</label>
             <input
               value={carparkLotNumber}
               onChange={(e) => setCarparkLotNumber(e.target.value)}
@@ -200,7 +200,7 @@ export default function RoomEditModal({
           </p>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">备注 Notes</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("备注 Notes", "Notes")}</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input" />
         </div>
         <button onClick={save} disabled={saving} className="btn-primary w-full">
