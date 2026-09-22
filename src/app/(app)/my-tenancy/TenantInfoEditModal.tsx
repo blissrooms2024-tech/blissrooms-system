@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 
 export interface EditableTenantInfo {
   nationality: string | null;
@@ -28,6 +29,7 @@ export default function TenantInfoEditModal({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const t = useT();
   const [nationality, setNationality] = useState(info.nationality ?? "");
   const [contactNumber, setContactNumber] = useState(info.contactNumber ?? "");
   const [email, setEmail] = useState(info.email ?? "");
@@ -66,7 +68,7 @@ export default function TenantInfoEditModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSaving(false);
     }
@@ -74,9 +76,12 @@ export default function TenantInfoEditModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="mb-3.5 text-lg font-bold text-brand">✏️ 编辑我的资料</h3>
+      <h3 className="mb-3.5 text-lg font-bold text-brand">{t("✏️ 编辑我的资料", "✏️ Edit My Info")}</h3>
       <p className="mb-3.5 text-xs text-gray-400">
-        如果 Admin 帮你 keyin 的资料有打错或漏了，可以在这里自己更正。房租、押金、租期等资料如需更改请联系 Admin。
+        {t(
+          "如果 Admin 帮你 keyin 的资料有打错或漏了，可以在这里自己更正。房租、押金、租期等资料如需更改请联系 Admin。",
+          "If anything Admin keyed in for you was mistyped or missing, you can correct it here yourself. To change rent, deposit, tenure etc., please contact Admin."
+        )}
       </p>
       <div className="space-y-3">
         <div className="flex gap-3">
@@ -109,16 +114,16 @@ export default function TenantInfoEditModal({
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">紧急联络人</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("紧急联络人", "Emergency Contact Name")}</label>
             <input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} className="input" />
           </div>
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">紧急电话</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("紧急电话", "Emergency Phone")}</label>
             <input value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} className="input" />
           </div>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm text-gray-600">关系 Relationship</label>
+          <label className="mb-1.5 block text-sm text-gray-600">{t("关系 Relationship", "Relationship")}</label>
           <input
             value={emergencyRelationship}
             onChange={(e) => setEmergencyRelationship(e.target.value)}
@@ -126,7 +131,7 @@ export default function TenantInfoEditModal({
           />
         </div>
         <button onClick={save} disabled={saving} className="btn-primary w-full">
-          {saving ? "保存中..." : "保存"}
+          {saving ? t("保存中...", "Saving...") : t("保存", "Save")}
         </button>
       </div>
     </Modal>

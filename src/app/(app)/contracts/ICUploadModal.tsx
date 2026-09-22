@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -26,6 +27,7 @@ export default function ICUploadModal({
   onUploaded: () => void;
 }) {
   const toast = useToast();
+  const t = useT();
   const [front, setFront] = useState<string | null>(null);
   const [back, setBack] = useState<string | null>(null);
   const [loadingSide, setLoadingSide] = useState<"front" | "back" | null>(null);
@@ -44,7 +46,7 @@ export default function ICUploadModal({
 
   async function upload(side: "front" | "back", file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      toast.warning("图片太大(超过3MB)，请压缩");
+      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }
     setLoadingSide(side);
@@ -65,7 +67,7 @@ export default function ICUploadModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setLoadingSide(null);
     }
@@ -73,12 +75,34 @@ export default function ICUploadModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="text-lg font-bold text-brand">🪪 {readOnly ? "查看" : "上传"} IC / 护照 — {contractCode}</h3>
+      <h3 className="text-lg font-bold text-brand">
+        🪪 {readOnly ? t("查看", "View") : t("上传", "Upload")} IC / {t("护照", "Passport")} — {contractCode}
+      </h3>
       <p className="mt-1 text-sm text-gray-500">
-        {readOnly ? "只有租客本人可以上传/更换 IC，这里只能查看。" : "正反面都要上传。上传后才可以签名。"}
+        {readOnly
+          ? t("只有租客本人可以上传/更换 IC，这里只能查看。", "Only the tenant themself can upload/replace their IC — this is view-only.")
+          : t("正反面都要上传。上传后才可以签名。", "Both sides need to be uploaded before you can sign.")}
       </p>
-      <Slot label="正面 Front" side="front" url={front} loading={loadingSide === "front"} readOnly={readOnly} onPick={(f) => upload("front", f)} onZoom={setZoomUrl} />
-      <Slot label="背面 Back" side="back" url={back} loading={loadingSide === "back"} readOnly={readOnly} onPick={(f) => upload("back", f)} onZoom={setZoomUrl} />
+      <Slot
+        label={t("正面 Front", "Front")}
+        side="front"
+        url={front}
+        loading={loadingSide === "front"}
+        readOnly={readOnly}
+        onPick={(f) => upload("front", f)}
+        onZoom={setZoomUrl}
+        t={t}
+      />
+      <Slot
+        label={t("背面 Back", "Back")}
+        side="back"
+        url={back}
+        loading={loadingSide === "back"}
+        readOnly={readOnly}
+        onPick={(f) => upload("back", f)}
+        onZoom={setZoomUrl}
+        t={t}
+      />
       {zoomUrl && <Lightbox src={zoomUrl} alt="IC" onClose={() => setZoomUrl(null)} />}
     </Modal>
   );
@@ -91,6 +115,7 @@ function Slot({
   readOnly,
   onPick,
   onZoom,
+  t,
 }: {
   label: string;
   side: "front" | "back";
@@ -99,6 +124,7 @@ function Slot({
   readOnly?: boolean;
   onPick: (file: File) => void;
   onZoom: (url: string) => void;
+  t: (zh: string, en: string) => string;
 }) {
   return (
     <div className="mt-2.5 rounded-lg border border-gray-200 p-3">
@@ -106,10 +132,11 @@ function Slot({
       <div className="my-2">
         {url ? (
           <button type="button" onClick={() => onZoom(url)} className="cursor-zoom-in">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt={label} className="max-h-[120px] rounded border border-gray-300 hover:opacity-90" />
           </button>
         ) : (
-          <span className="text-sm text-gray-400">还没上传</span>
+          <span className="text-sm text-gray-400">{t("还没上传", "Not uploaded yet")}</span>
         )}
       </div>
       {!readOnly && (
@@ -121,7 +148,7 @@ function Slot({
             onChange={(e) => e.target.files?.[0] && onPick(e.target.files[0])}
             className="block w-full text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
           />
-          {loading && <span className="ml-2 text-sm text-gray-500">上传中...</span>}
+          {loading && <span className="ml-2 text-sm text-gray-500">{t("上传中...", "Uploading...")}</span>}
         </>
       )}
     </div>

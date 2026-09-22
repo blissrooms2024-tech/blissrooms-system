@@ -1,15 +1,21 @@
 "use client";
 
 import { useTenantContracts } from "@/lib/useTenantContracts";
+import { useT } from "@/components/LanguageProvider";
 import { MoveFormPanel } from "../contracts/MoveFormModal";
 
 export default function MyMoveOutClient() {
   const { cards, error, selected, setSelected } = useTenantContracts();
+  const t = useT();
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
   if (cards.length === 0) {
-    return <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">你还没有租约</div>;
+    return (
+      <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">
+        {t("你还没有租约", "You don't have a tenancy yet")}
+      </div>
+    );
   }
 
   return (

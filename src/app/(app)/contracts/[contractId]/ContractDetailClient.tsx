@@ -80,15 +80,18 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
 
   const c = contract;
   const utils = [c.utilElectric && "水电", c.utilAircond && "冷气", c.utilDryer && "干衣机"].filter(Boolean);
-  const flow = buildContractSteps({
-    status: c.status,
-    agentSigned: !!c.agentSignature,
-    tenantSigned: !!c.tenantSignature,
-    icDone: !!c.icFront && !!c.icBack,
-    moveInDone: c._moveInDone,
-    outstanding: c._outstanding,
-    isLegacy: c._isLegacy,
-  });
+  const flow = buildContractSteps(
+    {
+      status: c.status,
+      agentSigned: !!c.agentSignature,
+      tenantSigned: !!c.tenantSignature,
+      icDone: !!c.icFront && !!c.icBack,
+      moveInDone: c._moveInDone,
+      outstanding: c._outstanding,
+      isLegacy: c._isLegacy,
+    },
+    (zh) => zh
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">

@@ -3,9 +3,11 @@
 import { useEffect, useState, FormEvent } from "react";
 import { ROLE_LABELS } from "@/lib/config";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 
 export default function ProfileClient() {
   const toast = useToast();
+  const t = useT();
   const [loaded, setLoaded] = useState(false);
   const [readOnly, setReadOnly] = useState({ userCode: "", email: "", role: "" });
   const [form, setForm] = useState({
@@ -41,7 +43,7 @@ export default function ProfileClient() {
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) {
-      toast.warning("姓名一定要填");
+      toast.warning(t("姓名一定要填", "Name is required"));
       return;
     }
     setSubmitting(true);
@@ -58,39 +60,41 @@ export default function ProfileClient() {
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (!loaded) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!loaded) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
 
   return (
     <div className="mx-auto max-w-2xl rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="mb-3.5 text-base font-semibold text-brand">👤 我的资料</h3>
+      <h3 className="mb-3.5 text-base font-semibold text-brand">{t("👤 我的资料", "👤 My Profile")}</h3>
 
       <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="用户编号">
+        <Field label={t("用户编号", "User Code")}>
           <div className="input bg-gray-50 text-gray-500">{readOnly.userCode}</div>
         </Field>
-        <Field label="角色">
+        <Field label={t("角色", "Role")}>
           <div className="input bg-gray-50 text-gray-500">{ROLE_LABELS[readOnly.role] ?? readOnly.role}</div>
         </Field>
         <Field label="Email">
           <div className="input bg-gray-50 text-gray-500">{readOnly.email}</div>
         </Field>
       </div>
-      <p className="mb-3.5 text-xs text-gray-400">Email/角色需要 Admin 才能改，其他资料可以自己改。</p>
+      <p className="mb-3.5 text-xs text-gray-400">
+        {t("Email/角色需要 Admin 才能改，其他资料可以自己改。", "Email/Role can only be changed by Admin — everything else you can edit yourself.")}
+      </p>
 
       <form onSubmit={save} className="space-y-5">
         <section>
-          <h4 className="mb-2.5 text-sm font-semibold text-gray-500">基本资料</h4>
+          <h4 className="mb-2.5 text-sm font-semibold text-gray-500">{t("基本资料", "Basic Info")}</h4>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="姓名">
+            <Field label={t("姓名", "Name")}>
               <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </Field>
-            <Field label="电话">
+            <Field label={t("电话", "Phone")}>
               <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </Field>
             <Field label="IC">
@@ -101,25 +105,25 @@ export default function ProfileClient() {
 
         <section>
           <h4 className="mb-2.5 text-sm font-semibold text-gray-500">
-            银行资料 {readOnly.role === "TENANT" ? "(退还押金用)" : "(佣金/工钱用)"}
+            {t("银行资料", "Bank Details")} {readOnly.role === "TENANT" ? t("(退还押金用)", "(for deposit refund)") : t("(佣金/工钱用)", "(for commission/wages)")}
           </h4>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field label="银行名称">
+            <Field label={t("银行名称", "Bank Name")}>
               <input
                 className="input"
-                placeholder="例: Maybank"
+                placeholder={t("例: Maybank", "e.g. Maybank")}
                 value={form.bankName}
                 onChange={(e) => setForm({ ...form, bankName: e.target.value })}
               />
             </Field>
-            <Field label="户口名">
+            <Field label={t("户口名", "Account Name")}>
               <input
                 className="input"
                 value={form.bankAccountName}
                 onChange={(e) => setForm({ ...form, bankAccountName: e.target.value })}
               />
             </Field>
-            <Field label="户口号码">
+            <Field label={t("户口号码", "Account Number")}>
               <input
                 className="input"
                 value={form.bankAccountNumber}
@@ -130,7 +134,7 @@ export default function ProfileClient() {
         </section>
 
         <button type="submit" disabled={submitting} className="btn-primary w-full">
-          {submitting ? "保存中..." : "保存修改"}
+          {submitting ? t("保存中...", "Saving...") : t("保存修改", "Save Changes")}
         </button>
       </form>
     </div>

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, FormEvent } from "react";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
+import { useLanguage } from "@/components/LanguageProvider";
+import { maintenanceStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 
 interface MaintenanceRow {
@@ -19,19 +21,12 @@ interface MaintenanceRow {
 }
 
 const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING_REVIEW", "COMPLETED"];
-const FLOW_LABELS: Record<string, string> = {
-  SUBMITTED: "已提交",
-  ACKNOWLEDGED: "已受理",
-  IN_PROGRESS: "处理中",
-  PENDING_REVIEW: "待审核",
-  COMPLETED: "已完成",
-};
 
-function buildSteps(r: MaintenanceRow): TimelineStep[] {
+function buildSteps(r: MaintenanceRow, locale: "zh" | "en", t: (zh: string, en: string) => string): TimelineStep[] {
   if (r.status === "CANCELLED") {
     return [
-      { label: "已提交", sublabel: fmtDate(r.createdAt), state: "done" },
-      { label: "已取消", sublabel: r.adminNote ?? undefined, state: "rejected" },
+      { label: maintenanceStatusLabel("SUBMITTED", locale), sublabel: fmtDate(r.createdAt), state: "done" },
+      { label: t("已取消", "Cancelled"), sublabel: r.adminNote ?? undefined, state: "rejected" },
     ];
   }
   const currentIndex = FLOW.indexOf(r.status);
@@ -39,10 +34,10 @@ function buildSteps(r: MaintenanceRow): TimelineStep[] {
     let sublabel: string | undefined;
     if (i === 0) sublabel = fmtDate(r.createdAt);
     else if (i === currentIndex && s === "COMPLETED") sublabel = r.resolvedAt ? fmtDate(r.resolvedAt) : undefined;
-    else if (s === "ACKNOWLEDGED" && i > currentIndex) sublabel = "预计3天内受理";
-    else if (s === "IN_PROGRESS" && i === currentIndex) sublabel = "处理中需要时间，请耐心等待";
+    else if (s === "ACKNOWLEDGED" && i > currentIndex) sublabel = t("预计3天内受理", "Expected to be acknowledged within 3 days");
+    else if (s === "IN_PROGRESS" && i === currentIndex) sublabel = t("处理中需要时间，请耐心等待", "This takes time to fix — thanks for your patience");
     return {
-      label: FLOW_LABELS[s],
+      label: maintenanceStatusLabel(s, locale),
       sublabel,
       state: i < currentIndex || (i === currentIndex && s === "COMPLETED") ? "done" : i === currentIndex ? "active" : "pending",
     };
@@ -60,6 +55,7 @@ function readAsDataURL(file: File): Promise<string> {
 
 export default function MaintenancePanel({ contractCode }: { contractCode: string }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [requests, setRequests] = useState<MaintenanceRow[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -81,11 +77,11 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
 
   async function addPhoto(file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      toast.warning("图片太大(超过3MB)，请压缩");
+      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }
     if (photos.length >= 3) {
-      toast.warning("最多传 3 张照片");
+      toast.warning(t("最多传 3 张照片", "Max 3 photos"));
       return;
     }
     const dataUrl = await readAsDataURL(file);
@@ -95,7 +91,7 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) {
-      toast.warning("请填标题, 简单说一下什么坏了");
+      toast.warning(t("请填标题, 简单说一下什么坏了", "Please enter a title — briefly describe what's broken"));
       return;
     }
     setSubmitting(true);
@@ -116,7 +112,7 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSubmitting(false);
     }
@@ -124,21 +120,23 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-bold text-brand">🔧 报修 — {contractCode}</h3>
+      <h3 className="text-lg font-bold text-brand">
+        {t("🔧 报修", "🔧 Maintenance")} — {contractCode}
+      </h3>
 
       <div className="my-3 rounded-lg border border-gray-200 bg-brand-light/40 p-3">
-        <b className="mb-2 block text-sm text-brand">➕ 提交新报修</b>
+        <b className="mb-2 block text-sm text-brand">{t("➕ 提交新报修", "➕ Submit New Request")}</b>
         <form onSubmit={submit} className="space-y-2.5">
           <input
             className="input"
-            placeholder="标题，例如: 冷气不制冷"
+            placeholder={t("标题，例如: 冷气不制冷", "Title, e.g.: Air-cond not cooling")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
           <textarea
             className="input"
             rows={2}
-            placeholder="详细说明 (可选)"
+            placeholder={t("详细说明 (可选)", "Details (optional)")}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -159,13 +157,15 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
             )}
           </div>
           <button type="submit" disabled={submitting} className="btn-primary w-full">
-            {submitting ? "提交中..." : "提交报修"}
+            {submitting ? t("提交中...", "Submitting...") : t("提交报修", "Submit Request")}
           </button>
         </form>
       </div>
 
-      <b className="mb-1.5 block text-sm">📋 我的报修记录</b>
-      {requests.length === 0 && <div className="py-4 text-center text-sm text-gray-400">还没有报修记录</div>}
+      <b className="mb-1.5 block text-sm">{t("📋 我的报修记录", "📋 My Maintenance Requests")}</b>
+      {requests.length === 0 && (
+        <div className="py-4 text-center text-sm text-gray-400">{t("还没有报修记录", "No maintenance requests yet")}</div>
+      )}
       <div className="space-y-3">
         {requests.map((r) => (
           <div key={r.requestCode} className="rounded-lg border border-gray-200 p-3">
@@ -175,7 +175,9 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
                 <b className="text-sm">{r.title}</b>
                 {r.description && <div className="text-xs text-gray-500">{r.description}</div>}
               </div>
-              <span className="whitespace-nowrap text-xs text-gray-400">收到日期 {fmtDate(r.createdAt)}</span>
+              <span className="whitespace-nowrap text-xs text-gray-400">
+                {t("收到日期", "Received")} {fmtDate(r.createdAt)}
+              </span>
             </div>
             {r.photos.length > 0 && (
               <div className="mb-2 flex gap-2">
@@ -191,8 +193,12 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
                 ))}
               </div>
             )}
-            <StepTimeline steps={buildSteps(r)} />
-            {r.assignedTo && <div className="mt-1 text-xs text-gray-500">处理人: {r.assignedTo}</div>}
+            <StepTimeline steps={buildSteps(r, locale, t)} />
+            {r.assignedTo && (
+              <div className="mt-1 text-xs text-gray-500">
+                {t("处理人", "Assigned to")}: {r.assignedTo}
+              </div>
+            )}
             {r.status !== "CANCELLED" && r.adminNote && (
               <div className="mt-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800">📝 {r.adminNote}</div>
             )}
@@ -200,7 +206,7 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
         ))}
       </div>
 
-      {zoomUrl && <Lightbox src={zoomUrl} alt="报修照片" onClose={() => setZoomUrl(null)} />}
+      {zoomUrl && <Lightbox src={zoomUrl} alt={t("报修照片", "Maintenance Photo")} onClose={() => setZoomUrl(null)} />}
     </div>
   );
 }

@@ -98,6 +98,21 @@ export const CONTRACT_STATUS_LABELS: Record<string, string> = {
   MOVED_OUT: "已搬出",
 };
 
+export const CONTRACT_STATUS_LABELS_EN: Record<string, string> = {
+  DRAFT: "Draft",
+  PENDING_APPROVE: "Pending Approval",
+  PENDING_SIGN: "Pending Signature",
+  ACTIVE: "Active",
+  EXPIRING: "Expiring Soon",
+  EXPIRED: "Expired",
+  TERMINATED: "Terminated",
+  MOVED_OUT: "Moved Out",
+};
+
+export function contractStatusLabel(status: string, locale: "zh" | "en"): string {
+  return (locale === "en" ? CONTRACT_STATUS_LABELS_EN : CONTRACT_STATUS_LABELS)[status] ?? status;
+}
+
 /** Appendix images (logo + 10 house-rule notice photos), bundled as static assets in
  * public/contract-images/. Override via env if you ever want to swap them out without a redeploy. */
 const DEFAULT_NOTICE_URLS = [
@@ -162,6 +177,10 @@ export function paymentTypeLabelEn(type: string, customLabel?: string | null): s
   return PAYMENT_TYPE_LABELS_EN[type] ?? type;
 }
 
+export function paymentTypeLabelLocale(type: string, customLabel: string | null | undefined, locale: "zh" | "en"): string {
+  return locale === "en" ? paymentTypeLabelEn(type, customLabel) : paymentTypeLabel(type, customLabel);
+}
+
 export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
   SUBMITTED: "已提交",
   ACKNOWLEDGED: "已受理",
@@ -170,6 +189,19 @@ export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
   COMPLETED: "已完成",
   CANCELLED: "已取消",
 };
+
+export const MAINTENANCE_STATUS_LABELS_EN: Record<string, string> = {
+  SUBMITTED: "Submitted",
+  ACKNOWLEDGED: "Acknowledged",
+  IN_PROGRESS: "In Progress",
+  PENDING_REVIEW: "Pending Review",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
+export function maintenanceStatusLabel(status: string, locale: "zh" | "en"): string {
+  return (locale === "en" ? MAINTENANCE_STATUS_LABELS_EN : MAINTENANCE_STATUS_LABELS)[status] ?? status;
+}
 
 export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   WATER: "水费",

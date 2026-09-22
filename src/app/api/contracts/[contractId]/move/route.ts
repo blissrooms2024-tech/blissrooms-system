@@ -54,29 +54,48 @@ export async function GET(
 
   let canFill = false;
   let reason = "";
+  let reasonEn = "";
   if (type === "MOVE_IN") {
-    if (c.status !== "ACTIVE") reason = "合同签好生效后才能填 Move-in";
-    else if (isLegacy && !form) reason = "旧合同 Move-in 记录已在之前的系统 (Google Form)，不需要重填";
-    else if (!isTenant && !isAdmin) reason = "只有租客本人或 Admin 可填";
-    else if (isTenant && locked) reason = "表单已提交并锁定, 如需修改请联系 Admin 重新开放";
-    else if (isTenant && (await depositOutstanding(c.id, c.securityDeposit)) > 0)
+    if (c.status !== "ACTIVE") {
+      reason = "合同签好生效后才能填 Move-in";
+      reasonEn = "Move-in can only be filled once the contract is signed and active";
+    } else if (isLegacy && !form) {
+      reason = "旧合同 Move-in 记录已在之前的系统 (Google Form)，不需要重填";
+      reasonEn = "This legacy contract's Move-in record already exists in the previous system (Google Form) — no need to refill it";
+    } else if (!isTenant && !isAdmin) {
+      reason = "只有租客本人或 Admin 可填";
+      reasonEn = "Only the tenant themself or Admin can fill this in";
+    } else if (isTenant && locked) {
+      reason = "表单已提交并锁定, 如需修改请联系 Admin 重新开放";
+      reasonEn = "This form has been submitted and locked — contact Admin to reopen it if you need to make changes";
+    } else if (isTenant && (await depositOutstanding(c.id, c.securityDeposit)) > 0) {
       reason = "请先缴清押金 (Deposit) 才能填写 Move-in Form";
-    else canFill = true;
+      reasonEn = "Please settle the Deposit first before filling in the Move-in Form";
+    } else canFill = true;
   } else {
     const days = c.expiredDate
       ? Math.ceil((new Date(c.expiredDate).getTime() - Date.now()) / (24 * 3600 * 1000))
       : 999;
-    if (c.status !== "ACTIVE") reason = "合同要生效中才能填 Move-out";
-    else if (days > RULES.MOVE_OUT_WINDOW_DAYS) reason = `到期前2星期才开放 (还有 ${days} 天到期)`;
-    else if (!isTenant && !isAdmin) reason = "只有租客本人或 Admin 可填";
-    else if (isTenant && locked) reason = "表单已提交并锁定, 如需修改请联系 Admin 重新开放";
-    else canFill = true;
+    if (c.status !== "ACTIVE") {
+      reason = "合同要生效中才能填 Move-out";
+      reasonEn = "Move-out can only be filled while the contract is active";
+    } else if (days > RULES.MOVE_OUT_WINDOW_DAYS) {
+      reason = `到期前2星期才开放 (还有 ${days} 天到期)`;
+      reasonEn = `Only opens 2 weeks before expiry (${days} days left)`;
+    } else if (!isTenant && !isAdmin) {
+      reason = "只有租客本人或 Admin 可填";
+      reasonEn = "Only the tenant themself or Admin can fill this in";
+    } else if (isTenant && locked) {
+      reason = "表单已提交并锁定, 如需修改请联系 Admin 重新开放";
+      reasonEn = "This form has been submitted and locked — contact Admin to reopen it if you need to make changes";
+    } else canFill = true;
   }
 
   return NextResponse.json({
     success: true,
     canFill,
     reason,
+    reasonEn,
     isAdmin,
     locked,
     contract: serialize({

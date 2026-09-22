@@ -5,7 +5,8 @@ import Link from "next/link";
 import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
-import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
+import { useLanguage } from "@/components/LanguageProvider";
+import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
 
@@ -45,28 +46,29 @@ function readAsDataURL(file: File): Promise<string> {
 
 const BILL_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
 
-function buildBillSteps(b: PaymentRow): TimelineStep[] {
+function buildBillSteps(b: PaymentRow, t: (zh: string, en: string) => string): TimelineStep[] {
   if (b.status === "REJECTED") {
     return [
-      { label: "账单已开", state: "done" },
-      { label: "已上传交易单", state: "done" },
-      { label: "已拒绝", sublabel: b.reviewNote ?? undefined, state: "rejected" },
+      { label: t("账单已开", "Bill Issued"), state: "done" },
+      { label: t("已上传交易单", "Slip Uploaded"), state: "done" },
+      { label: t("已拒绝", "Rejected"), sublabel: b.reviewNote ?? undefined, state: "rejected" },
     ];
   }
   const currentIndex = BILL_FLOW.indexOf(b.status);
   return [
-    { label: "账单已开", state: 0 < currentIndex ? "done" : currentIndex === 0 ? "active" : "pending" },
+    { label: t("账单已开", "Bill Issued"), state: 0 < currentIndex ? "done" : currentIndex === 0 ? "active" : "pending" },
     {
-      label: "已上传交易单",
+      label: t("已上传交易单", "Slip Uploaded"),
       sublabel: b.paidDate ? fmtDate(b.paidDate) : undefined,
       state: 1 < currentIndex ? "done" : currentIndex === 1 ? "active" : "pending",
     },
-    { label: "已批准", state: currentIndex === 2 ? "done" : "pending" },
+    { label: t("已批准", "Approved"), state: currentIndex === 2 ? "done" : "pending" },
   ];
 }
 
 export default function BillsPanel({ contractCode }: { contractCode: string }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [breakdown, setBreakdown] = useState<BreakdownRow[]>([]);
   const [totals, setTotals] = useState({ due: 0, paid: 0, outstanding: 0 });
@@ -95,7 +97,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
 
   async function uploadSlip(paymentId: string, file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      toast.warning("图片太大(超过3MB)，请压缩");
+      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }
     setUploadingId(paymentId);
@@ -114,7 +116,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setUploadingId(null);
     }
@@ -132,42 +134,44 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-bold text-brand">💳 我的账单 — {contractCode}</h3>
+      <h3 className="text-lg font-bold text-brand">
+        {t("💳 我的账单", "💳 My Bills")} — {contractCode}
+      </h3>
 
       <div className="my-3">
-        <Box label="还欠" value={fmt(totals.outstanding)} color="text-red-600" />
+        <Box label={t("还欠", "Outstanding")} value={fmt(totals.outstanding)} color="text-red-600" />
       </div>
 
       {breakdown.length > 0 && (
         <>
-          <b className="mb-1.5 block text-sm">🧾 费用明细</b>
+          <b className="mb-1.5 block text-sm">{t("🧾 费用明细", "🧾 Fee Breakdown")}</b>
           <table className="mb-3.5 w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">项目</th>
-                <th className="px-2.5 py-1.5 font-semibold">应收</th>
-                <th className="px-2.5 py-1.5 font-semibold">已收</th>
-                <th className="px-2.5 py-1.5 font-semibold">还欠</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("应收", "Due")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("已收", "Paid")}</th>
+                <th className="px-2.5 py-1.5 font-semibold">{t("还欠", "Outstanding")}</th>
               </tr>
             </thead>
             <tbody>
               {breakdown.map((b) => (
                 <tr key={b.item} className="border-b border-gray-100">
-                  <td className="px-2.5 py-1.5">{PAYMENT_TYPE_LABELS[b.item] ?? b.item}</td>
+                  <td className="px-2.5 py-1.5">{paymentTypeLabelLocale(b.item, null, locale)}</td>
                   <td className="px-2.5 py-1.5">{fmt(b.due)}</td>
                   <td className="px-2.5 py-1.5">{fmt(b.paid)}</td>
                   <td className="px-2.5 py-1.5">
                     {b.outstanding > 0 ? (
                       <span className="font-semibold text-red-600">{fmt(b.outstanding)}</span>
                     ) : (
-                      <span className="text-green-700">✅清</span>
+                      <span className="text-green-700">{t("✅清", "✅ Settled")}</span>
                     )}
                   </td>
                 </tr>
               ))}
               <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
                 <td className="px-2.5 py-1.5" colSpan={3}>
-                  还欠总额 (未开账单项目)
+                  {t("还欠总额 (未开账单项目)", "Total Outstanding (Not Yet Billed)")}
                 </td>
                 <td className="px-2.5 py-1.5">
                   <span className="flex items-center gap-1.5">
@@ -177,7 +181,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                       onClick={() => setPayingAll(true)}
                       className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-brand-dark"
                     >
-                      付款
+                      {t("付款", "Pay")}
                     </button>
                   </span>
                 </td>
@@ -189,27 +193,29 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
 
       {actionable.length > 0 && (
         <>
-          <b className="mb-1.5 block text-sm">📋 待处理账单</b>
+          <b className="mb-1.5 block text-sm">{t("📋 待处理账单", "📋 Pending Bills")}</b>
           <div className="space-y-2.5">
             {actionable.map((b) => {
               return (
                 <div key={b.id} className="rounded-lg border border-gray-200 p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-[160px] flex-1">
-                      <b className="text-sm">{paymentTypeLabel(b.type, b.customLabel)}</b>{" "}
+                      <b className="text-sm">{paymentTypeLabelLocale(b.type, b.customLabel, locale)}</b>{" "}
                       <span className="text-sm text-gray-600">{fmt(b.amountDue)}</span>
                       {b.periodMonth && <span className="ml-1.5 text-xs text-gray-400">({b.periodMonth})</span>}
-                      <div className="text-xs text-gray-500">到期日: {fmtDate(b.dueDate)}</div>
+                      <div className="text-xs text-gray-500">
+                        {t("到期日", "Due Date")}: {fmtDate(b.dueDate)}
+                      </div>
                       <Link
                         href={`/invoice/${b.paymentCode}`}
                         target="_blank"
                         className="mt-0.5 inline-block text-xs font-semibold text-brand underline"
                       >
-                        📄 查看正式 Invoice
+                        {t("📄 查看正式 Invoice", "📄 View Official Invoice")}
                       </Link>
                     </div>
                     <div className="w-full sm:w-auto sm:min-w-[150px]">
-                      <StepTimeline steps={buildBillSteps(b)} />
+                      <StepTimeline steps={buildBillSteps(b, t)} />
                     </div>
                   </div>
                   {b.status === "PENDING_REVIEW" && b.receiptLink && (
@@ -218,7 +224,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                       onClick={() => setZoomUrl(b.receiptLink)}
                       className="mt-2 text-xs font-semibold text-brand underline"
                     >
-                      🧾 查看已上传的交易单
+                      {t("🧾 查看已上传的交易单", "🧾 View Uploaded Slip")}
                     </button>
                   )}
                   {(b.status === "PENDING" || b.status === "REJECTED") && (
@@ -230,7 +236,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                         onChange={(e) => e.target.files?.[0] && uploadSlip(b.id, e.target.files[0])}
                         className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
                       />
-                      {uploadingId === b.id && <span className="ml-2 text-sm text-gray-500">上传中...</span>}
+                      {uploadingId === b.id && <span className="ml-2 text-sm text-gray-500">{t("上传中...", "Uploading...")}</span>}
                     </div>
                   )}
                 </div>
@@ -240,32 +246,32 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
         </>
       )}
 
-      <b className="mt-3.5 block text-sm">📜 已付款记录</b>
+      <b className="mt-3.5 block text-sm">{t("📜 已付款记录", "📜 Payment History")}</b>
       <table className="mt-1.5 w-full text-sm">
         <thead>
           <tr className="bg-gray-50 text-left text-gray-600">
-            <th className="px-2.5 py-1.5 font-semibold">项目</th>
-            <th className="px-2.5 py-1.5 font-semibold">金额</th>
-            <th className="px-2.5 py-1.5 font-semibold">日期</th>
-            <th className="px-2.5 py-1.5 font-semibold">收据</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("金额", "Amount")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("日期", "Date")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("收据", "Receipt")}</th>
           </tr>
         </thead>
         <tbody>
           {paidHistory.length === 0 && (
             <tr>
               <td colSpan={4} className="py-3 text-center text-gray-400">
-                还没有付款记录
+                {t("还没有付款记录", "No payment history yet")}
               </td>
             </tr>
           )}
           {paidHistory.map((p) => (
             <tr key={p.paymentCode} className="border-b border-gray-100">
-              <td className="px-2.5 py-1.5">{paymentTypeLabel(p.type, p.customLabel)}</td>
+              <td className="px-2.5 py-1.5">{paymentTypeLabelLocale(p.type, p.customLabel, locale)}</td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
               <td className="px-2.5 py-1.5">
                 <Link href={`/receipt/${p.paymentCode}`} target="_blank" className="text-xs font-semibold text-brand underline">
-                  🧾 查看 Receipt
+                  {t("🧾 查看 Receipt", "🧾 View Receipt")}
                 </Link>
               </td>
             </tr>
@@ -273,7 +279,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
         </tbody>
       </table>
 
-      {zoomUrl && <Lightbox src={zoomUrl} alt="交易单" onClose={() => setZoomUrl(null)} />}
+      {zoomUrl && <Lightbox src={zoomUrl} alt={t("交易单", "Transaction Slip")} onClose={() => setZoomUrl(null)} />}
 
       {payingAll && (
         <BreakdownPayAllModal

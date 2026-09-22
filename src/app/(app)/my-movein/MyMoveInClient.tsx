@@ -1,15 +1,21 @@
 "use client";
 
 import { useTenantContracts } from "@/lib/useTenantContracts";
+import { useT } from "@/components/LanguageProvider";
 import { MoveFormPanel } from "../contracts/MoveFormModal";
 
 export default function MyMoveInClient() {
   const { cards, error, selected, setSelected } = useTenantContracts();
+  const t = useT();
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
+  if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
   if (cards.length === 0) {
-    return <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">你还没有租约</div>;
+    return (
+      <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">
+        {t("你还没有租约", "You don't have a tenancy yet")}
+      </div>
+    );
   }
 
   const selectedCard = cards.find((c) => c.contractCode === selected);
@@ -18,7 +24,10 @@ export default function MyMoveInClient() {
     <div className="space-y-3">
       {selectedCard && selectedCard.status === "ACTIVE" && selectedCard.depositOutstanding > 0 && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-          ⚠️ 请先缴清押金 (Deposit)，才能填写 Move-in 表单，请尽快联系 Admin 缴费。
+          {t(
+            "⚠️ 请先缴清押金 (Deposit)，才能填写 Move-in 表单，请尽快联系 Admin 缴费。",
+            "⚠️ Please settle the Deposit first before filling in the Move-in form — contact Admin to pay as soon as possible."
+          )}
         </div>
       )}
       {cards.length > 1 && (

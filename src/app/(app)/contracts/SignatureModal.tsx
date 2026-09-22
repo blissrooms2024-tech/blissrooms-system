@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import { useT } from "@/components/LanguageProvider";
 
 export default function SignatureModal({
   contractCode,
@@ -16,6 +17,7 @@ export default function SignatureModal({
   onSigned: () => void;
 }) {
   const toast = useToast();
+  const tt = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dirtyRef = useRef(false);
   const [loading, setLoading] = useState(false);
@@ -84,7 +86,7 @@ export default function SignatureModal({
 
   async function submit() {
     if (!dirtyRef.current) {
-      toast.warning("请先签名");
+      toast.warning(tt("请先签名", "Please sign first"));
       return;
     }
     const dataUrl = canvasRef.current!.toDataURL("image/png");
@@ -106,7 +108,7 @@ export default function SignatureModal({
         toast.danger(data.message);
       }
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(tt("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setLoading(false);
     }
@@ -115,10 +117,13 @@ export default function SignatureModal({
   return (
     <Modal onClose={onClose}>
       <h3 className="text-lg font-bold text-brand">
-        ✍️ {who === "agent" ? "Agent 签名" : "租客签名"} — {contractCode}
+        ✍️ {who === "agent" ? tt("Agent 签名", "Agent Signature") : tt("租客签名", "Tenant Signature")} — {contractCode}
       </h3>
       <p className="mt-1 text-sm text-gray-500">
-        在下面框里签名（手机用手指，电脑按住鼠标画）。签一次会自动套用到合同全部签名位。
+        {tt(
+          "在下面框里签名（手机用手指，电脑按住鼠标画）。签一次会自动套用到合同全部签名位。",
+          "Sign in the box below (finger on mobile, mouse on desktop). One signature is automatically applied to every signature spot on the contract."
+        )}
       </p>
       <canvas
         ref={canvasRef}
@@ -128,10 +133,10 @@ export default function SignatureModal({
       />
       <div className="mt-2.5 flex gap-2">
         <button onClick={clearSig} className="btn-soft">
-          清除重签
+          {tt("清除重签", "Clear & Redo")}
         </button>
         <button onClick={submit} disabled={loading} className="btn-primary">
-          确定签名
+          {tt("确定签名", "Confirm Signature")}
         </button>
       </div>
     </Modal>
