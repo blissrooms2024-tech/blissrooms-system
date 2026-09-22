@@ -176,8 +176,12 @@ model Room {
   currentTenant   User?      @relation("RoomCurrentTenant", fields: [currentTenantId], references: [id])
   currentContractId String?
   notes          String?
-  /// Google Drive folder/album link with room photos, so Agents can view them without a native upload.
+  /// Google Drive folder/album link with room photos — legacy fallback, kept for rooms that
+  /// already have one filled in. New uploads use `photos` below instead.
   photoLink      String?
+  /// Actual room photos uploaded into the system (Vercel Blob URLs), viewable and downloadable
+  /// by anyone who can see this room (Boss/Admin/Agent), not just whoever holds the Drive link.
+  photos         String[]   @default([])
 
   contracts        Contract[] @relation("ContractMainRoom")
   carparkContracts Contract[] @relation("ContractCarparkRoom")

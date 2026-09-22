@@ -40,6 +40,7 @@ export async function GET(
       status: room.status,
       notes: room.notes,
       photoLink: room.photoLink,
+      photos: room.photos,
       currentTenant: room.currentTenant,
     }),
     contracts: serialize(

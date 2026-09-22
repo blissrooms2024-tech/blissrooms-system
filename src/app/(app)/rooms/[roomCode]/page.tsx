@@ -12,5 +12,5 @@ export default async function RoomDetailPage({
   if (!["BOSS", "ADMIN", "AGENT"].includes(session.role)) redirect("/dashboard");
 
   const { roomCode } = await params;
-  return <RoomDetailClient roomCode={roomCode} />;
+  return <RoomDetailClient roomCode={roomCode} role={session.role} />;
 }

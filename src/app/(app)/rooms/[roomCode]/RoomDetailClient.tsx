@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Lightbox from "@/components/Lightbox";
+import { useToast } from "@/components/Toast";
 import { ROOM_STATUS_LABELS, ROOM_STATUS_BADGE, CONTRACT_STATUS_LABELS } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 
@@ -19,7 +21,17 @@ interface RoomDetail {
   status: string;
   notes: string | null;
   photoLink: string | null;
+  photos: string[];
   currentTenant: { name: string; email: string; phone: string | null } | null;
+}
+
+function readAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 interface ContractRow {
   contractCode: string;
@@ -31,27 +43,76 @@ interface ContractRow {
   totalOutstanding: number;
 }
 
-export default function RoomDetailClient({ roomCode }: { roomCode: string }) {
+export default function RoomDetailClient({ roomCode, role }: { roomCode: string; role: string }) {
+  const toast = useToast();
   const [room, setRoom] = useState<RoomDetail | null>(null);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [error, setError] = useState("");
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/rooms/${roomCode}`);
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.message);
+        return;
+      }
+      setRoom(data.room);
+      setContracts(data.contracts);
+    } catch {
+      setError("出错，请稍后再试");
+    }
+  }, [roomCode]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`/api/rooms/${roomCode}`);
-        const data = await res.json();
-        if (!data.success) {
-          setError(data.message);
-          return;
-        }
-        setRoom(data.room);
-        setContracts(data.contracts);
-      } catch {
-        setError("出错，请稍后再试");
+    // setState happens after the fetch's await, not synchronously in the effect body.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  async function uploadPhoto(file: File) {
+    if (file.size > 3 * 1024 * 1024) {
+      toast.warning("图片太大(超过3MB)，请压缩");
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await readAsDataURL(file);
+      const res = await fetch(`/api/rooms/${roomCode}/photos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        load();
+      } else {
+        toast.danger(data.message);
       }
-    })();
-  }, [roomCode]);
+    } catch {
+      toast.danger("系统出错，请稍后再试");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function deletePhoto(url: string) {
+    const res = await fetch(`/api/rooms/${roomCode}/photos`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast.success(data.message);
+      load();
+    } else {
+      toast.danger(data.message);
+    }
+  }
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
   if (!room) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
@@ -102,13 +163,59 @@ export default function RoomDetailClient({ roomCode }: { roomCode: string }) {
           </div>
         )}
 
-        {room.photoLink && (
-          <div className="mt-3.5">
-            <a href={room.photoLink} target="_blank" rel="noopener noreferrer" className="text-sm text-brand underline">
-              📷 查看房间照片
+        <div className="mt-3.5">
+          <b className="mb-1.5 block text-sm text-gray-600">📷 房间照片</b>
+          {room.photos.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {room.photos.map((url) => (
+                <div key={url} className="group relative">
+                  <button type="button" onClick={() => setZoomUrl(url)} className="block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="房间照片" className="h-20 w-20 rounded-lg border border-gray-200 object-cover" />
+                  </button>
+                  <a
+                    href={url}
+                    download
+                    className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/60 py-0.5 text-center text-[11px] text-white opacity-0 group-hover:opacity-100"
+                  >
+                    ⬇️ 下载
+                  </a>
+                  {role === "ADMIN" && (
+                    <button
+                      type="button"
+                      onClick={() => deletePhoto(url)}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white opacity-0 group-hover:opacity-100"
+                      title="删除照片"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">还没有照片</p>
+          )}
+          {role === "ADMIN" && (
+            <div className="mt-2">
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])}
+                className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
+              />
+              {uploading && <span className="ml-2 text-sm text-gray-500">上传中...</span>}
+            </div>
+          )}
+          {room.photoLink && (
+            <a href={room.photoLink} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-block text-sm text-brand underline">
+              🔗 查看相册链接
             </a>
-          </div>
-        )}
+          )}
+        </div>
+
+        {zoomUrl && <Lightbox src={zoomUrl} alt="房间照片" onClose={() => setZoomUrl(null)} />}
 
         {room.notes && (
           <div className="mt-3.5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">📝 {room.notes}</div>
