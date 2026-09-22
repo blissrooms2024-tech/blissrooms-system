@@ -46,3 +46,6 @@ next-env.d.ts
 
 # local-dev fallback for file uploads when BLOB_READ_WRITE_TOKEN isn't set
 /public/uploads
+
+# scratch worktrees used by background subagents during this session
+/.claude/worktrees/
