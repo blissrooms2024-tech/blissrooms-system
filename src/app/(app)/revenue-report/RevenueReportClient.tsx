@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { COMPANY, CONTRACT_IMAGES, PAYMENT_TYPE_LABELS } from "@/lib/config";
+import { COMPANY, CONTRACT_IMAGES, PAYMENT_TYPE_LABELS, paymentTypeLabelLocale } from "@/lib/config";
 import { fmtMoney } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import { REPORT_DOC_STYLE } from "@/lib/reportDocStyle";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Period = "month" | "year" | "all";
 
@@ -23,10 +24,14 @@ function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
-const PERIOD_LABELS: Record<Period, string> = { month: "本月", year: "本年", all: "累计" };
-
 export default function RevenueReportClient() {
   const toast = useToast();
+  const { locale, t } = useLanguage();
+  const periodLabels: Record<Period, string> = {
+    month: t("本月", "This Month"),
+    year: t("本年", "This Year"),
+    all: t("累计", "All Time"),
+  };
   const searchParams = useSearchParams();
   const initialPeriod = (searchParams.get("period") as Period) || "month";
 
@@ -51,9 +56,9 @@ export default function RevenueReportClient() {
       }
       setReport(data);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "An error occurred, please try again later"));
     }
-  }, [period, month, year]);
+  }, [period, month, year, t]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -66,11 +71,11 @@ export default function RevenueReportClient() {
     const html = printAreaRef.current.innerHTML;
     const w = window.open("", "_blank");
     if (!w) {
-      toast.warning("浏览器拦截了弹出式窗口，请允许弹窗后再试一次");
+      toast.warning(t("浏览器拦截了弹出式窗口，请允许弹窗后再试一次", "The browser blocked the pop-up window. Please allow pop-ups and try again."));
       return;
     }
     w.document.write(
-      `<html><head><title>营业额报告 - Bliss Rooms</title><meta charset="utf-8">` +
+      `<html><head><title>${t("营业额报告", "Revenue Report")} - Bliss Rooms</title><meta charset="utf-8">` +
         `<style>body{margin:0;padding:34px;max-width:820px;margin:auto;}@media print{@page{margin:14mm;}}</style>` +
         `</head><body>${html}</body></html>`
     );
@@ -84,7 +89,7 @@ export default function RevenueReportClient() {
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5 no-print">
-        <h3 className="text-base font-semibold text-brand">📊 营业额报告</h3>
+        <h3 className="text-base font-semibold text-brand">{t("📊 营业额报告", "📊 Revenue Report")}</h3>
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex gap-1.5">
             {(["month", "year", "all"] as Period[]).map((p) => (
@@ -95,7 +100,7 @@ export default function RevenueReportClient() {
                   period === p ? "bg-brand text-white" : "bg-gray-100 text-gray-600"
                 }`}
               >
-                {PERIOD_LABELS[p]}
+                {periodLabels[p]}
               </button>
             ))}
           </div>
@@ -122,14 +127,14 @@ export default function RevenueReportClient() {
           )}
           {report && (
             <button onClick={printReport} className="rounded-lg bg-green-700 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-green-800">
-              🖨️ 打印 / 存 PDF
+              {t("🖨️ 打印 / 存 PDF", "🖨️ Print / Save PDF")}
             </button>
           )}
         </div>
       </div>
 
       {error && <div className="text-sm text-red-600">{error}</div>}
-      {!report && !error && <div className="text-sm text-gray-500">载入中...</div>}
+      {!report && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
 
       {report && (
         <div ref={printAreaRef}>
@@ -141,15 +146,17 @@ export default function RevenueReportClient() {
               {CONTRACT_IMAGES.logo && <img src={CONTRACT_IMAGES.logo} alt="logo" />}
               <div>
                 <div className="nm">{COMPANY.NAME}</div>
-                <div className="sub">{report.transactionCount} 笔已收款项</div>
+                <div className="sub">
+                  {report.transactionCount} {t("笔已收款项", "payments received")}
+                </div>
               </div>
             </div>
             <div className="titleBlock">
               <div className="title">REVENUE REPORT</div>
               <div className="titleMeta">
-                {period === "month" && `报告月份: ${report.month}`}
-                {period === "year" && `报告年份: ${report.year}`}
-                {period === "all" && "累计总额 (至今)"}
+                {period === "month" && `${t("报告月份", "Report Month")}: ${report.month}`}
+                {period === "year" && `${t("报告年份", "Report Year")}: ${report.year}`}
+                {period === "all" && t("累计总额 (至今)", "Cumulative Total (To Date)")}
               </div>
             </div>
           </div>
@@ -157,29 +164,32 @@ export default function RevenueReportClient() {
           <div className="statRow">
             <div className="stat">
               <div className="n">{fmtMoney(report.total)}</div>
-              <div className="l">{PERIOD_LABELS[report.period]}营业额</div>
+              <div className="l">
+                {periodLabels[report.period]}
+                {t("营业额", " Revenue")}
+              </div>
             </div>
           </div>
 
-          <h4>🧾 按项目分类</h4>
+          <h4>{t("🧾 按项目分类", "🧾 By Category")}</h4>
           <table>
             <thead>
               <tr>
-                <th>项目</th>
-                <th className="num">金额</th>
+                <th>{t("项目", "Category")}</th>
+                <th className="num">{t("金额", "Amount")}</th>
               </tr>
             </thead>
             <tbody>
               {typeKeys.length === 0 && (
                 <tr>
                   <td colSpan={2} className="empty">
-                    这段时间没有收款记录
+                    {t("这段时间没有收款记录", "No income records for this period")}
                   </td>
                 </tr>
               )}
               {typeKeys.map((k) => (
                 <tr key={k}>
-                  <td>{PAYMENT_TYPE_LABELS[k]}</td>
+                  <td>{paymentTypeLabelLocale(k, null, locale)}</td>
                   <td className="num">
                     <b>{fmtMoney(report.byType[k])}</b>
                   </td>
@@ -188,19 +198,19 @@ export default function RevenueReportClient() {
             </tbody>
           </table>
 
-          <h4>🏢 按楼盘分类</h4>
+          <h4>{t("🏢 按楼盘分类", "🏢 By Property")}</h4>
           <table>
             <thead>
               <tr>
-                <th>楼盘</th>
-                <th className="num">金额</th>
+                <th>{t("楼盘", "Property")}</th>
+                <th className="num">{t("金额", "Amount")}</th>
               </tr>
             </thead>
             <tbody>
               {report.byProperty.length === 0 && (
                 <tr>
                   <td colSpan={2} className="empty">
-                    这段时间没有收款记录
+                    {t("这段时间没有收款记录", "No income records for this period")}
                   </td>
                 </tr>
               )}

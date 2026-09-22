@@ -5,9 +5,9 @@ import { COMPANY, CONTRACT_IMAGES } from "@/lib/config";
 import { fmtMoney, fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import { REPORT_DOC_STYLE } from "@/lib/reportDocStyle";
+import { useT } from "@/components/LanguageProvider";
 
 type Period = "month" | "year" | "all";
-const PERIOD_LABELS: Record<Period, string> = { month: "本月", year: "本年", all: "累计" };
 
 interface MasterLeaseProperty {
   propertyCode: string;
@@ -91,6 +91,14 @@ function currentMonth() {
 
 export default function FinanceOverviewClient() {
   const toast = useToast();
+  // Renamed to `tt` (not `t`) because the income-transaction .map() below uses `t` as its
+  // loop variable — same shadowing fix as SignatureModal.tsx.
+  const tt = useT();
+  const periodLabels: Record<Period, string> = {
+    month: tt("本月", "This Month"),
+    year: tt("本年", "This Year"),
+    all: tt("累计", "All Time"),
+  };
   const [period, setPeriod] = useState<Period>("month");
   const [month, setMonth] = useState(currentMonth());
   const [year, setYear] = useState(new Date().getFullYear());
@@ -112,9 +120,9 @@ export default function FinanceOverviewClient() {
       }
       setData(d);
     } catch {
-      setError("出错，请稍后再试");
+      setError(tt("出错，请稍后再试", "An error occurred, please try again later"));
     }
-  }, [period, month, year]);
+  }, [period, month, year, tt]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -126,11 +134,11 @@ export default function FinanceOverviewClient() {
     const html = printAreaRef.current.innerHTML;
     const w = window.open("", "_blank");
     if (!w) {
-      toast.warning("浏览器拦截了弹出式窗口，请允许弹窗后再试一次");
+      toast.warning(tt("浏览器拦截了弹出式窗口，请允许弹窗后再试一次", "The browser blocked the pop-up window. Please allow pop-ups and try again."));
       return;
     }
     w.document.write(
-      `<html><head><title>财务总览 - Bliss Rooms</title><meta charset="utf-8">` +
+      `<html><head><title>${tt("财务总览", "Finance Overview")} - Bliss Rooms</title><meta charset="utf-8">` +
         `<style>body{margin:0;padding:34px;max-width:900px;margin:auto;}@media print{@page{margin:14mm;}}</style>` +
         `</head><body>${html}</body></html>`
     );
@@ -144,7 +152,7 @@ export default function FinanceOverviewClient() {
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5 no-print">
-          <h3 className="text-base font-semibold text-brand">💰 财务总览 — 现金流 & 押金</h3>
+          <h3 className="text-base font-semibold text-brand">{tt("💰 财务总览 — 现金流 & 押金", "💰 Finance Overview — Cash Flow & Deposits")}</h3>
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="flex gap-1.5">
               {(["month", "year", "all"] as Period[]).map((p) => (
@@ -155,7 +163,7 @@ export default function FinanceOverviewClient() {
                     period === p ? "bg-brand text-white" : "bg-gray-100 text-gray-600"
                   }`}
                 >
-                  {PERIOD_LABELS[p]}
+                  {periodLabels[p]}
                 </button>
               ))}
             </div>
@@ -182,14 +190,14 @@ export default function FinanceOverviewClient() {
             )}
             {data && (
               <button onClick={printReport} className="rounded-lg bg-green-700 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-green-800">
-                🖨️ 打印 / 存 PDF
+                {tt("🖨️ 打印 / 存 PDF", "🖨️ Print / Save PDF")}
               </button>
             )}
           </div>
         </div>
 
         {error && <div className="text-sm text-red-600">{error}</div>}
-        {!data && !error && <div className="text-sm text-gray-500">载入中...</div>}
+        {!data && !error && <div className="text-sm text-gray-500">{tt("载入中...", "Loading...")}</div>}
 
         {data && (
           <div ref={printAreaRef}>
@@ -201,60 +209,64 @@ export default function FinanceOverviewClient() {
                   {CONTRACT_IMAGES.logo && <img src={CONTRACT_IMAGES.logo} alt="logo" />}
                   <div>
                     <div className="nm">{COMPANY.NAME}</div>
-                    <div className="sub">现金流 & 押金总览</div>
+                    <div className="sub">{tt("现金流 & 押金总览", "Cash Flow & Deposits Overview")}</div>
                   </div>
                 </div>
                 <div className="titleBlock">
                   <div className="title">FINANCE OVERVIEW</div>
                   <div className="titleMeta">
-                    {data.period === "month" && `现金流报告月份: ${data.month}`}
-                    {data.period === "year" && `现金流报告年份: ${data.year}`}
-                    {data.period === "all" && "现金流: 累计 (至今)"}
+                    {data.period === "month" && `${tt("现金流报告月份", "Cash flow report month")}: ${data.month}`}
+                    {data.period === "year" && `${tt("现金流报告年份", "Cash flow report year")}: ${data.year}`}
+                    {data.period === "all" && tt("现金流: 累计 (至今)", "Cash flow: cumulative (to date)")}
                     <br />
-                    押金: 当前实况 (截至今日)
+                    {tt("押金: 当前实况 (截至今日)", "Deposits: current snapshot (as of today)")}
                   </div>
                 </div>
               </div>
 
-              <h4>💵 现金流 (Cash Flow) — {PERIOD_LABELS[data.period]}实际入账/出账</h4>
+              <h4>
+                {tt("💵 现金流 (Cash Flow) — ", "💵 Cash Flow — ")}
+                {periodLabels[data.period]}
+                {tt("实际入账/出账", " Actual Inflow/Outflow")}
+              </h4>
               <div className="statRow">
                 <div className="stat">
                   <div className="n">{fmtMoney(data.cashFlow.income.total)}</div>
-                  <div className="l">总收入 (实收)</div>
+                  <div className="l">{tt("总收入 (实收)", "Total Income (Received)")}</div>
                 </div>
                 <div className="stat alt">
                   <div className="n">{fmtMoney(data.cashFlow.outflow.total)}</div>
-                  <div className="l">实际支出 (佣金+维修+楼盘支出)</div>
+                  <div className="l">{tt("实际支出 (佣金+维修+楼盘支出)", "Total Outflow (Commission + Maintenance + Property Expenses)")}</div>
                 </div>
                 <div className="stat" style={{ background: data.cashFlow.netCashFlow >= 0 ? undefined : "linear-gradient(135deg,#991b1b,#dc2626)" }}>
                   <div className="n">{fmtMoney(data.cashFlow.netCashFlow)}</div>
-                  <div className="l">净现金流 (收 − 支)</div>
+                  <div className="l">{tt("净现金流 (收 − 支)", "Net Cash Flow (Income − Outflow)")}</div>
                 </div>
               </div>
 
               <table>
                 <thead>
                   <tr>
-                    <th>收入项目</th>
-                    <th className="num">金额</th>
+                    <th>{tt("收入项目", "Income Item")}</th>
+                    <th className="num">{tt("金额", "Amount")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>房租 Rental</td>
+                    <td>{tt("房租 Rental", "Rental")}</td>
                     <td className="num">{fmtMoney(data.cashFlow.income.rental)}</td>
                   </tr>
                   <tr>
-                    <td>押金收款 Deposits (押金/水电押/门卡押)</td>
+                    <td>{tt("押金收款 Deposits (押金/水电押/门卡押)", "Deposits (Security/Utilities/Access Card)")}</td>
                     <td className="num">{fmtMoney(data.cashFlow.income.deposits)}</td>
                   </tr>
                   <tr>
-                    <td>其他收费 (Admin Fee/车位/冷气/烘干机/电费/罚款/其他)</td>
+                    <td>{tt("其他收费 (Admin Fee/车位/冷气/烘干机/电费/罚款/其他)", "Other Charges (Admin Fee/Carpark/AC/Dryer/Electricity/Late Fee/Other)")}</td>
                     <td className="num">{fmtMoney(data.cashFlow.income.other)}</td>
                   </tr>
                   <tr>
                     <td>
-                      <b>总收入</b>
+                      <b>{tt("总收入", "Total Income")}</b>
                     </td>
                     <td className="num">
                       <b>{fmtMoney(data.cashFlow.income.total)}</b>
@@ -263,21 +275,21 @@ export default function FinanceOverviewClient() {
                 </tbody>
               </table>
 
-              <h4>📑 收入明细 (Income Detail) — 逐笔对账用</h4>
+              <h4>{tt("📑 收入明细 (Income Detail) — 逐笔对账用", "📑 Income Detail — Transaction by Transaction")}</h4>
               {data.cashFlow.transactions.length === 0 ? (
-                <p style={{ fontSize: 12.5, color: "#94a3b8", margin: "0 0 10px" }}>这段时间没有收款记录</p>
+                <p style={{ fontSize: 12.5, color: "#94a3b8", margin: "0 0 10px" }}>{tt("这段时间没有收款记录", "No income records for this period")}</p>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>交易日期</th>
+                      <th>{tt("交易日期", "Transaction Date")}</th>
                       <th>Room Code</th>
                       <th>Carpark Code</th>
-                      <th>合同</th>
-                      <th>租客</th>
-                      <th>项目</th>
-                      <th>付款方式</th>
-                      <th className="num">金额</th>
+                      <th>{tt("合同", "Contract")}</th>
+                      <th>{tt("租客", "Tenant")}</th>
+                      <th>{tt("项目", "Item")}</th>
+                      <th>{tt("付款方式", "Payment Method")}</th>
+                      <th className="num">{tt("金额", "Amount")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -300,7 +312,9 @@ export default function FinanceOverviewClient() {
                     ))}
                     <tr>
                       <td colSpan={7}>
-                        <b>合计 ({data.cashFlow.transactions.length} 笔)</b>
+                        <b>
+                          {tt("合计", "Total")} ({data.cashFlow.transactions.length} {tt("笔", "items")})
+                        </b>
                       </td>
                       <td className="num">
                         <b>{fmtMoney(data.cashFlow.income.total)}</b>
@@ -313,26 +327,26 @@ export default function FinanceOverviewClient() {
               <table>
                 <thead>
                   <tr>
-                    <th>支出项目 (已确认支付)</th>
-                    <th className="num">金额</th>
+                    <th>{tt("支出项目 (已确认支付)", "Expense Item (Confirmed Paid)")}</th>
+                    <th className="num">{tt("金额", "Amount")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Agent 佣金已发</td>
+                    <td>{tt("Agent 佣金已发", "Agent Commission Paid")}</td>
                     <td className="num">{fmtMoney(data.cashFlow.outflow.commissionPaid)}</td>
                   </tr>
                   <tr>
-                    <td>维修支出已付 (报修工单)</td>
+                    <td>{tt("维修支出已付 (报修工单)", "Maintenance Expenses Paid (Work Orders)")}</td>
                     <td className="num">{fmtMoney(data.cashFlow.outflow.maintenancePaid)}</td>
                   </tr>
                   <tr>
-                    <td>楼盘支出 (水电/Wifi/清洁/维修/其他)</td>
+                    <td>{tt("楼盘支出 (水电/Wifi/清洁/维修/其他)", "Property Expenses (Utilities/Wifi/Cleaning/Maintenance/Other)")}</td>
                     <td className="num">{fmtMoney(data.cashFlow.outflow.expensePaid)}</td>
                   </tr>
                   <tr>
                     <td>
-                      <b>总支出</b>
+                      <b>{tt("总支出", "Total Outflow")}</b>
                     </td>
                     <td className="num">
                       <b>{fmtMoney(data.cashFlow.outflow.total)}</b>
@@ -343,16 +357,16 @@ export default function FinanceOverviewClient() {
 
               {data.cashFlow.expenseTransactions.length > 0 && (
                 <>
-                  <h4>📑 支出明细 (Expense Detail) — 逐笔对账用</h4>
+                  <h4>{tt("📑 支出明细 (Expense Detail) — 逐笔对账用", "📑 Expense Detail — Transaction by Transaction")}</h4>
                   <table>
                     <thead>
                       <tr>
-                        <th>日期</th>
-                        <th>楼盘号</th>
-                        <th>楼盘名称</th>
-                        <th>类型</th>
-                        <th>备注</th>
-                        <th className="num">金额</th>
+                        <th>{tt("日期", "Date")}</th>
+                        <th>{tt("楼盘号", "Property Code")}</th>
+                        <th>{tt("楼盘名称", "Property Name")}</th>
+                        <th>{tt("类型", "Type")}</th>
+                        <th>{tt("备注", "Notes")}</th>
+                        <th className="num">{tt("金额", "Amount")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -372,7 +386,9 @@ export default function FinanceOverviewClient() {
                       ))}
                       <tr>
                         <td colSpan={5}>
-                          <b>合计 ({data.cashFlow.expenseTransactions.length} 笔)</b>
+                          <b>
+                            {tt("合计", "Total")} ({data.cashFlow.expenseTransactions.length} {tt("笔", "items")})
+                          </b>
                         </td>
                         <td className="num">
                           <b>{fmtMoney(data.cashFlow.outflow.expensePaid)}</b>
@@ -383,29 +399,31 @@ export default function FinanceOverviewClient() {
                 </>
               )}
 
-              <h4>📋 固定应付 (Owner 租金 / Landlord 分成) — 预估, 非已付记录</h4>
+              <h4>{tt("📋 固定应付 (Owner 租金 / Landlord 分成) — 预估, 非已付记录", "📋 Fixed Obligations (Owner Rental / Landlord Share) — Estimated, Not Actual Payment Records")}</h4>
               <p style={{ fontSize: 11.5, color: "#64748b", margin: "0 0 10px" }}>
-                以下金额是根据楼盘设定算出来的应付义务，不是已确认的实际付款记录 (系统没有单独记录每次付给
-                Owner/Landlord 的交易)，仅供参考。
+                {tt(
+                  "以下金额是根据楼盘设定算出来的应付义务，不是已确认的实际付款记录 (系统没有单独记录每次付给 Owner/Landlord 的交易)，仅供参考。",
+                  "The amounts below are payment obligations calculated from property settings, not confirmed actual payment records (the system does not separately log each payment made to the Owner/Landlord). For reference only."
+                )}
               </p>
               <div className="statRow">
                 <div className="stat alt">
                   <div className="n">{fmtMoney(data.obligations.ownerRentalObligation)}</div>
                   <div className="l">
-                    应付 Owner 固定租金 (
-                    {data.period === "month" && "本月"}
-                    {data.period === "year" && `本年 ×${data.obligations.monthsInRange}个月`}
-                    {data.period === "all" && "当前每月"}
+                    {tt("应付 Owner 固定租金", "Owner Fixed Rental Payable")} (
+                    {data.period === "month" && tt("本月", "This Month")}
+                    {data.period === "year" && `${tt("本年", "This Year")} ×${data.obligations.monthsInRange}${tt("个月", " months")}`}
+                    {data.period === "all" && tt("当前每月", "Current Monthly")}
                     )
                   </div>
                 </div>
                 <div className="stat alt">
                   <div className="n">{fmtMoney(data.obligations.landlordPayoutPeriod)}</div>
-                  <div className="l">应付 Landlord 净额 (本期已收 × (1−管理费%))</div>
+                  <div className="l">{tt("应付 Landlord 净额 (本期已收 × (1−管理费%))", "Landlord Net Payable (Collected This Period × (1 − Fee %))")}</div>
                 </div>
                 <div className="stat" style={{ background: "linear-gradient(135deg,#475569,#334155)" }}>
                   <div className="n">{fmtMoney(data.obligations.total)}</div>
-                  <div className="l">固定应付总额</div>
+                  <div className="l">{tt("固定应付总额", "Total Fixed Obligations")}</div>
                 </div>
               </div>
 
@@ -413,11 +431,11 @@ export default function FinanceOverviewClient() {
                 <table>
                   <thead>
                     <tr>
-                      <th>楼盘号</th>
-                      <th>楼盘 (整租 Master Lease)</th>
+                      <th>{tt("楼盘号", "Property Code")}</th>
+                      <th>{tt("楼盘 (整租 Master Lease)", "Property (Master Lease)")}</th>
                       <th>Owner</th>
-                      <th className="num">月租金</th>
-                      <th className="num">已付押金</th>
+                      <th className="num">{tt("月租金", "Monthly Rental")}</th>
+                      <th className="num">{tt("已付押金", "Deposit Paid")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -440,12 +458,12 @@ export default function FinanceOverviewClient() {
                 <table>
                   <thead>
                     <tr>
-                      <th>楼盘号</th>
-                      <th>楼盘 (代管 Managed)</th>
+                      <th>{tt("楼盘号", "Property Code")}</th>
+                      <th>{tt("楼盘 (代管 Managed)", "Property (Managed)")}</th>
                       <th>Landlord</th>
-                      <th className="num">管理费%</th>
-                      <th className="num">本期已收</th>
-                      <th className="num">应付净额</th>
+                      <th className="num">{tt("管理费%", "Fee %")}</th>
+                      <th className="num">{tt("本期已收", "Collected This Period")}</th>
+                      <th className="num">{tt("应付净额", "Net Payable")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -467,15 +485,17 @@ export default function FinanceOverviewClient() {
                 </table>
               )}
 
-              <h4>🏦 押金总览 (Deposits) — 当前实况, 截至今日</h4>
+              <h4>{tt("🏦 押金总览 (Deposits) — 当前实况, 截至今日", "🏦 Deposits Overview — Current Snapshot, As of Today")}</h4>
               <div className="statRow">
                 <div className="stat">
                   <div className="n">{fmtMoney(data.deposits.tenant.totalHeld)}</div>
-                  <div className="l">租客押金持有中 ({data.deposits.tenant.heldContractCount} 份合同)</div>
+                  <div className="l">
+                    {tt("租客押金持有中", "Tenant Deposits Held")} ({data.deposits.tenant.heldContractCount} {tt("份合同", "contracts")})
+                  </div>
                 </div>
                 <div className="stat alt">
                   <div className="n">{fmtMoney(data.deposits.owner.total)}</div>
-                  <div className="l">已付 Owner 押金 (可退还给我们)</div>
+                  <div className="l">{tt("已付 Owner 押金 (可退还给我们)", "Owner Deposit Paid (Refundable to Us)")}</div>
                 </div>
                 <div
                   className="stat"
@@ -487,16 +507,16 @@ export default function FinanceOverviewClient() {
                   }}
                 >
                   <div className="n">{fmtMoney(data.deposits.netExposure)}</div>
-                  <div className="l">净押金部位 (Owner 押金 − 租客持有押金)</div>
+                  <div className="l">{tt("净押金部位 (Owner 押金 − 租客持有押金)", "Net Deposit Position (Owner Deposit − Tenant Deposits Held)")}</div>
                 </div>
               </div>
 
               <table>
                 <thead>
                   <tr>
-                    <th>租客押金类型</th>
-                    <th className="num">持有中 (未来要退)</th>
-                    <th className="num">已没收 (终止合同)</th>
+                    <th>{tt("租客押金类型", "Tenant Deposit Type")}</th>
+                    <th className="num">{tt("持有中 (未来要退)", "Held (To Be Refunded)")}</th>
+                    <th className="num">{tt("已没收 (终止合同)", "Forfeited (Terminated)")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -509,7 +529,7 @@ export default function FinanceOverviewClient() {
                   ))}
                   <tr>
                     <td>
-                      <b>总计</b>
+                      <b>{tt("总计", "Total")}</b>
                     </td>
                     <td className="num">
                       <b>{fmtMoney(data.deposits.tenant.totalHeld)}</b>
@@ -525,9 +545,9 @@ export default function FinanceOverviewClient() {
                 <table>
                   <thead>
                     <tr>
-                      <th>楼盘号</th>
-                      <th>按楼盘 — 租客押金持有中</th>
-                      <th className="num">金额</th>
+                      <th>{tt("楼盘号", "Property Code")}</th>
+                      <th>{tt("按楼盘 — 租客押金持有中", "By Property — Tenant Deposits Held")}</th>
+                      <th className="num">{tt("金额", "Amount")}</th>
                     </tr>
                   </thead>
                   <tbody>
