@@ -32,6 +32,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "密码错误" }, { status: 401 });
   }
 
+  // A pure Tenant account whose every contract has already passed its expiredDate is locked
+  // out until Admin renews it (extends the date, or opens a new contract) — not an Agent
+  // logging into their own account just because they also happen to be the tenant on a
+  // contract of their own, and not a Tenant who's never had a contract yet (a fresh signup
+  // still needs to be able to log in and see the "还没有租约" empty state).
+  if (user.role === "TENANT") {
+    const contracts = await prisma.contract.findMany({
+      where: { tenantId: user.id },
+      select: { expiredDate: true },
+    });
+    if (contracts.length > 0) {
+      const now = new Date();
+      const allExpired = contracts.every((c) => c.expiredDate && c.expiredDate < now);
+      if (allExpired) {
+        return NextResponse.json(
+          { success: false, message: "你的租约已到期，请联系 Admin 续约后才能登入" },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
   const token = await createSessionToken({
     sub: user.id,
     userCode: user.userCode,
