@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
-import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
+import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface PendingPayment {
   id: string;
@@ -29,6 +30,7 @@ function fmt(v: number) {
 }
 export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
   const toast = useToast();
+  const { locale, t } = useLanguage();
   const [items, setItems] = useState<PendingPayment[] | null>(null);
   const [error, setError] = useState("");
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
@@ -48,9 +50,9 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
       }
       setItems(data.payments);
     } catch {
-      setError("出错，请稍后再试");
+      setError(t("出错，请稍后再试", "Error — please try again later"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -68,7 +70,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
 
   async function reject(id: string) {
     if (!rejectReason.trim()) {
-      toast.warning("请填拒绝原因");
+      toast.warning(t("请填拒绝原因", "Please enter a reason for rejecting"));
       return;
     }
     const res = await fetch(`/api/payments/${id}/reject`, {
@@ -99,11 +101,11 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="mb-3.5 text-base font-semibold text-brand">🧾 交易单审核队列</h3>
+      <h3 className="mb-3.5 text-base font-semibold text-brand">{t("🧾 交易单审核队列", "🧾 Slip Review Queue")}</h3>
       {error && <div className="text-sm text-red-600">{error}</div>}
-      {!items && !error && <div className="text-sm text-gray-500">载入中...</div>}
+      {!items && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
       {items && items.length === 0 && (
-        <div className="py-8 text-center text-gray-400">🎉 没有待审核的交易单</div>
+        <div className="py-8 text-center text-gray-400">{t("🎉 没有待审核的交易单", "🎉 No slips pending review")}</div>
       )}
       {items && items.length > 0 && (
         <>
@@ -111,20 +113,20 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索合同号 / 房间 / 租客姓名"
+              placeholder={t("搜索合同号 / 房间 / 租客姓名", "Search contract code / room / tenant name")}
               className="input max-w-[220px] flex-1"
             />
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="input max-w-[160px]">
-              <option value="">全部项目</option>
-              {typeOptions.map((t) => (
-                <option key={t} value={t}>
-                  {PAYMENT_TYPE_LABELS[t] ?? t}
+              <option value="">{t("全部项目", "All Items")}</option>
+              {typeOptions.map((ty) => (
+                <option key={ty} value={ty}>
+                  {paymentTypeLabelLocale(ty, undefined, locale)}
                 </option>
               ))}
             </select>
           </div>
           {filteredItems && filteredItems.length === 0 && (
-            <div className="py-8 text-center text-gray-400">没有符合条件的交易单</div>
+            <div className="py-8 text-center text-gray-400">{t("没有符合条件的交易单", "No slips match your filters")}</div>
           )}
         </>
       )}
@@ -136,7 +138,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                 <button type="button" onClick={() => setZoomUrl(p.receiptLink)} className="shrink-0 cursor-zoom-in">
                   <img
                     src={p.receiptLink}
-                    alt="交易单"
+                    alt={t("交易单", "Transaction Slip")}
                     className="h-[70px] w-[70px] rounded border border-gray-300 object-cover hover:opacity-90"
                   />
                 </button>
@@ -149,12 +151,16 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                   · {p.roomCode} · {p.tenantName}
                 </div>
                 <div className="text-sm text-gray-600">
-                  {paymentTypeLabel(p.type, p.customLabel)} · {fmt(p.amountPaid)}
-                  {p.periodMonth ? ` · ${p.periodMonth}` : ""} · 到期 {fmtDate(p.dueDate)} · 上传于 {fmtDate(p.paidDate)}
+                  {paymentTypeLabelLocale(p.type, p.customLabel, locale)} · {fmt(p.amountPaid)}
+                  {p.periodMonth ? ` · ${p.periodMonth}` : ""} · {t("到期", "Due")} {fmtDate(p.dueDate)} ·{" "}
+                  {t("上传于", "Uploaded")} {fmtDate(p.paidDate)}
                 </div>
                 {p.type === "AC" && (
                   <div className="mt-1 text-xs font-semibold text-amber-700">
-                    ❄️ 冷气充值：批准后请在12小时内更新到 Smart Meter (只在周一至五, 六日/公共假期不处理)
+                    {t(
+                      "❄️ 冷气充值：批准后请在12小时内更新到 Smart Meter (只在周一至五, 六日/公共假期不处理)",
+                      "❄️ A/C Top-up: once approved, update the Smart Meter within 12 hours (weekdays only — not processed on weekends/public holidays)"
+                    )}
                   </div>
                 )}
               </div>
@@ -164,7 +170,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                     <div className="flex items-center gap-1.5">
                       <input
                         className="input w-[160px] text-xs"
-                        placeholder="拒绝原因"
+                        placeholder={t("拒绝原因", "Reason for rejecting")}
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                       />
@@ -172,7 +178,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                         onClick={() => reject(p.id)}
                         className="rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white"
                       >
-                        确定拒绝
+                        {t("确定拒绝", "Confirm Reject")}
                       </button>
                       <button
                         onClick={() => {
@@ -181,7 +187,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                         }}
                         className="rounded-md bg-gray-100 px-2.5 py-1.5 text-xs text-gray-600"
                       >
-                        取消
+                        {t("取消", "Cancel")}
                       </button>
                     </div>
                   ) : (
@@ -190,13 +196,13 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                         onClick={() => approve(p.id)}
                         className="rounded-md bg-green-700 px-3 py-1.5 text-xs font-semibold text-white"
                       >
-                        ✅ 批准
+                        {t("✅ 批准", "✅ Approve")}
                       </button>
                       <button
                         onClick={() => setRejectingId(p.id)}
                         className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white"
                       >
-                        ✗ 拒绝
+                        {t("✗ 拒绝", "✗ Reject")}
                       </button>
                     </div>
                   )}
@@ -206,7 +212,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
           ))}
         </div>
       )}
-      {zoomUrl && <Lightbox src={zoomUrl} alt="交易单" onClose={() => setZoomUrl(null)} />}
+      {zoomUrl && <Lightbox src={zoomUrl} alt={t("交易单", "Transaction Slip")} onClose={() => setZoomUrl(null)} />}
     </div>
   );
 }
