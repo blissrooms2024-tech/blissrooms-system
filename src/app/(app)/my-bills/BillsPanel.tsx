@@ -7,7 +7,6 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { PAYMENT_TYPE_LABELS, paymentTypeLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
-import BreakdownPayModal from "./BreakdownPayModal";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
 
 interface BreakdownRow {
@@ -73,7 +72,6 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   const [totals, setTotals] = useState({ due: 0, paid: 0, outstanding: 0 });
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
-  const [payingItem, setPayingItem] = useState<{ item: string; outstanding: number } | null>(null);
   const [payingAll, setPayingAll] = useState(false);
 
   const load = useCallback(async () => {
@@ -158,18 +156,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                   <td className="px-2.5 py-1.5">{fmt(b.paid)}</td>
                   <td className="px-2.5 py-1.5">
                     {b.outstanding > 0 ? (
-                      <span className="flex items-center gap-1.5">
-                        <span className="font-semibold text-red-600">{fmt(b.outstanding)}</span>
-                        {!coveredTypes.has(b.item) && (
-                          <button
-                            type="button"
-                            onClick={() => setPayingItem({ item: b.item, outstanding: b.outstanding })}
-                            className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-brand-dark"
-                          >
-                            付款
-                          </button>
-                        )}
-                      </span>
+                      <span className="font-semibold text-red-600">{fmt(b.outstanding)}</span>
                     ) : (
                       <span className="text-green-700">✅清</span>
                     )}
@@ -189,7 +176,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                         onClick={() => setPayingAll(true)}
                         className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white hover:bg-brand-dark"
                       >
-                        一次过付款
+                        付款
                       </button>
                     </span>
                   </td>
@@ -287,16 +274,6 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
       </table>
 
       {zoomUrl && <Lightbox src={zoomUrl} alt="交易单" onClose={() => setZoomUrl(null)} />}
-
-      {payingItem && (
-        <BreakdownPayModal
-          contractCode={contractCode}
-          item={payingItem.item}
-          outstanding={payingItem.outstanding}
-          onClose={() => setPayingItem(null)}
-          onPaid={load}
-        />
-      )}
 
       {payingAll && (
         <BreakdownPayAllModal
