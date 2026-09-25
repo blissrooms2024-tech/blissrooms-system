@@ -151,7 +151,7 @@ export default function UsersClient() {
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
                   <Th className="hidden sm:table-cell">ID</Th>
-                  <Th className="sticky left-0 z-[1] bg-gray-50">{t("姓名", "Name")}</Th>
+                  <Th className="sticky left-0 z-[1] max-w-[140px] bg-gray-50">{t("姓名", "Name")}</Th>
                   <Th>Email</Th>
                   <Th>{t("角色", "Role")}</Th>
                   <Th>{t("电话", "Phone")}</Th>
@@ -164,7 +164,12 @@ export default function UsersClient() {
                 {filtered!.map((u) => (
                   <tr key={u.userCode} className="border-b border-gray-100">
                     <Td className="hidden sm:table-cell">{u.userCode}</Td>
-                    <Td className="sticky left-0 z-[1] bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">{u.name}</Td>
+                    <Td
+                      title={u.name}
+                      className="sticky left-0 z-[1] max-w-[140px] truncate bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]"
+                    >
+                      {u.name}
+                    </Td>
                     <Td>{u.email}</Td>
                     <Td>{ROLE_LABELS[u.role] ?? u.role}</Td>
                     <Td>{u.phone || "-"}</Td>
@@ -252,6 +257,18 @@ export default function UsersClient() {
 function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <th className={`whitespace-nowrap px-2.5 py-2 font-semibold ${className}`}>{children}</th>;
 }
-function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`whitespace-nowrap px-2.5 py-2.5 ${className}`}>{children}</td>;
+function Td({
+  children,
+  className = "",
+  title,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  title?: string;
+}) {
+  return (
+    <td title={title} className={`whitespace-nowrap px-2.5 py-2.5 ${className}`}>
+      {children}
+    </td>
+  );
 }
