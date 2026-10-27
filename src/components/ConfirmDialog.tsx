@@ -1,13 +1,14 @@
 "use client";
 
 import { type ReactNode, type MouseEvent } from "react";
+import { useT } from "./LanguageProvider";
 
 export default function ConfirmDialog({
   open,
   title,
   message,
   danger,
-  confirmLabel = "确定",
+  confirmLabel,
   onConfirm,
   onCancel,
 }: {
@@ -19,6 +20,7 @@ export default function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   if (!open) return null;
 
   function onBackdropClick(e: MouseEvent<HTMLDivElement>) {
@@ -32,7 +34,7 @@ export default function ConfirmDialog({
     >
       <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
         <div className="mb-1.5 text-base font-semibold text-gray-900">
-          {title ?? (danger ? "⚠️ 危险操作" : "确认")}
+          {title ?? (danger ? t("⚠️ 危险操作", "⚠️ Dangerous Action") : t("确认", "Confirm"))}
         </div>
         <div className="mb-5 text-sm text-gray-600">{message}</div>
         <div className="flex justify-end gap-2">
@@ -40,7 +42,7 @@ export default function ConfirmDialog({
             onClick={onCancel}
             className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200"
           >
-            取消
+            {t("取消", "Cancel")}
           </button>
           <button
             onClick={onConfirm}
@@ -48,7 +50,7 @@ export default function ConfirmDialog({
               danger ? "bg-red-600 hover:bg-red-700" : "bg-brand hover:bg-brand-dark"
             }`}
           >
-            {confirmLabel}
+            {confirmLabel ?? t("确定", "Confirm")}
           </button>
         </div>
       </div>

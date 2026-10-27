@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ROLE_HOME } from "@/lib/roleHome";
 import { useToast } from "@/components/Toast";
+import { useLanguage } from "@/components/LanguageProvider";
+import LanguageToggle from "@/components/LanguageToggle";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 
 export default function LoginPage() {
   const router = useRouter();
   const toast = useToast();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +21,7 @@ export default function LoginPage() {
   async function doLogin(e: FormEvent) {
     e.preventDefault();
     if (!email || !password) {
-      toast.warning("请填 Email 和密码");
+      toast.warning(t("请填 Email 和密码", "Please enter your Email and password"));
       return;
     }
     setLoading(true);
@@ -30,14 +33,14 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        toast.danger(data.message || "登录失败");
+        toast.danger(data.message || t("登录失败", "Login failed"));
         setLoading(false);
         return;
       }
       router.push(ROLE_HOME[data.user.role] ?? "/login");
       router.refresh();
     } catch {
-      toast.danger("系统出错，请稍后再试");
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
       setLoading(false);
     }
   }
@@ -45,12 +48,13 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-50 to-violet-100 p-5">
       <RoomsBackdrop />
+      <LanguageToggle className="absolute right-4 top-4 z-10 !bg-white !text-gray-600 shadow-sm ring-1 ring-black/5 hover:!bg-gray-100" />
       <div className="relative w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-black/5">
         <div className="text-center text-2xl font-bold text-brand">🏠 Bliss Rooms</div>
-        <div className="mb-6 text-center text-sm text-gray-400">租房管理系统</div>
+        <div className="mb-6 text-center text-sm text-gray-400">{t("租房管理系统", "Rental Management System")}</div>
 
         <form onSubmit={doLogin}>
-          <label className="mb-1.5 mt-3 block text-sm text-gray-600">用户名 / Email</label>
+          <label className="mb-1.5 mt-3 block text-sm text-gray-600">{t("用户名 / Email", "Username / Email")}</label>
           <input
             type="text"
             autoComplete="username"
@@ -59,7 +63,7 @@ export default function LoginPage() {
             placeholder="you@bliss.com"
             className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none"
           />
-          <label className="mb-1.5 mt-3.5 block text-sm text-gray-600">密码 Password</label>
+          <label className="mb-1.5 mt-3.5 block text-sm text-gray-600">{t("密码", "Password")}</label>
           <input
             type="password"
             value={password}
@@ -72,7 +76,7 @@ export default function LoginPage() {
             disabled={loading}
             className="mt-5 w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-violet-300"
           >
-            {loading ? "登录中..." : "登录 Login"}
+            {loading ? t("登录中...", "Logging in...") : t("登录", "Login")}
           </button>
         </form>
 
@@ -81,13 +85,13 @@ export default function LoginPage() {
             onClick={() => setShowForgot(true)}
             className="text-sm text-brand hover:underline"
           >
-            忘记密码 Forgot password?
+            {t("忘记密码？", "Forgot password?")}
           </button>
         </div>
         <div className="mt-2 text-center text-sm text-gray-500">
-          我是 Agent，还没有账号？{" "}
+          {t("我是 Agent，还没有账号？", "I'm an Agent without an account yet?")}{" "}
           <Link href="/signup" className="text-brand hover:underline">
-            注册
+            {t("注册", "Sign Up")}
           </Link>
         </div>
       </div>

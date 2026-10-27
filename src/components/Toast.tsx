@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { useT } from "./LanguageProvider";
 
 type ToastType = "success" | "danger" | "warning" | "info";
 interface ToastItem {
@@ -29,6 +30,7 @@ let idSeq = 0;
 
 /** App-wide popup notifications (danger/warning/success/info) — mounted once in the root layout. */
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const tt = useT();
   const [items, setItems] = useState<ToastItem[]>([]);
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -80,7 +82,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <button
                 onClick={() => remove(t.id)}
                 className={`shrink-0 ${s.text} opacity-50 hover:opacity-100`}
-                aria-label="关闭"
+                aria-label={tt("关闭", "Close")}
               >
                 ✕
               </button>

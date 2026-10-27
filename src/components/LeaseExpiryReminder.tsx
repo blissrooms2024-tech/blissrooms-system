@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Modal from "./Modal";
 import { fmtDate } from "@/lib/format";
+import { useT } from "./LanguageProvider";
 
 const SESSION_KEY = "lease_expiry_reminder_shown";
 const REMINDER_DAYS = 60;
@@ -22,6 +23,7 @@ interface Card {
  * told the system what they want (renew or move out) — the contract puts that decision on
  * them, and Admin has no obligation to remind them, so the app does it instead. */
 export default function LeaseExpiryReminder() {
+  const t = useT();
   const [card, setCard] = useState<Card | null>(null);
 
   useEffect(() => {
@@ -64,25 +66,32 @@ export default function LeaseExpiryReminder() {
 
   return (
     <Modal onClose={() => setCard(null)}>
-      <h3 className="mb-2 text-lg font-bold text-brand">⏰ 租约快到期了</h3>
+      <h3 className="mb-2 text-lg font-bold text-brand">{t("⏰ 租约快到期了", "⏰ Your Lease Is Expiring Soon")}</h3>
       <p className="text-sm text-gray-600">
-        合同 <b>{card.contractCode}</b> 的到期日是 <b>{fmtDate(card.expiredDate)}</b>
+        {t("合同", "Contract")} <b>{card.contractCode}</b> {t("的到期日是", "expires on")}{" "}
+        <b>{fmtDate(card.expiredDate)}</b>
         {overdue ? (
           <span className="font-semibold text-red-600">
             {" "}
-            (已经过期 {Math.abs(card.daysToExpiry!)} 天)
+            ({t(`已经过期 ${Math.abs(card.daysToExpiry!)} 天`, `${Math.abs(card.daysToExpiry!)} days overdue`)})
           </span>
         ) : (
-          <span className="font-semibold text-amber-600"> (还剩 {card.daysToExpiry} 天)</span>
+          <span className="font-semibold text-amber-600">
+            {" "}
+            ({t(`还剩 ${card.daysToExpiry} 天`, `${card.daysToExpiry} days left`)})
+          </span>
         )}
-        。要续约还是搬出，请尽快决定，可以在「我的租约」页面申请。
+        {t(
+          "。要续约还是搬出，请尽快决定，可以在「我的租约」页面申请。",
+          ". Please decide soon whether to renew or move out — you can apply on the \"My Tenancy\" page."
+        )}
       </p>
       <Link
         href="/my-tenancy"
         onClick={() => setCard(null)}
         className="btn-primary mt-3.5 inline-block text-sm"
       >
-        去处理
+        {t("去处理", "Go Handle It")}
       </Link>
     </Modal>
   );

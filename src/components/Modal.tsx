@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, MouseEvent } from "react";
+import { useT } from "./LanguageProvider";
 
 export default function Modal({
   children,
@@ -11,6 +12,8 @@ export default function Modal({
   onClose: () => void;
   wide?: boolean;
 }) {
+  const t = useT();
+
   function onBackdropClick(e: MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose();
   }
@@ -31,7 +34,7 @@ export default function Modal({
             onClick={onClose}
             className="rounded-lg bg-brand-light px-4 py-2 text-sm font-semibold text-brand hover:bg-violet-100"
           >
-            关闭
+            {t("关闭", "Close")}
           </button>
         </div>
       </div>
