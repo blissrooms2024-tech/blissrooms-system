@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
@@ -88,6 +89,7 @@ export default function PaymentModal({
   const [editDate, setEditDate] = useState("");
   const [editMethod, setEditMethod] = useState("Bank Transfer");
   const [editSaving, setEditSaving] = useState(false);
+  const [deletingBill, setDeletingBill] = useState<PaymentRow | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -243,11 +245,12 @@ export default function PaymentModal({
     onChanged();
   }
 
-  async function waiveLateFee(id: string) {
+  async function deleteBill(id: string) {
     const res = await fetch(`/api/payments/${id}`, { method: "DELETE" });
     const data = await res.json();
     if (data.success) toast.success(data.message);
     else toast.danger(data.message);
+    setDeletingBill(null);
     load();
     onChanged();
   }
@@ -605,16 +608,16 @@ export default function PaymentModal({
                           )}
                         </div>
                       )}
-                      {role === "ADMIN" && b.status !== "PENDING_REVIEW" && b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED") && (
+                      {role === "ADMIN" && (b.status === "PENDING" || b.status === "REJECTED") && (
                         <button
-                          onClick={() => waiveLateFee(b.id)}
+                          onClick={() => setDeletingBill(b)}
                           className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
                         >
-                          🗑️ {t("撤销罚款", "Waive Penalty")}
+                          🗑️ {b.type === "LATE_FEE" ? t("撤销罚款", "Waive Penalty") : t("删除账单", "Delete Bill")}
                         </button>
                       )}
                       {b.status !== "PENDING_REVIEW" &&
-                        !(role === "ADMIN" && b.type === "LATE_FEE" && (b.status === "PENDING" || b.status === "REJECTED")) && (
+                        !(role === "ADMIN" && (b.status === "PENDING" || b.status === "REJECTED")) && (
                         <span className="text-xs text-gray-400">{t("等租客上传", "Waiting for tenant to upload")}</span>
                       )}
                     </td>
@@ -714,6 +717,19 @@ export default function PaymentModal({
       </table>
 
       {zoomUrl && <Lightbox src={zoomUrl} alt={t("交易单", "Transaction Slip")} onClose={() => setZoomUrl(null)} />}
+
+      <ConfirmDialog
+        open={!!deletingBill}
+        danger
+        title={`⚠️ ${deletingBill?.type === "LATE_FEE" ? t("撤销罚款", "Waive Penalty") : t("删除账单", "Delete Bill")}`}
+        message={t(
+          `确定要删除这笔 ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (RM${deletingBill?.amountDue}) 账单吗？此操作不能撤销。`,
+          `Are you sure you want to delete this ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (RM${deletingBill?.amountDue}) bill? This action cannot be undone.`
+        )}
+        confirmLabel={t("确定删除", "Confirm Delete")}
+        onConfirm={() => deletingBill && deleteBill(deletingBill.id)}
+        onCancel={() => setDeletingBill(null)}
+      />
     </Modal>
   );
 }
