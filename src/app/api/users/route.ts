@@ -13,7 +13,19 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "只有 Admin 可看用户" }, { status: 403 });
   }
 
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
+  const [users, rooms] = await Promise.all([
+    prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.room.findMany({ where: { currentTenantId: { not: null } }, select: { roomCode: true, currentTenantId: true } }),
+  ]);
+
+  const roomCodesByTenant = new Map<string, string[]>();
+  for (const r of rooms) {
+    if (!r.currentTenantId) continue;
+    const list = roomCodesByTenant.get(r.currentTenantId) ?? [];
+    list.push(r.roomCode);
+    roomCodesByTenant.set(r.currentTenantId, list);
+  }
+
   return NextResponse.json({
     success: true,
     users: users.map((u) => ({
@@ -24,6 +36,7 @@ export async function GET() {
       phone: u.phone,
       status: u.status,
       verified: u.verified,
+      roomCode: roomCodesByTenant.get(u.id)?.join(", ") || null,
     })),
   });
 }

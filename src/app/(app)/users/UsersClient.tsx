@@ -16,6 +16,7 @@ interface UserRow {
   phone: string | null;
   status: string;
   verified: boolean;
+  roomCode: string | null;
 }
 
 export default function UsersClient() {
@@ -116,7 +117,8 @@ export default function UsersClient() {
             u.name.toLowerCase().includes(keyword) ||
             u.email.toLowerCase().includes(keyword) ||
             u.userCode.toLowerCase().includes(keyword) ||
-            (u.phone ?? "").toLowerCase().includes(keyword)
+            (u.phone ?? "").toLowerCase().includes(keyword) ||
+            (u.roomCode ?? "").toLowerCase().includes(keyword)
         )
       : users;
 
@@ -131,7 +133,7 @@ export default function UsersClient() {
           <div className="flex items-center gap-2">
             <input
               className="input w-[220px] text-sm"
-              placeholder={t("搜索姓名 / Email / 电话 / ID...", "Search name / Email / phone / ID...")}
+              placeholder={t("搜索姓名 / Email / 电话 / 房间号 / ID...", "Search name / Email / phone / Room / ID...")}
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -152,9 +154,8 @@ export default function UsersClient() {
                 <tr className="bg-gray-50 text-left text-gray-600">
                   <Th className="hidden sm:table-cell">ID</Th>
                   <Th className="sticky left-0 z-[1] max-w-[140px] bg-gray-50">{t("姓名", "Name")}</Th>
-                  <Th>Email</Th>
                   <Th>{t("角色", "Role")}</Th>
-                  <Th>{t("电话", "Phone")}</Th>
+                  <Th>{t("房间号", "Room Code")}</Th>
                   <Th>{t("状态", "Status")}</Th>
                   <Th>{t("验证", "Verified")}</Th>
                   <Th>{t("操作", "Actions")}</Th>
@@ -170,9 +171,16 @@ export default function UsersClient() {
                     >
                       {u.name}
                     </Td>
-                    <Td>{u.email}</Td>
                     <Td>{ROLE_LABELS[u.role] ?? u.role}</Td>
-                    <Td>{u.phone || "-"}</Td>
+                    <Td>
+                      {u.roomCode ? (
+                        <Link href={`/rooms/${u.roomCode.split(", ")[0]}`} className="text-brand hover:underline">
+                          {u.roomCode}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                    </Td>
                     <Td>
                       {u.status === "PENDING" ? (
                         <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
