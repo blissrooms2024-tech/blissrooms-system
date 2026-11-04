@@ -24,7 +24,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, message: "无效地址" }, { status: 400 });
   }
 
-  const result = await get(u, { access: "private", token: process.env.BLOB_READ_WRITE_TOKEN });
+  // useCache: false — a blob just uploaded moments ago can otherwise read back as
+  // "not found" from a stale CDN cache entry (e.g. a tenant uploading a slip, then Admin
+  // opening it within the same minute); this is a low-traffic private-file route, so the
+  // extra origin-fetch latency is worth never showing a broken image for a real upload.
+  const result = await get(u, { access: "private", useCache: false, token: process.env.BLOB_READ_WRITE_TOKEN });
   if (!result || result.statusCode !== 200) {
     return NextResponse.json({ success: false, message: "文件不存在" }, { status: 404 });
   }

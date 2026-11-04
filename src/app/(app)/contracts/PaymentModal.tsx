@@ -90,6 +90,10 @@ export default function PaymentModal({
   const [editMethod, setEditMethod] = useState("Bank Transfer");
   const [editSaving, setEditSaving] = useState(false);
   const [deletingBill, setDeletingBill] = useState<PaymentRow | null>(null);
+  const [editingPeriodId, setEditingPeriodId] = useState<string | null>(null);
+  const [editPeriodMonth, setEditPeriodMonth] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editPeriodSaving, setEditPeriodSaving] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -285,6 +289,39 @@ export default function PaymentModal({
       toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  function startEditPeriod(p: PaymentRow) {
+    setEditingPeriodId(p.id);
+    setEditPeriodMonth(p.periodMonth || "");
+    setEditDueDate(p.dueDate ? p.dueDate.slice(0, 10) : "");
+  }
+
+  async function saveEditPeriod(id: string) {
+    if (!editDueDate) {
+      toast.warning(t("请选到期日", "Please select a due date"));
+      return;
+    }
+    setEditPeriodSaving(true);
+    try {
+      const res = await fetch(`/api/payments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "edit-period", periodMonth: editPeriodMonth, dueDate: editDueDate }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setEditingPeriodId(null);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setEditPeriodSaving(false);
     }
   }
 
@@ -551,6 +588,40 @@ export default function PaymentModal({
                       )}
                     </td>
                     <td className="px-2.5 py-1.5">
+                      {role === "ADMIN" && editingPeriodId === b.id ? (
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs text-gray-500">{t("月份 (选填)", "Month (optional)")}</label>
+                          <input
+                            type="month"
+                            className="input text-xs"
+                            value={editPeriodMonth}
+                            onChange={(e) => setEditPeriodMonth(e.target.value)}
+                          />
+                          <label className="text-xs text-gray-500">{t("到期日", "Due Date")}</label>
+                          <input
+                            type="date"
+                            className="input text-xs"
+                            value={editDueDate}
+                            onChange={(e) => setEditDueDate(e.target.value)}
+                          />
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => saveEditPeriod(b.id)}
+                              disabled={editPeriodSaving}
+                              className="rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              {t("保存", "Save")}
+                            </button>
+                            <button
+                              onClick={() => setEditingPeriodId(null)}
+                              className="rounded-md bg-gray-100 px-2.5 py-1 text-xs text-gray-600"
+                            >
+                              {t("取消", "Cancel")}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
                       {b.status === "PENDING_REVIEW" && (
                         <div className="flex flex-col items-start gap-1.5">
                           {b.receiptLink && (
@@ -560,6 +631,11 @@ export default function PaymentModal({
                               className="text-xs font-semibold text-brand underline"
                             >
                               🧾 {t("查看交易单", "View Transaction Slip")}
+                            </button>
+                          )}
+                          {role === "ADMIN" && (
+                            <button type="button" onClick={() => startEditPeriod(b)} className="text-xs font-semibold text-brand underline">
+                              ✏️ {t("改月份/到期日", "Edit Month / Due Date")}
                             </button>
                           )}
                           {role !== "ADMIN" ? (
@@ -609,16 +685,27 @@ export default function PaymentModal({
                         </div>
                       )}
                       {role === "ADMIN" && (b.status === "PENDING" || b.status === "REJECTED") && (
-                        <button
-                          onClick={() => setDeletingBill(b)}
-                          className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
-                        >
-                          🗑️ {b.type === "LATE_FEE" ? t("撤销罚款", "Waive Penalty") : t("删除账单", "Delete Bill")}
-                        </button>
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => startEditPeriod(b)}
+                            className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                          >
+                            ✏️ {t("改月份", "Edit Month")}
+                          </button>
+                          <button
+                            onClick={() => setDeletingBill(b)}
+                            className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                          >
+                            🗑️ {b.type === "LATE_FEE" ? t("撤销罚款", "Waive Penalty") : t("删除账单", "Delete Bill")}
+                          </button>
+                        </div>
                       )}
                       {b.status !== "PENDING_REVIEW" &&
                         !(role === "ADMIN" && (b.status === "PENDING" || b.status === "REJECTED")) && (
                         <span className="text-xs text-gray-400">{t("等租客上传", "Waiting for tenant to upload")}</span>
+                      )}
+                        </>
                       )}
                     </td>
                   </tr>
