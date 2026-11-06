@@ -51,12 +51,17 @@ export async function GET() {
       const outstanding = Math.max(Number(c.totalOutstanding) - paid, 0);
       const expiringSoon =
         c.status === "ACTIVE" && !!c.expiredDate && c.expiredDate >= startOfToday && c.expiredDate <= expiringSoonCutoff;
+      // Still marked ACTIVE but already past its own expiry date — nothing in this codebase
+      // auto-flips status to EXPIRED, so this is the only reliable way to spot a lease that's
+      // run out but hasn't been formally renewed/terminated/moved out yet.
+      const expired = c.status === "ACTIVE" && !!c.expiredDate && c.expiredDate < startOfToday;
       return serialize({
         ...c,
         _paid: paid,
         _outstanding: outstanding,
         _rentEscalated: escalatedSet.has(c.id),
         _expiringSoon: expiringSoon,
+        _expired: expired,
       });
     });
 

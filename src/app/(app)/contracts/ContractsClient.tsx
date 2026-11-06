@@ -14,6 +14,7 @@ interface Contract extends ActionableContract {
   _paid: number;
   _outstanding: number;
   _expiringSoon?: boolean;
+  _expired?: boolean;
   room?: { roomCode: string };
 }
 
@@ -60,6 +61,7 @@ export default function ContractsClient({ role }: { role: string }) {
       ?.filter((c) => {
         if (quickFilter === "OUTSTANDING" && !(c._outstanding > 0)) return false;
         if (quickFilter === "EXPIRING_SOON" && !c._expiringSoon) return false;
+        if (quickFilter === "EXPIRED" && !c._expired) return false;
         if (quickFilter === "RENT_ESCALATED" && !c._rentEscalated) return false;
         if (quickFilter === "LEGACY_IMPORT" && !c.remarks?.includes("旧合同导入")) return false;
         if (!q) return true;
@@ -108,6 +110,7 @@ export default function ContractsClient({ role }: { role: string }) {
             <option value="">{t("全部合同", "All Contracts")}</option>
             <option value="OUTSTANDING">{t("有欠款", "Has Outstanding")}</option>
             <option value="EXPIRING_SOON">{t("快到期", "Expiring Soon")}</option>
+            <option value="EXPIRED">{t("已过期", "Expired")}</option>
             <option value="RENT_ESCALATED">{t("租金逾期超10天", "Rent Overdue 10+ Days")}</option>
             <option value="LEGACY_IMPORT">{t("旧合同导入", "Legacy Import")}</option>
           </select>
@@ -172,9 +175,15 @@ export default function ContractsClient({ role }: { role: string }) {
                       )}
                     </Td>
                     <Td>
-                      <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
-                        {contractStatusLabel(c.status, locale)}
-                      </span>
+                      {c._expired ? (
+                        <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600">
+                          ⛔ {t("已过期", "Expired")}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                          {contractStatusLabel(c.status, locale)}
+                        </span>
+                      )}
                       {c._rentEscalated && (
                         <div className="mt-1 whitespace-normal rounded bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600">
                           ⚠️ {t("租金逾期超10天", "Rent overdue 10+ days")}
