@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { contractStatusLabel } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 import ContractActions, { type ActionableContract } from "./ContractActions";
 
@@ -16,9 +16,6 @@ interface Contract extends ActionableContract {
   room?: { roomCode: string };
 }
 
-function fmt(v: number) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 
 export default function ContractsClient({ role }: { role: string }) {
   const { locale, t } = useLanguage();

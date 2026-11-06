@@ -7,7 +7,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
 
 interface BreakdownRow {
@@ -32,9 +32,6 @@ interface PaymentRow {
   customLabel: string | null;
 }
 
-function fmt(v: number) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

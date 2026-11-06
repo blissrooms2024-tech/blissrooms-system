@@ -1,7 +1,7 @@
 "use client";
 
 import { COMPANY, CONTRACT_IMAGES } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney } from "@/lib/format";
 import { amountInWordsRM } from "@/lib/numberToWords";
 
 export interface PayslipLine {
@@ -123,13 +123,15 @@ export default function PayslipDocument({ p }: { p: PayslipData }) {
             p.earnings.map((l, i) => (
               <tr key={i}>
                 <td>{l.label}</td>
-                <td className="num">{l.amount.toLocaleString()}</td>
+                <td className="num">
+                  {l.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
               </tr>
             ))
           )}
           <tr className="subRow">
             <td>Gross Earnings</td>
-            <td className="num">RM{grossEarnings.toLocaleString()}</td>
+            <td className="num">{fmtMoney(grossEarnings)}</td>
           </tr>
         </tbody>
       </table>
@@ -152,20 +154,22 @@ export default function PayslipDocument({ p }: { p: PayslipData }) {
             p.deductions.map((l, i) => (
               <tr key={i}>
                 <td>{l.label}</td>
-                <td className="num">{l.amount.toLocaleString()}</td>
+                <td className="num">
+                  {l.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
               </tr>
             ))
           )}
           <tr className="subRow">
             <td>Total Deductions</td>
-            <td className="num">RM{totalDeductions.toLocaleString()}</td>
+            <td className="num">{fmtMoney(totalDeductions)}</td>
           </tr>
         </tbody>
       </table>
 
       <div className="netPay">
         <span className="lbl">NET PAY</span>
-        <span className="amt">RM{netPay.toLocaleString()}</span>
+        <span className="amt">{fmtMoney(netPay)}</span>
       </div>
       <div className="words">{amountInWordsRM(netPay)}</div>
 

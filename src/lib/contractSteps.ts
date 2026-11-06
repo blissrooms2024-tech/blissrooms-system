@@ -1,4 +1,5 @@
 import type { TimelineStep } from "@/components/StepTimeline";
+import { fmtMoney } from "@/lib/format";
 
 export interface ContractStepInput {
   status: string;
@@ -21,7 +22,7 @@ interface StepDef extends TimelineStep {
 }
 
 function money(v: number) {
-  return `RM${v.toLocaleString()}`;
+  return fmtMoney(v);
 }
 
 type T = (zh: string, en: string) => string;

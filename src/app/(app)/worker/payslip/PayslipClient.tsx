@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { fmtMoney as fmt } from "@/lib/format";
 
 interface Job {
   requestCode: string;
@@ -8,10 +9,6 @@ interface Job {
   title: string;
   cost: number | null;
   costPaidAt: string | null;
-}
-
-function fmt(v: number | null) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
 }
 
 export default function PayslipClient() {

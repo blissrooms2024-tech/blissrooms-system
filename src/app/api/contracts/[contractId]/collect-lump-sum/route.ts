@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
 import { newId } from "@/lib/id";
+import { fmtMoney } from "@/lib/format";
 
 const BREAKDOWN_ITEMS = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "RENTAL"] as const;
 const CARPARK_ONLY_ITEMS = ["ACCESS_CARD", "CARPARK"] as const;
@@ -69,7 +70,7 @@ export async function POST(
   const totalOutstanding = eligible.reduce((s, r) => s + r.outstanding, 0);
   if (amount > totalOutstanding) {
     return NextResponse.json(
-      { success: false, message: `金额超过还欠总额 (RM${totalOutstanding.toLocaleString()})，请填不超过这个数` },
+      { success: false, message: `金额超过还欠总额 (${fmtMoney(totalOutstanding)})，请填不超过这个数` },
       { status: 400 }
     );
   }

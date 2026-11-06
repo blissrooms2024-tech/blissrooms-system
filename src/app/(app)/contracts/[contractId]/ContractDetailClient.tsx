@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { contractStatusLabel } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 import ContractActions, { type ActionableContract } from "../ContractActions";
 import StepTimeline from "@/components/StepTimeline";
@@ -50,9 +50,6 @@ interface ContractDetail extends ActionableContract {
   _isLegacy: boolean;
 }
 
-function fmt(v: number | null) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 export default function ContractDetailClient({ contractId, role }: { contractId: string; role: string }) {
   const { locale, t } = useLanguage();
   const [contract, setContract] = useState<ContractDetail | null>(null);

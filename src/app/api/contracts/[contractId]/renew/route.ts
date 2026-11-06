@@ -90,6 +90,6 @@ export async function POST(
 
   return NextResponse.json({
     success: true,
-    message: `✅ 已续约到 ${newExpiredDate.toLocaleDateString("en-GB")}, 并开了 RM${FEES.RENEWAL} 续约行政费账单`,
+    message: `✅ 已续约到 ${newExpiredDate.toLocaleDateString("en-GB")}, 并开了 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单`,
   });
 }

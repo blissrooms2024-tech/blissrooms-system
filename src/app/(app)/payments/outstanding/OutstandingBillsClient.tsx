@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { PAYMENT_TYPE_LABELS, paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -31,9 +31,6 @@ const STATUS_BADGE: Record<string, { zh: string; en: string; cls: string }> = {
   REJECTED: { zh: "已拒绝, 待重传", en: "Rejected, Re-upload Needed", cls: "bg-red-50 text-red-700" },
 };
 
-function fmt(v: number) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 
 export default function OutstandingBillsClient() {
   const { locale, t } = useLanguage();
@@ -277,12 +274,12 @@ export default function OutstandingBillsClient() {
         danger
         title={`⚠️ ${t("删除账单", "Delete Bill")}`}
         message={t(
-          `确定要删除 ${deletingBill?.contractCode} 的这笔 ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (RM${deletingBill?.amountDue}) 账单吗？${
+          `确定要删除 ${deletingBill?.contractCode} 的这笔 ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (${deletingBill ? fmt(deletingBill.amountDue) : ""}) 账单吗？${
             deletingBill?.status === "PENDING_REVIEW"
               ? "租客已经上传的交易单也会一起消失，无法恢复。"
               : "此操作不能撤销。"
           }`,
-          `Are you sure you want to delete ${deletingBill?.contractCode}'s ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (RM${deletingBill?.amountDue}) bill? ${
+          `Are you sure you want to delete ${deletingBill?.contractCode}'s ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (${deletingBill ? fmt(deletingBill.amountDue) : ""}) bill? ${
             deletingBill?.status === "PENDING_REVIEW"
               ? "The tenant's already-uploaded transaction slip will be discarded too, with no way to recover it."
               : "This action cannot be undone."

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { fmtMoney } from "@/lib/format";
 import DashboardClient from "./DashboardClient";
 
 export default async function DashboardPage() {
@@ -32,7 +33,7 @@ export default async function DashboardPage() {
   }
 
   function fmtRM(v: unknown) {
-    return `RM${Number(v ?? 0).toLocaleString()}`;
+    return fmtMoney(Number(v ?? 0));
   }
 
   const roomBoxes = buildBoxes(roomCounts);

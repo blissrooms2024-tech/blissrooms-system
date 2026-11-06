@@ -5,6 +5,7 @@ import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
+import { fmtMoney } from "@/lib/format";
 
 interface Item {
   item: string;
@@ -55,7 +56,7 @@ export default function BreakdownPayAllModal({
     }
     if (amt > total) {
       toast.warning(
-        t(`金额不能超过还欠总额 RM${total.toLocaleString()}`, `Amount can't exceed the total outstanding of RM${total.toLocaleString()}`)
+        t(`金额不能超过还欠总额 ${fmtMoney(total)}`, `Amount can't exceed the total outstanding of ${fmtMoney(total)}`)
       );
       return;
     }
@@ -107,12 +108,12 @@ export default function BreakdownPayAllModal({
           {items.map((it) => (
             <div key={it.item} className="flex items-center justify-between">
               <span className="text-gray-600">{paymentTypeLabelLocale(it.item, null, locale)}</span>
-              <span className="font-semibold">RM{it.outstanding.toLocaleString()}</span>
+              <span className="font-semibold">{fmtMoney(it.outstanding)}</span>
             </div>
           ))}
           <div className="mt-1.5 flex items-center justify-between border-t border-gray-200 pt-1.5">
             <b>{t("还欠总额", "Total Outstanding")}</b>
-            <b className="text-brand">RM{total.toLocaleString()}</b>
+            <b className="text-brand">{fmtMoney(total)}</b>
           </div>
         </div>
       ) : (

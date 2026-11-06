@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import { MAINTENANCE_STATUS_LABELS } from "@/lib/config";
+import { fmtMoney as fmt } from "@/lib/format";
 
 interface Job {
   requestCode: string;
@@ -19,9 +20,6 @@ interface Job {
   costPaidAt: string | null;
 }
 
-function fmt(v: number | null) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

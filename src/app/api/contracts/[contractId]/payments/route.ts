@@ -135,5 +135,5 @@ export async function POST(
   });
 
   const label = d.type === "OTHER" ? d.customLabel : d.type;
-  return NextResponse.json({ success: true, message: `✅ 已记一笔: ${label} RM${d.amountPaid}` });
+  return NextResponse.json({ success: true, message: `✅ 已记一笔: ${label} RM${d.amountPaid.toFixed(2)}` });
 }

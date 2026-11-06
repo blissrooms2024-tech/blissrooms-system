@@ -109,8 +109,8 @@ export default function RenewalClient() {
         </div>
         <div className="mb-3.5 rounded-lg bg-brand-light/40 p-3.5 text-sm text-gray-600">
           {t(
-            `这里列出快到期 (提前 2 个月内) 或已经到期的生效中合同。租客要续约的话请他们直接联系 Admin，确认后在这里帮他们改新的到期日，系统会自动开一笔 RM${FEES.RENEWAL} 续约行政费账单给租客上传交易单。`,
-            `This lists active contracts that are expiring soon (within 2 months) or have already expired. If a tenant wants to renew, have them contact Admin directly — once confirmed, update their new expiry date here, and the system will automatically create a RM${FEES.RENEWAL} renewal admin fee bill for the tenant to upload a transaction slip against.`
+            `这里列出快到期 (提前 2 个月内) 或已经到期的生效中合同。租客要续约的话请他们直接联系 Admin，确认后在这里帮他们改新的到期日，系统会自动开一笔 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单给租客上传交易单。`,
+            `This lists active contracts that are expiring soon (within 2 months) or have already expired. If a tenant wants to renew, have them contact Admin directly — once confirmed, update their new expiry date here, and the system will automatically create a RM${FEES.RENEWAL.toFixed(2)} renewal admin fee bill for the tenant to upload a transaction slip against.`
           )}
         </div>
 
@@ -180,7 +180,7 @@ export default function RenewalClient() {
                     <button onClick={() => setConfirming(true)} disabled={saving} className="btn-primary text-sm">
                       {saving
                         ? t("处理中...", "Processing...")
-                        : t(`确认续约 (开 RM${FEES.RENEWAL} 行政费)`, `Confirm Renewal (creates a RM${FEES.RENEWAL} admin fee bill)`)}
+                        : t(`确认续约 (开 RM${FEES.RENEWAL.toFixed(2)} 行政费)`, `Confirm Renewal (creates a RM${FEES.RENEWAL.toFixed(2)} admin fee bill)`)}
                     </button>
                     <button onClick={() => setOpenId(null)} className="btn-soft text-sm">
                       {t("取消", "Cancel")}
@@ -196,8 +196,8 @@ export default function RenewalClient() {
       <ConfirmDialog
         open={confirming}
         message={t(
-          `确定把 ${openId} 续约到 ${newDate}？会自动开一笔 RM${FEES.RENEWAL} 续约行政费账单给租客。`,
-          `Renew ${openId} to ${newDate}? This will automatically create a RM${FEES.RENEWAL} renewal admin fee bill for the tenant.`
+          `确定把 ${openId} 续约到 ${newDate}？会自动开一笔 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单给租客。`,
+          `Renew ${openId} to ${newDate}? This will automatically create a RM${FEES.RENEWAL.toFixed(2)} renewal admin fee bill for the tenant.`
         )}
         confirmLabel={t("确定续约", "Confirm Renewal")}
         onConfirm={confirmRenew}

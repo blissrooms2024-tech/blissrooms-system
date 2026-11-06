@@ -1,7 +1,7 @@
 "use client";
 
 import { COMPANY, CONTRACT_IMAGES, paymentTypeLabelEn } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney } from "@/lib/format";
 
 export interface ReceiptData {
   paymentCode: string;
@@ -126,7 +126,9 @@ export default function ReceiptDocument({ r }: { r: ReceiptData }) {
               {r.periodMonth ? ` (${r.periodMonth})` : ""}
             </td>
             <td>{r.method || "-"}</td>
-            <td className="num">{Number(r.amountPaid).toLocaleString()}</td>
+            <td className="num">
+              {Number(r.amountPaid).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -134,11 +136,11 @@ export default function ReceiptDocument({ r }: { r: ReceiptData }) {
       <div className="totals">
         <div className="row">
           <span>Subtotal</span>
-          <span>RM{Number(r.amountPaid).toLocaleString()}</span>
+          <span>{fmtMoney(r.amountPaid)}</span>
         </div>
         <div className="totalRow">
           <span>Total Paid</span>
-          <span>RM{Number(r.amountPaid).toLocaleString()}</span>
+          <span>{fmtMoney(r.amountPaid)}</span>
         </div>
       </div>
 

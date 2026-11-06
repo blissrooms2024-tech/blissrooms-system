@@ -1,6 +1,6 @@
 export function fmtMoney(v: number | null | undefined): string {
   if (v === null || v === undefined) return "-";
-  return `RM${Number(v).toLocaleString()}`;
+  return `RM${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // System-wide date display convention: 日/月/年 (DD/MM/YYYY). `v` is an ISO

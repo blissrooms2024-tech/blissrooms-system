@@ -83,5 +83,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, message: `✅ 已给 ${created} 位租客开账单，每人 RM${d.amount}` });
+  return NextResponse.json({ success: true, message: `✅ 已给 ${created} 位租客开账单，每人 RM${d.amount.toFixed(2)}` });
 }

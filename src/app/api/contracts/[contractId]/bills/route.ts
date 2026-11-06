@@ -99,5 +99,5 @@ export async function POST(
   }
 
   const label = d.type === "OTHER" ? d.customLabel : d.type;
-  return NextResponse.json({ success: true, message: `✅ 账单已开: ${label} RM${d.amountDue}` });
+  return NextResponse.json({ success: true, message: `✅ 账单已开: ${label} RM${d.amountDue.toFixed(2)}` });
 }

@@ -6,7 +6,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { COMPANY } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 
 interface AcPayment {
   id: string;
@@ -20,9 +20,6 @@ interface AcPayment {
   reviewNote: string | null;
 }
 
-function fmt(v: number) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 function monthOf(v: string | null, t: (zh: string, en: string) => string) {
   return v ? v.slice(0, 7) : t("未知月份", "Unknown month");
 }

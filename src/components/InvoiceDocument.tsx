@@ -1,7 +1,7 @@
 "use client";
 
 import { COMPANY, CONTRACT_IMAGES, paymentTypeLabelEn } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney } from "@/lib/format";
 
 export interface InvoiceData {
   paymentCode: string;
@@ -125,7 +125,9 @@ export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
               {inv.type === "CARPARK" && inv.carparkLotNumber ? ` (Lot ${inv.carparkLotNumber})` : ""}
               {inv.periodMonth ? ` (${inv.periodMonth})` : ""}
             </td>
-            <td className="num">{Number(inv.amountDue).toLocaleString()}</td>
+            <td className="num">
+              {Number(inv.amountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -133,11 +135,11 @@ export default function InvoiceDocument({ inv }: { inv: InvoiceData }) {
       <div className="totals">
         <div className="row">
           <span>Subtotal</span>
-          <span>RM{Number(inv.amountDue).toLocaleString()}</span>
+          <span>{fmtMoney(inv.amountDue)}</span>
         </div>
         <div className="totalRow">
           <span>Total Due</span>
-          <span>RM{outstanding.toLocaleString()}</span>
+          <span>{fmtMoney(outstanding)}</span>
         </div>
       </div>
 

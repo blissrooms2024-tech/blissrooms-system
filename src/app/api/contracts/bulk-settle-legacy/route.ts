@@ -71,7 +71,7 @@ export async function POST() {
       paymentsCreated++;
     }
     contractsFixed++;
-    details.push(`${c.contractCode} (${c.tenantName}): ${toSettle.map((it) => `${it.type} RM${it.amount}`).join(", ")}`);
+    details.push(`${c.contractCode} (${c.tenantName}): ${toSettle.map((it) => `${it.type} RM${it.amount.toFixed(2)}`).join(", ")}`);
   }
 
   return NextResponse.json({

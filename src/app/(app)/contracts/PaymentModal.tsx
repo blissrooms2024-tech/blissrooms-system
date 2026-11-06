@@ -8,7 +8,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 
 interface Breakdown {
   item: string;
@@ -32,9 +32,6 @@ interface PaymentRow {
   customLabel: string | null;
 }
 
-function fmt(v: number) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -816,12 +813,12 @@ export default function PaymentModal({
         danger
         title={`⚠️ ${deletingBill?.type === "LATE_FEE" ? t("撤销罚款", "Waive Penalty") : t("删除账单", "Delete Bill")}`}
         message={t(
-          `确定要删除这笔 ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (RM${deletingBill?.amountDue}) 账单吗？${
+          `确定要删除这笔 ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (${deletingBill ? fmt(deletingBill.amountDue) : ""}) 账单吗？${
             deletingBill?.status === "PENDING_REVIEW"
               ? "租客已经上传的交易单也会一起消失，无法恢复。"
               : "此操作不能撤销。"
           }`,
-          `Are you sure you want to delete this ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (RM${deletingBill?.amountDue}) bill? ${
+          `Are you sure you want to delete this ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (${deletingBill ? fmt(deletingBill.amountDue) : ""}) bill? ${
             deletingBill?.status === "PENDING_REVIEW"
               ? "The tenant's already-uploaded transaction slip will be discarded too, with no way to recover it."
               : "This action cannot be undone."

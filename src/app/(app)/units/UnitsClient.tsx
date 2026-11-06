@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useT } from "@/components/LanguageProvider";
+import { fmtMoney } from "@/lib/format";
 import PropertyEditModal from "./PropertyEditModal";
 
 interface PropertyRow {
@@ -136,7 +137,7 @@ export default function UnitsClient({ role }: { role: string }) {
                   )}
                   {p.ownerRentalAmount !== null && (
                     <span className="text-gray-500">
-                      RM{p.ownerRentalAmount} {t("租金(付Owner)", "Rent (to Owner)")}
+                      {fmtMoney(p.ownerRentalAmount)} {t("租金(付Owner)", "Rent (to Owner)")}
                     </span>
                   )}
                 </div>
@@ -214,7 +215,7 @@ export default function UnitsClient({ role }: { role: string }) {
                       {p.managementFeeRate
                         ? `${(p.managementFeeRate * 100).toFixed(1)}% ${t("管理费", "Management Fee")}`
                         : p.ownerRentalAmount !== null
-                          ? `RM${p.ownerRentalAmount} ${t("租金(付Owner)", "Rent (to Owner)")}`
+                          ? `${fmtMoney(p.ownerRentalAmount)} ${t("租金(付Owner)", "Rent (to Owner)")}`
                           : "-"}
                     </Td>
                     <Td>

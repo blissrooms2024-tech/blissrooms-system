@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ROOM_STATUS_BADGE, roomStatusLabel } from "@/lib/config";
+import { fmtMoney } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 
 interface RoomRow {
@@ -68,14 +69,14 @@ export default function UnitDetailClient({ propertyCode }: { propertyCode: strin
         </Info>
         <Info label={property.ownerRentalAmount !== null ? t("付 Owner 租金", "Rent to Owner") : t("管理费", "Management Fee")}>
           {property.ownerRentalAmount !== null
-            ? `RM${property.ownerRentalAmount}`
+            ? fmtMoney(property.ownerRentalAmount)
             : property.managementFeeRate
               ? `${(property.managementFeeRate * 100).toFixed(1)}%`
               : "-"}
         </Info>
         {property.ownerRentalAmount !== null && (
           <Info label={t("付 Owner 押金 (可退还)", "Deposit to Owner (Refundable)")}>
-            {property.ownerDeposit !== null ? `RM${property.ownerDeposit}` : "-"}
+            {fmtMoney(property.ownerDeposit)}
           </Info>
         )}
         <Info label={t("状态", "Status")}>{property.status || "-"}</Info>

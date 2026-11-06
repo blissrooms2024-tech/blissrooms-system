@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 
 interface PendingPayment {
@@ -25,9 +25,6 @@ interface PendingPayment {
   customLabel: string | null;
 }
 
-function fmt(v: number) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
   const toast = useToast();
   const { locale, t } = useLanguage();

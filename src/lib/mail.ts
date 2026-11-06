@@ -123,10 +123,10 @@ export async function notifyAdminsSlipUploaded(bill: BillInfo, tenantName: strin
   const html = wrap(
     "New Transaction Slip Pending Review",
     `<p>${tenantName} uploaded a transaction slip that needs review:</p>
-     <p><b>${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type)} · RM${bill.amountPaid}</p>
+     <p><b>${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type)} · RM${bill.amountPaid.toFixed(2)}</p>
      <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Review</a></p>`
   );
-  const subject = `Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type)} RM${bill.amountPaid}`;
+  const subject = `Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type)} RM${bill.amountPaid.toFixed(2)}`;
   return Promise.all(admins.map((a) => send(a.email, subject, html, "SlipUploaded", bill.paymentCode, triggeredBy)));
 }
 
@@ -136,12 +136,12 @@ export async function notifyTenantBillCreated(tenant: { name: string; email: str
     "New Bill",
     `<p>Hi ${tenant.name},</p>
      <p>You have a new bill. Please pay and upload your transaction slip as soon as possible:</p>
-     <p><b>${typeLabel(bill.type)}</b> · RM${bill.amountDue}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
+     <p><b>${typeLabel(bill.type)}</b> · RM${bill.amountDue.toFixed(2)}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
      <p>Due date: ${fmtDate(bill.dueDate)}</p>
-     <p style="color:#c0392b;">A late payment penalty of RM30/day applies if the transaction slip isn't uploaded by the due date.</p>
+     <p style="color:#c0392b;">A late payment penalty of RM30.00/day applies if the transaction slip isn't uploaded by the due date.</p>
      <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Upload Transaction Slip</a></p>`
   );
-  return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type)} RM${bill.amountDue}`, html, "BillCreated", bill.paymentCode, triggeredBy);
+  return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type)} RM${bill.amountDue.toFixed(2)}`, html, "BillCreated", bill.paymentCode, triggeredBy);
 }
 
 /** Admin approves or rejects an uploaded slip — tenant gets told either way. */
@@ -156,7 +156,7 @@ export async function notifyTenantBillReviewed(
   const html = wrap(
     `Bill ${approved ? "Approved" : "Rejected"}`,
     `<p>Hi ${tenant.name},</p>
-     <p>Your bill <b>${typeLabel(bill.type)} RM${bill.amountPaid}</b> has been ${label}.</p>
+     <p>Your bill <b>${typeLabel(bill.type)} RM${bill.amountPaid.toFixed(2)}</b> has been ${label}.</p>
      ${!approved ? `<p style="color:#c0392b;">Reason: ${reason}</p><p>Please re-upload the correct transaction slip.</p>` : ""}
      <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View My Tenancy</a></p>`
   );
@@ -175,11 +175,11 @@ export async function notifyTenantLateFee(tenant: { name: string; email: string 
   const html = wrap(
     "Late Payment Penalty",
     `<p>Hi ${tenant.name},</p>
-     <p>Your <b>${typeLabel(originalType)}</b> bill is overdue, so a late payment penalty of RM${bill.amountDue} has been charged.</p>
+     <p>Your <b>${typeLabel(originalType)}</b> bill is overdue, so a late payment penalty of RM${bill.amountDue.toFixed(2)} has been charged.</p>
      <p>This penalty accrues daily — please upload the transaction slip for the original bill and the penalty as soon as possible to avoid further charges.</p>
      <p><a href="${APP_URL}/my-tenancy" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Handle Now</a></p>`
   );
-  return send(tenant.email, `Bliss Rooms — Late Payment Penalty RM${bill.amountDue}`, html, "LateFee", bill.paymentCode, "system-cron");
+  return send(tenant.email, `Bliss Rooms — Late Payment Penalty RM${bill.amountDue.toFixed(2)}`, html, "LateFee", bill.paymentCode, "system-cron");
 }
 
 /** Admin-triggered formal warning letter (House Rules violation, repeated lateness, etc.) — free-text body. */

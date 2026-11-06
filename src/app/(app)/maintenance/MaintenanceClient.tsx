@@ -7,7 +7,7 @@ import Lightbox from "@/components/Lightbox";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 
 interface MaintenanceRow {
   requestCode: string;
@@ -59,9 +59,6 @@ function buildSteps(r: MaintenanceRow, locale: "zh" | "en", t: (zh: string, en: 
   }));
 }
 
-function fmt(v: number | null) {
-  return v || v === 0 ? `RM${Number(v).toLocaleString()}` : "-";
-}
 
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
