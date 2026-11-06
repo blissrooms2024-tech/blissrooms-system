@@ -41,13 +41,23 @@ export async function GET(
     orderBy: { id: "desc" },
   });
 
+  // A recurring type (RENTAL/CARPARK) gets billed again every month, so its lifetime "due" has
+  // to grow with every bill issued — the contract's own roomRental/carparkRental is only a
+  // single month's reference rate. Using whichever is larger keeps a never-yet-billed item
+  // showing its sensible default (the reference rate, before any bill exists) while letting
+  // "应收" track reality once multiple months have actually been billed — otherwise "已收"
+  // outgrowing a stuck-at-one-month "应收" looks like a data error to Admin.
+  const billedTotalByType: Record<string, number> = {};
+  for (const p of payments) {
+    billedTotalByType[p.type] = (billedTotalByType[p.type] || 0) + Number(p.amountDue);
+  }
   const due: Record<string, number> = {
-    DEPOSIT: Number(c.securityDeposit),
-    UTILITIES: Number(c.utilitiesDeposit),
-    ADMIN_FEE: Number(c.adminFee),
-    ACCESS_CARD: Number(c.accessCardDeposit),
-    CARPARK: Number(c.carparkRental),
-    RENTAL: Number(c.roomRental),
+    DEPOSIT: Math.max(Number(c.securityDeposit), billedTotalByType.DEPOSIT || 0),
+    UTILITIES: Math.max(Number(c.utilitiesDeposit), billedTotalByType.UTILITIES || 0),
+    ADMIN_FEE: Math.max(Number(c.adminFee), billedTotalByType.ADMIN_FEE || 0),
+    ACCESS_CARD: Math.max(Number(c.accessCardDeposit), billedTotalByType.ACCESS_CARD || 0),
+    CARPARK: Math.max(Number(c.carparkRental), billedTotalByType.CARPARK || 0),
+    RENTAL: Math.max(Number(c.roomRental), billedTotalByType.RENTAL || 0),
   };
   const paidByType: Record<string, number> = {};
   for (const p of payments) {
