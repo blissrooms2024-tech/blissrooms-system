@@ -44,6 +44,9 @@ export default function OutstandingBillsClient() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [deletingBill, setDeletingBill] = useState<Bill | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -74,6 +77,39 @@ export default function OutstandingBillsClient() {
     load();
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function bulkDelete() {
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const results = await Promise.all(
+        ids.map((id) => fetch(`/api/payments/${id}`, { method: "DELETE" }).then((r) => r.json()))
+      );
+      const okCount = results.filter((r) => r.success).length;
+      const failCount = results.length - okCount;
+      if (failCount === 0) {
+        toast.success(t(`✅ 已删除 ${okCount} 笔账单`, `✅ Deleted ${okCount} bills`));
+      } else {
+        toast.danger(
+          t(`删除了 ${okCount} 笔，${failCount} 笔失败`, `Deleted ${okCount}, ${failCount} failed`)
+        );
+      }
+    } finally {
+      setBulkDeleting(false);
+      setBulkConfirmOpen(false);
+      setSelectedIds(new Set());
+      load();
+    }
+  }
+
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
   if (!items) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
 
@@ -82,6 +118,9 @@ export default function OutstandingBillsClient() {
   const typeOptions = Object.keys(PAYMENT_TYPE_LABELS);
   const today = new Date().toISOString().slice(0, 10);
   const q = search.trim().toLowerCase();
+  const selectedPendingReviewCount = items.filter(
+    (p) => selectedIds.has(p.id) && p.status === "PENDING_REVIEW"
+  ).length;
   const filtered = items.filter((p) => {
     if (typeFilter && p.type !== typeFilter) return false;
     if (statusFilter && p.status !== statusFilter) return false;
@@ -132,12 +171,46 @@ export default function OutstandingBillsClient() {
             </select>
           </div>
 
+          {selectedIds.size > 0 && (
+            <div className="mb-3.5 flex items-center gap-2.5 rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+              <span className="font-semibold">
+                {t(`已选 ${selectedIds.size} 笔`, `${selectedIds.size} selected`)}
+              </span>
+              <button
+                onClick={() => setBulkConfirmOpen(true)}
+                className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
+              >
+                🗑️ {t("删除已选", "Delete Selected")}
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+              >
+                {t("取消选择", "Clear Selection")}
+              </button>
+            </div>
+          )}
+
           {filtered.length === 0 ? (
             <div className="py-8 text-center text-gray-400">{t("没有符合条件的账单", "No bills match your filters")}</div>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
+                  <th className="px-2.5 py-1.5 font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id))}
+                      onChange={(e) => {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) filtered.forEach((p) => next.add(p.id));
+                          else filtered.forEach((p) => next.delete(p.id));
+                          return next;
+                        });
+                      }}
+                    />
+                  </th>
                   <th className="px-2.5 py-1.5 font-semibold">{t("合同", "Contract")}</th>
                   <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
                   <th className="px-2.5 py-1.5 font-semibold">{t("金额", "Amount")}</th>
@@ -156,6 +229,9 @@ export default function OutstandingBillsClient() {
                   const overdue = p.status === "PENDING" && p.dueDate && p.dueDate.slice(0, 10) < today;
                   return (
                     <tr key={p.id} className="border-b border-gray-100">
+                      <td className="px-2.5 py-1.5">
+                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelected(p.id)} />
+                      </td>
                       <td className="px-2.5 py-1.5">
                         <Link href={`/contracts/${p.contractCode}`} className="text-brand hover:underline">
                           {p.contractCode}
@@ -215,6 +291,27 @@ export default function OutstandingBillsClient() {
         confirmLabel={t("确定删除", "Confirm Delete")}
         onConfirm={() => deletingBill && deleteBill(deletingBill.id)}
         onCancel={() => setDeletingBill(null)}
+      />
+
+      <ConfirmDialog
+        open={bulkConfirmOpen}
+        danger
+        title={`⚠️ ${t("删除已选账单", "Delete Selected Bills")}`}
+        message={t(
+          `确定要删除这 ${selectedIds.size} 笔账单吗？${
+            selectedPendingReviewCount > 0
+              ? `其中 ${selectedPendingReviewCount} 笔已经有租客上传的交易单，会一起消失，无法恢复。`
+              : "此操作不能撤销。"
+          }`,
+          `Are you sure you want to delete these ${selectedIds.size} bills? ${
+            selectedPendingReviewCount > 0
+              ? `${selectedPendingReviewCount} of them already have a tenant-uploaded slip, which will be discarded too, with no way to recover it.`
+              : "This action cannot be undone."
+          }`
+        )}
+        confirmLabel={bulkDeleting ? t("删除中...", "Deleting...") : t("确定删除", "Confirm Delete")}
+        onConfirm={bulkDelete}
+        onCancel={() => setBulkConfirmOpen(false)}
       />
     </div>
   );
