@@ -65,6 +65,22 @@ export async function GET(
   const totalDue = Number(c.totalOutstanding);
   const totalPaid = payments.filter((p) => p.status === "Paid").reduce((s, p) => s + Number(p.amountPaid), 0);
 
+  // "Owing" must reflect everything the tenant still has to pay right now — not just the
+  // move-in lump sum (c.totalOutstanding), which never grows as later recurring bills
+  // (rent/carpark/utilities for new months) get issued. So it's the still-unbilled remainder
+  // of the move-in breakdown (skipping any item that already has its own open bill below, to
+  // avoid double-counting) plus every currently open (PENDING/REJECTED) bill's amountDue —
+  // PENDING_REVIEW is excluded since the tenant has already paid and is just awaiting approval.
+  const openBillTypes = new Set(
+    payments.filter((p) => p.status === "PENDING" || p.status === "REJECTED").map((p) => p.type)
+  );
+  const unbilledBreakdownTotal = breakdown
+    .filter((b) => b.outstanding > 0 && !openBillTypes.has(b.item))
+    .reduce((s, b) => s + b.outstanding, 0);
+  const openBillsTotal = payments
+    .filter((p) => p.status === "PENDING" || p.status === "REJECTED")
+    .reduce((s, p) => s + Number(p.amountDue), 0);
+
   const { agent, ...contractRest } = c;
   return NextResponse.json({
     success: true,
@@ -73,7 +89,7 @@ export async function GET(
     breakdown,
     totalDue,
     totalPaid,
-    totalOutstanding: Math.max(totalDue - totalPaid, 0),
+    totalOutstanding: unbilledBreakdownTotal + openBillsTotal,
   });
 }
 
