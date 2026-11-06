@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { notifyTenantBillReviewed } from "@/lib/mail";
 
 const fixDateSchema = z.object({
   action: z.literal("fix-paid-date").optional(),
@@ -13,7 +14,12 @@ const editPeriodSchema = z.object({
   periodMonth: z.string().trim().optional(),
   dueDate: z.string().trim().min(1, "请填到期日"),
 });
-const patchSchema = z.union([editPeriodSchema, fixDateSchema]);
+const markPaidSchema = z.object({
+  action: z.literal("mark-paid"),
+  paidDate: z.string().trim().optional(),
+  method: z.string().trim().optional(),
+});
+const patchSchema = z.union([editPeriodSchema, markPaidSchema, fixDateSchema]);
 
 /** Admin-side corrections to a bill after it's been created:
  * - fix-paid-date (default, no `action` needed — the original/only use case before
@@ -24,7 +30,10 @@ const patchSchema = z.union([editPeriodSchema, fixDateSchema]);
  *   — e.g. the monthly-rent job always opens the NEXT calendar month, so a tenant who was
  *   unverified and missed an earlier month's cron run gets a bill dated for the wrong month
  *   once they're verified; Admin corrects the periodMonth/dueDate here instead of deleting
- *   and losing an already-uploaded slip. */
+ *   and losing an already-uploaded slip.
+ * - mark-paid: Admin confirms a bill as paid directly (e.g. tenant paid cash/offline), with
+ *   a chosen paid date/method, skipping the usual tenant-uploads-slip-then-Admin-approves
+ *   flow entirely. Works on any not-yet-Paid bill (PENDING/PENDING_REVIEW/REJECTED). */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
@@ -55,6 +64,51 @@ export async function PATCH(
       data: { dueDate, periodMonth: parsed.data.periodMonth || null },
     });
     return NextResponse.json({ success: true, message: "✅ 账单月份已更新" });
+  }
+
+  if (parsed.data.action === "mark-paid") {
+    if (payment.status === "Paid") {
+      return NextResponse.json({ success: false, message: "这笔账单已经是已付状态" }, { status: 400 });
+    }
+    const paidDate = parsed.data.paidDate ? new Date(parsed.data.paidDate) : new Date();
+    if (isNaN(paidDate.getTime())) {
+      return NextResponse.json({ success: false, message: "日期格式不对" }, { status: 400 });
+    }
+    const contract = await prisma.contract.findUnique({ where: { id: payment.contractId } });
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: "Paid",
+        amountPaid: payment.amountDue,
+        paidDate,
+        method: parsed.data.method || payment.method,
+        reviewedBy: user.name,
+        reviewedAt: new Date(),
+        reviewNote: null,
+      },
+    });
+
+    if (payment.tenantId && contract) {
+      const tenant = await prisma.user.findUnique({ where: { id: payment.tenantId } });
+      if (tenant) {
+        await notifyTenantBillReviewed(
+          tenant,
+          {
+            paymentCode: payment.paymentCode,
+            contractCode: contract.contractCode,
+            roomCode: payment.roomCode,
+            type: payment.type,
+            amountDue: Number(payment.amountDue),
+            amountPaid: Number(payment.amountDue),
+          },
+          true,
+          null,
+          user.name
+        );
+      }
+    }
+
+    return NextResponse.json({ success: true, message: `✅ ${payment.paymentCode} 已标记为已付` });
   }
 
   if (payment.status !== "Paid") {

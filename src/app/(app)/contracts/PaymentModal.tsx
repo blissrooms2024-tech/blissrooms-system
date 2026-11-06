@@ -91,6 +91,10 @@ export default function PaymentModal({
   const [editPeriodMonth, setEditPeriodMonth] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
   const [editPeriodSaving, setEditPeriodSaving] = useState(false);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
+  const [markPaidDate, setMarkPaidDate] = useState("");
+  const [markPaidMethod, setMarkPaidMethod] = useState("Bank Transfer");
+  const [markPaidSaving, setMarkPaidSaving] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -319,6 +323,36 @@ export default function PaymentModal({
       toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setEditPeriodSaving(false);
+    }
+  }
+
+  function startMarkPaid(p: PaymentRow) {
+    setMarkingPaidId(p.id);
+    setMarkPaidDate(new Date().toISOString().slice(0, 10));
+    setMarkPaidMethod("Bank Transfer");
+  }
+
+  async function saveMarkPaid(id: string) {
+    setMarkPaidSaving(true);
+    try {
+      const res = await fetch(`/api/payments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark-paid", paidDate: markPaidDate, method: markPaidMethod }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setMarkingPaidId(null);
+        load();
+        onChanged();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setMarkPaidSaving(false);
     }
   }
 
@@ -618,6 +652,41 @@ export default function PaymentModal({
                             </button>
                           </div>
                         </div>
+                      ) : role === "ADMIN" && markingPaidId === b.id ? (
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs text-gray-500">{t("已付日期", "Paid Date")}</label>
+                          <input
+                            type="date"
+                            className="input text-xs"
+                            value={markPaidDate}
+                            onChange={(e) => setMarkPaidDate(e.target.value)}
+                          />
+                          <label className="text-xs text-gray-500">{t("方式", "Method")}</label>
+                          <select
+                            className="input text-xs"
+                            value={markPaidMethod}
+                            onChange={(e) => setMarkPaidMethod(e.target.value)}
+                          >
+                            <option>Bank Transfer</option>
+                            <option>Cash</option>
+                            <option>Cheque</option>
+                          </select>
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => saveMarkPaid(b.id)}
+                              disabled={markPaidSaving || !markPaidDate}
+                              className="rounded-md bg-green-700 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              {t("确认已付", "Confirm Paid")}
+                            </button>
+                            <button
+                              onClick={() => setMarkingPaidId(null)}
+                              className="rounded-md bg-gray-100 px-2.5 py-1 text-xs text-gray-600"
+                            >
+                              {t("取消", "Cancel")}
+                            </button>
+                          </div>
+                        </div>
                       ) : (
                         <>
                       {b.status === "PENDING_REVIEW" && (
@@ -690,6 +759,12 @@ export default function PaymentModal({
                       )}
                       {role === "ADMIN" && (b.status === "PENDING" || b.status === "REJECTED") && (
                         <div className="flex flex-wrap gap-1.5">
+                          <button
+                            onClick={() => startMarkPaid(b)}
+                            className="rounded-md bg-green-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-800"
+                          >
+                            💰 {t("标记已付", "Mark as Paid")}
+                          </button>
                           <button
                             type="button"
                             onClick={() => startEditPeriod(b)}
