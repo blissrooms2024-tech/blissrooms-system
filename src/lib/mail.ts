@@ -94,9 +94,9 @@ export async function sendResetEmail(user: { name: string; email: string }, toke
   return send(user.email, "Bliss Rooms — Reset Password", html, "ResetPassword", user.email, "system");
 }
 
-function wrap(title: string, bodyHtml: string) {
+function wrap(title: string, bodyHtml: string, accentColor = "#0b5394") {
   return `<div style="font-family:Arial;font-size:14px;line-height:1.6;">
-    <h2 style="color:#0b5394;">Bliss Rooms — ${title}</h2>
+    <h2 style="color:${accentColor};">Bliss Rooms — ${title}</h2>
     ${bodyHtml}
     <p style="color:#888;font-size:12px;">Bliss Rooms Enterprise</p></div>`;
 }
@@ -120,13 +120,18 @@ interface BillInfo {
 export async function notifyAdminsSlipUploaded(bill: BillInfo, tenantName: string, triggeredBy: string) {
   const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
   const link = `${APP_URL}/payments/review`;
+  // Aircon top-ups block the tenant's AC immediately, so flag these orange to catch Admin's
+  // eye in the inbox and get handled faster than an ordinary slip review.
+  const isAcTopup = bill.type === "AC";
+  const accentColor = isAcTopup ? "#e67e22" : "#0b5394";
   const html = wrap(
     "New Transaction Slip Pending Review",
     `<p>${tenantName} uploaded a transaction slip that needs review:</p>
-     <p><b>${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type)} · RM${bill.amountPaid.toFixed(2)}</p>
-     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Review</a></p>`
+     <p><b style="${isAcTopup ? `color:${accentColor};` : ""}">${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type)} · RM${bill.amountPaid.toFixed(2)}</p>
+     <p><a href="${link}" style="background:${accentColor};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Review</a></p>`,
+    accentColor
   );
-  const subject = `Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type)} RM${bill.amountPaid.toFixed(2)}`;
+  const subject = `${isAcTopup ? "🟠 " : ""}Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type)} RM${bill.amountPaid.toFixed(2)}`;
   return Promise.all(admins.map((a) => send(a.email, subject, html, "SlipUploaded", bill.paymentCode, triggeredBy)));
 }
 
