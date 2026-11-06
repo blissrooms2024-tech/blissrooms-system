@@ -339,6 +339,34 @@ export async function notifyAdminsTenantDisabledExpired(tenant: { name: string; 
   );
 }
 
+/** Cron found one or more ACTIVE contracts that just entered the renewal notice window
+ * (or are already past expiry) without having been renewed yet — one digest email per day
+ * covering only the contracts newly flagged that run, so Admin isn't re-sent the same list
+ * every day for the whole notice window. */
+export async function notifyAdminsRenewalReminder(
+  contracts: { contractCode: string; tenantName: string; roomCode: string; expiredDate: string | null; daysToExpiry: number | null }[]
+) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
+  const link = `${APP_URL}/contracts/renewal`;
+  const rows = contracts
+    .map((c) => {
+      const status = c.daysToExpiry !== null && c.daysToExpiry < 0 ? `${-c.daysToExpiry} days overdue` : `${c.daysToExpiry} days left`;
+      return `<li><b>${c.contractCode}</b> · ${c.roomCode} · ${c.tenantName} — expires ${fmtDate(c.expiredDate)} (${status})</li>`;
+    })
+    .join("");
+  const html = wrap(
+    "Contracts Need Renewal",
+    `<p><b>${contracts.length}</b> contract(s) are approaching (or past) their expiry date and haven't been renewed yet:</p>
+     <ul>${rows}</ul>
+     <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go to Renewals</a></p>`
+  );
+  return Promise.all(
+    admins.map((a) =>
+      send(a.email, `Bliss Rooms — ${contracts.length} Contract(s) Need Renewal`, html, "RenewalReminder", contracts[0]?.contractCode ?? "", "system-cron")
+    )
+  );
+}
+
 export async function notifyAdminsMoveOutNotice(
   contractCode: string,
   roomCode: string,

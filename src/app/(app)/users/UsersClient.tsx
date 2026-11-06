@@ -27,6 +27,8 @@ export default function UsersClient() {
   const [editing, setEditing] = useState<EditableUser | null>(null);
   const [deleting, setDeleting] = useState<UserRow | null>(null);
   const [q, setQ] = useState("");
+  const [confirmingDeactivate, setConfirmingDeactivate] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
 
   async function load() {
     setError("");
@@ -90,6 +92,25 @@ export default function UsersClient() {
     }
   }
 
+  async function runDeactivateExpired() {
+    setConfirmingDeactivate(false);
+    setDeactivating(true);
+    try {
+      const res = await fetch("/api/users/deactivate-expired", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setDeactivating(false);
+    }
+  }
+
   async function openEdit(userCode: string) {
     const res = await fetch(`/api/users/${userCode}`);
     const data = await res.json();
@@ -137,6 +158,17 @@ export default function UsersClient() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
+            <button
+              onClick={() => setConfirmingDeactivate(true)}
+              disabled={deactivating}
+              className="btn-soft text-sm"
+              title={t(
+                "停用所有合同都已过期超过宽限期、还没续约的租客账号",
+                "Disable any tenant whose every contract has been expired past the grace period, with no renewal"
+              )}
+            >
+              🔒 {deactivating ? t("处理中...", "Processing...") : t("停用已过期租客", "Disable Expired Tenants")}
+            </button>
             <Link href="/users/new" className="btn-primary text-sm">
               ➕ {t("加新用户", "Add User")}
             </Link>
@@ -258,6 +290,17 @@ export default function UsersClient() {
         confirmLabel={t("确定删除", "Confirm Delete")}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmingDeactivate}
+        message={t(
+          "现在执行？这会停用所有合同都已过期超过 5 天宽限期、还没续约的租客账号 (有其他还没到期的合同不会被停用)，并 email 通知租客本人和所有 Admin。已经每天自动跑一次，这个按钮是手动立即执行。",
+          "Run this now? This disables any tenant whose every contract has been expired for more than the 5-day grace period, with no renewal (a tenant with any other unexpired contract is left alone), and emails both the tenant and every Admin. This already runs automatically once a day — this button runs it immediately instead."
+        )}
+        confirmLabel={t("确定执行", "Confirm Run")}
+        onConfirm={runDeactivateExpired}
+        onCancel={() => setConfirmingDeactivate(false)}
       />
     </div>
   );
