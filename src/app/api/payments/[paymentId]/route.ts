@@ -73,11 +73,11 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: "✅ 已更新收款日期" });
 }
 
-/** Admin removes a bill before any real payment is attached to it — e.g. a late-fee penalty
- * waived because the tenant had a legitimate reason, or any bill (RENTAL/CARPARK/etc.) that
- * was issued by mistake (wrong month, duplicate, tenant already settled it another way).
- * Deliberately scoped to PENDING/REJECTED only — once a real payment is involved
- * (PENDING_REVIEW with a slip, or already Paid) this isn't a simple delete anymore. */
+/** Admin removes a bill that was issued by mistake — a late-fee penalty waived, a wrong-month
+ * duplicate, or any bill Admin decides shouldn't exist, including PENDING_REVIEW ones that
+ * already have a tenant-uploaded slip (Admin confirmed they want this for cleaning up a messy
+ * Outstanding Bills list, understanding it discards that slip and any paid amount — there's no
+ * undo). Still refuses an already-Paid/confirmed record; that's the actual settled ledger. */
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
@@ -89,8 +89,8 @@ export async function DELETE(
   const { paymentId } = await params;
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment) return NextResponse.json({ success: false, message: "找不到这笔账单" }, { status: 404 });
-  if (payment.status !== "PENDING" && payment.status !== "REJECTED") {
-    return NextResponse.json({ success: false, message: "这笔账单已经在处理/已付款, 不能直接删除" }, { status: 409 });
+  if (payment.status === "Paid") {
+    return NextResponse.json({ success: false, message: "这笔账单已经付款确认, 不能直接删除" }, { status: 409 });
   }
 
   await prisma.payment.delete({ where: { id: paymentId } });
