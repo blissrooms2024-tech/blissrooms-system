@@ -10,6 +10,7 @@ import ContractActions, { type ActionableContract } from "./ContractActions";
 interface Contract extends ActionableContract {
   roomCode?: string;
   expiredDate: string | null;
+  remarks: string | null;
   _paid: number;
   _outstanding: number;
   _expiringSoon?: boolean;
@@ -55,18 +56,23 @@ export default function ContractsClient({ role }: { role: string }) {
 
   const q = search.trim().toLowerCase();
   const filteredContracts =
-    contracts?.filter((c) => {
-      if (quickFilter === "OUTSTANDING" && !(c._outstanding > 0)) return false;
-      if (quickFilter === "EXPIRING_SOON" && !c._expiringSoon) return false;
-      if (quickFilter === "RENT_ESCALATED" && !c._rentEscalated) return false;
-      if (!q) return true;
-      return (
-        c.contractCode.toLowerCase().includes(q) ||
-        (c.room?.roomCode ?? "").toLowerCase().includes(q) ||
-        c.tenantName.toLowerCase().includes(q) ||
-        c.agentName.toLowerCase().includes(q)
-      );
-    }) ?? null;
+    contracts
+      ?.filter((c) => {
+        if (quickFilter === "OUTSTANDING" && !(c._outstanding > 0)) return false;
+        if (quickFilter === "EXPIRING_SOON" && !c._expiringSoon) return false;
+        if (quickFilter === "RENT_ESCALATED" && !c._rentEscalated) return false;
+        if (quickFilter === "LEGACY_IMPORT" && !c.remarks?.includes("旧合同导入")) return false;
+        if (!q) return true;
+        return (
+          c.contractCode.toLowerCase().includes(q) ||
+          (c.room?.roomCode ?? "").toLowerCase().includes(q) ||
+          c.tenantName.toLowerCase().includes(q) ||
+          c.agentName.toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) =>
+        quickFilter === "LEGACY_IMPORT" ? (a.room?.roomCode ?? "").localeCompare(b.room?.roomCode ?? "") : 0
+      ) ?? null;
 
   return (
     <div className="space-y-4">
@@ -103,6 +109,7 @@ export default function ContractsClient({ role }: { role: string }) {
             <option value="OUTSTANDING">{t("有欠款", "Has Outstanding")}</option>
             <option value="EXPIRING_SOON">{t("快到期", "Expiring Soon")}</option>
             <option value="RENT_ESCALATED">{t("租金逾期超10天", "Rent Overdue 10+ Days")}</option>
+            <option value="LEGACY_IMPORT">{t("旧合同导入", "Legacy Import")}</option>
           </select>
         </div>
         {error && <div className="text-sm text-red-600">{error}</div>}
