@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PAYMENT_TYPE_LABELS, paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Bill {
   id: string;
@@ -35,11 +37,13 @@ function fmt(v: number) {
 
 export default function OutstandingBillsClient() {
   const { locale, t } = useLanguage();
+  const toast = useToast();
   const [items, setItems] = useState<Bill[] | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [deletingBill, setDeletingBill] = useState<Bill | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -60,6 +64,15 @@ export default function OutstandingBillsClient() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  async function deleteBill(id: string) {
+    const res = await fetch(`/api/payments/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) toast.success(data.message);
+    else toast.danger(data.message);
+    setDeletingBill(null);
+    load();
+  }
 
   if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
   if (!items) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
@@ -131,6 +144,7 @@ export default function OutstandingBillsClient() {
                   <th className="px-2.5 py-1.5 font-semibold">{t("到期日", "Due Date")}</th>
                   <th className="px-2.5 py-1.5 font-semibold">{t("状态", "Status")}</th>
                   <th className="px-2.5 py-1.5 font-semibold">Agent</th>
+                  <th className="px-2.5 py-1.5 font-semibold">{t("操作", "Actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -165,6 +179,14 @@ export default function OutstandingBillsClient() {
                         </span>
                       </td>
                       <td className="px-2.5 py-1.5 text-gray-600">{p.agentName}</td>
+                      <td className="px-2.5 py-1.5">
+                        <button
+                          onClick={() => setDeletingBill(p)}
+                          className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                        >
+                          🗑️ {t("删除", "Delete")}
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -173,6 +195,27 @@ export default function OutstandingBillsClient() {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={!!deletingBill}
+        danger
+        title={`⚠️ ${t("删除账单", "Delete Bill")}`}
+        message={t(
+          `确定要删除 ${deletingBill?.contractCode} 的这笔 ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (RM${deletingBill?.amountDue}) 账单吗？${
+            deletingBill?.status === "PENDING_REVIEW"
+              ? "租客已经上传的交易单也会一起消失，无法恢复。"
+              : "此操作不能撤销。"
+          }`,
+          `Are you sure you want to delete ${deletingBill?.contractCode}'s ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (RM${deletingBill?.amountDue}) bill? ${
+            deletingBill?.status === "PENDING_REVIEW"
+              ? "The tenant's already-uploaded transaction slip will be discarded too, with no way to recover it."
+              : "This action cannot be undone."
+          }`
+        )}
+        confirmLabel={t("确定删除", "Confirm Delete")}
+        onConfirm={() => deletingBill && deleteBill(deletingBill.id)}
+        onCancel={() => setDeletingBill(null)}
+      />
     </div>
   );
 }
