@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import BulkBillClient from "./BulkBillClient";
 import GenerateMonthlyRentCard from "./GenerateMonthlyRentCard";
+import OpenRentalBillCard from "./OpenRentalBillCard";
 
 export default async function BulkBillPage() {
   const session = await getCurrentUser();
@@ -11,6 +12,7 @@ export default async function BulkBillPage() {
   return (
     <div className="space-y-4">
       <GenerateMonthlyRentCard />
+      <OpenRentalBillCard />
       <BulkBillClient />
     </div>
   );
