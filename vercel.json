@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/monthly-rent",
       "schedule": "0 5 20 * *"
+    },
+    {
+      "path": "/api/cron/deactivate-expired-tenants",
+      "schedule": "0 6 * * *"
     }
   ]
 }

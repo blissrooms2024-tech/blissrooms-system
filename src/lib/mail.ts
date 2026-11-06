@@ -301,6 +301,44 @@ export async function notifyAdminsRentEscalation(
   );
 }
 
+/** Cron auto-disabled a tenant's login because every contract they're on has been expired
+ * past the grace period with no renewal — tells the tenant why, and how to get it back. */
+export async function notifyTenantAccountDisabledExpired(tenant: { name: string; email: string }, contractCodes: string[]) {
+  const html = wrap(
+    "Account Disabled — Lease Expired",
+    `<p>Hi ${tenant.name},</p>
+     <p>Your lease (${contractCodes.join(", ")}) has expired and the grace period has passed, so your account login has been disabled.</p>
+     <p>If you're renewing, or need more time, please contact Admin as soon as possible to have your account reactivated.</p>`,
+    "#c0392b"
+  );
+  return send(
+    tenant.email,
+    "Bliss Rooms — Account Disabled (Lease Expired)",
+    html,
+    "AccountDisabledExpired",
+    contractCodes[0] ?? "",
+    "system-cron"
+  );
+}
+
+/** Same event, to every ACTIVE Admin — so it's visible and reversible (via the Users page's
+ * 启用/停用 toggle) if it was premature, e.g. a renewal that hasn't been entered yet. */
+export async function notifyAdminsTenantDisabledExpired(tenant: { name: string; userCode: string }, contractCodes: string[]) {
+  const admins = await prisma.user.findMany({ where: { role: "ADMIN", status: "ACTIVE" }, select: { name: true, email: true } });
+  const link = `${APP_URL}/users`;
+  const html = wrap(
+    "Tenant Account Auto-Disabled — Lease Expired",
+    `<p><b>${tenant.name}</b>'s account has been automatically disabled: every contract they're on (${contractCodes.join(", ")}) expired more than the grace period ago with no renewal on file.</p>
+     <p>If this was a mistake (e.g. renewal not yet entered), you can re-enable the account on the Users page.</p>
+     <p><a href="${link}" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go to Users</a></p>`
+  );
+  return Promise.all(
+    admins.map((a) =>
+      send(a.email, `Bliss Rooms — ${tenant.name} Auto-Disabled (Lease Expired)`, html, "TenantDisabledExpired", tenant.userCode, "system-cron")
+    )
+  );
+}
+
 export async function notifyAdminsMoveOutNotice(
   contractCode: string,
   roomCode: string,
