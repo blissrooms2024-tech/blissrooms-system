@@ -572,6 +572,7 @@ export default function PaymentModal({
                   <tr key={b.id} className="border-b border-gray-100 align-top">
                     <td className="px-2.5 py-1.5">
                       {paymentTypeLabelLocale(b.type, b.customLabel, locale)}
+                      {b.periodMonth && <span className="text-gray-400"> ({b.periodMonth})</span>}
                       <Link href={`/invoice/${b.paymentCode}`} target="_blank" className="block text-xs font-semibold text-brand underline">
                         📄 Invoice
                       </Link>
@@ -740,7 +741,10 @@ export default function PaymentModal({
           )}
           {paidHistory.map((p) => (
             <tr key={p.paymentCode} className="border-b border-gray-100">
-              <td className="px-2.5 py-1.5">{paymentTypeLabelLocale(p.type, p.customLabel, locale)}</td>
+              <td className="px-2.5 py-1.5">
+                {paymentTypeLabelLocale(p.type, p.customLabel, locale)}
+                {p.periodMonth && <span className="text-gray-400"> ({p.periodMonth})</span>}
+              </td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">
                 {editingId === p.id ? (

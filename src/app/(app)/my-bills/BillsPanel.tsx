@@ -263,7 +263,10 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
           )}
           {paidHistory.map((p) => (
             <tr key={p.paymentCode} className="border-b border-gray-100">
-              <td className="px-2.5 py-1.5">{paymentTypeLabelLocale(p.type, p.customLabel, locale)}</td>
+              <td className="px-2.5 py-1.5">
+                {paymentTypeLabelLocale(p.type, p.customLabel, locale)}
+                {p.periodMonth && <span className="text-gray-400"> ({p.periodMonth})</span>}
+              </td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
               <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
               <td className="px-2.5 py-1.5">
