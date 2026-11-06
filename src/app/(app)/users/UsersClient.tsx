@@ -196,12 +196,18 @@ export default function UsersClient() {
               <tbody>
                 {filtered!.map((u) => (
                   <tr key={u.userCode} className="border-b border-gray-100">
-                    <Td className="hidden sm:table-cell">{u.userCode}</Td>
+                    <Td className="hidden sm:table-cell">
+                      <Link href={`/users/${u.userCode}`} className="text-brand hover:underline">
+                        {u.userCode}
+                      </Link>
+                    </Td>
                     <Td
                       title={u.name}
                       className="sticky left-0 z-[1] max-w-[140px] truncate bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]"
                     >
-                      {u.name}
+                      <Link href={`/users/${u.userCode}`} className="text-brand hover:underline">
+                        {u.name}
+                      </Link>
                     </Td>
                     <Td>{ROLE_LABELS[u.role] ?? u.role}</Td>
                     <Td>
