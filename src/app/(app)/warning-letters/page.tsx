@@ -7,5 +7,5 @@ export default async function WarningLettersPage() {
   if (!session) redirect("/login");
   if (!["ADMIN", "BOSS"].includes(session.role)) redirect("/dashboard");
 
-  return <WarningLettersAdminClient />;
+  return <WarningLettersAdminClient role={session.role} />;
 }
