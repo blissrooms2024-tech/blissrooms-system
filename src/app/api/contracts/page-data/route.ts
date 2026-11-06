@@ -20,13 +20,15 @@ export async function GET() {
   expiringSoonCutoff.setMonth(expiringSoonCutoff.getMonth() + RULES.NOTICE_MONTHS);
 
   try {
-    const [contracts, paidGroups, vacantRooms, agents, escalatedRentBills] = await Promise.all([
+    const [contracts, allPayments, vacantRooms, agents, escalatedRentBills] = await Promise.all([
       prisma.contract.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: { room: { select: { roomCode: true } } },
       }),
-      prisma.payment.groupBy({ by: ["contractId"], where: { status: "Paid" }, _sum: { amountPaid: true } }),
+      prisma.payment.findMany({
+        select: { contractId: true, type: true, status: true, amountDue: true, amountPaid: true },
+      }),
       prisma.room.findMany({
         where: { status: "VACANT" },
         select: { roomCode: true, propertyName: true, isCarpark: true },
@@ -44,11 +46,48 @@ export async function GET() {
       }),
     ]);
 
-    const paidMap = new Map(paidGroups.map((g) => [g.contractId, Number(g._sum.amountPaid ?? 0)]));
+    const paymentsByContract = new Map<string, typeof allPayments>();
+    for (const p of allPayments) {
+      const arr = paymentsByContract.get(p.contractId);
+      if (arr) arr.push(p);
+      else paymentsByContract.set(p.contractId, [p]);
+    }
     const escalatedSet = new Set(escalatedRentBills.map((b) => b.contractId));
     const list = contracts.map((c) => {
-      const paid = paidMap.get(c.id) ?? 0;
-      const outstanding = Math.max(Number(c.totalOutstanding) - paid, 0);
+      const contractPayments = paymentsByContract.get(c.id) ?? [];
+      const paid = contractPayments
+        .filter((p) => p.status === "Paid")
+        .reduce((s, p) => s + Number(p.amountPaid), 0);
+
+      // Mirrors /api/contracts/[contractId]/payments's "Owing" fix: the move-in totalOutstanding
+      // never grows as later recurring bills (rent/carpark/utilities for new months) get issued,
+      // so it alone can't tell us what's really still owed. It's the still-unbilled remainder of
+      // the move-in breakdown (skipping any item that already has its own open bill, to avoid
+      // double-counting) plus every currently open (PENDING/REJECTED) bill's amountDue.
+      const due: Record<string, number> = {
+        DEPOSIT: Number(c.securityDeposit),
+        UTILITIES: Number(c.utilitiesDeposit),
+        ADMIN_FEE: Number(c.adminFee),
+        ACCESS_CARD: Number(c.accessCardDeposit),
+        CARPARK: Number(c.carparkRental),
+        RENTAL: Number(c.roomRental),
+      };
+      const paidByType: Record<string, number> = {};
+      for (const p of contractPayments) {
+        if (p.status !== "Paid") continue;
+        paidByType[p.type] = (paidByType[p.type] || 0) + Number(p.amountPaid);
+      }
+      const openBillTypes = new Set<string>(
+        contractPayments.filter((p) => p.status === "PENDING" || p.status === "REJECTED").map((p) => p.type)
+      );
+      const unbilledBreakdownTotal = Object.entries(due)
+        .filter(([type]) => !openBillTypes.has(type))
+        .reduce((s, [type, dd]) => s + Math.max(dd - (paidByType[type] || 0), 0), 0);
+      const openBillsTotal = contractPayments
+        .filter((p) => p.status === "PENDING" || p.status === "REJECTED")
+        .reduce((s, p) => s + Number(p.amountDue), 0);
+      const outstanding = unbilledBreakdownTotal + openBillsTotal;
+
       const expiringSoon =
         c.status === "ACTIVE" && !!c.expiredDate && c.expiredDate >= startOfToday && c.expiredDate <= expiringSoonCutoff;
       // Still marked ACTIVE but already past its own expiry date — nothing in this codebase
