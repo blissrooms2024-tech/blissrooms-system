@@ -16,7 +16,7 @@ export async function GET() {
   const payments = await prisma.payment.findMany({
     where: { status: { in: ["PENDING", "PENDING_REVIEW", "REJECTED"] } },
     orderBy: [{ dueDate: "asc" }],
-    include: { contract: { select: { contractCode: true, agentName: true } } },
+    include: { contract: { select: { contractCode: true } } },
   });
 
   return NextResponse.json({
@@ -26,7 +26,6 @@ export async function GET() {
         id: p.id,
         paymentCode: p.paymentCode,
         contractCode: p.contract.contractCode,
-        agentName: p.contract.agentName,
         roomCode: p.roomCode,
         tenantName: p.tenantName,
         type: p.type,
@@ -35,6 +34,9 @@ export async function GET() {
         amountPaid: p.amountPaid,
         periodMonth: p.periodMonth,
         dueDate: p.dueDate,
+        // Set when the tenant uploads a slip (PENDING_REVIEW/REJECTED) — null while still
+        // PENDING, since nothing has been submitted yet.
+        submittedDate: p.paidDate,
         reviewNote: p.reviewNote,
         customLabel: p.customLabel,
       }))

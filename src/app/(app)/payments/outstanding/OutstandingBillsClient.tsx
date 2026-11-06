@@ -12,7 +12,6 @@ interface Bill {
   id: string;
   paymentCode: string;
   contractCode: string;
-  agentName: string;
   roomCode: string;
   tenantName: string | null;
   type: string;
@@ -21,6 +20,7 @@ interface Bill {
   amountPaid: number;
   periodMonth: string | null;
   dueDate: string | null;
+  submittedDate: string | null;
   reviewNote: string | null;
   customLabel: string | null;
 }
@@ -213,7 +213,7 @@ export default function OutstandingBillsClient() {
                   <th className="px-2.5 py-1.5 font-semibold">{t("金额", "Amount")}</th>
                   <th className="px-2.5 py-1.5 font-semibold">{t("到期日", "Due Date")}</th>
                   <th className="px-2.5 py-1.5 font-semibold">{t("状态", "Status")}</th>
-                  <th className="px-2.5 py-1.5 font-semibold">Agent</th>
+                  <th className="px-2.5 py-1.5 font-semibold">{t("提交日期", "Submitted")}</th>
                   <th className="px-2.5 py-1.5 font-semibold">{t("操作", "Actions")}</th>
                 </tr>
               </thead>
@@ -251,7 +251,7 @@ export default function OutstandingBillsClient() {
                           {badge.label}
                         </span>
                       </td>
-                      <td className="px-2.5 py-1.5 text-gray-600">{p.agentName}</td>
+                      <td className="px-2.5 py-1.5 text-gray-600">{fmtDate(p.submittedDate)}</td>
                       <td className="px-2.5 py-1.5">
                         <button
                           onClick={() => setDeletingBill(p)}
