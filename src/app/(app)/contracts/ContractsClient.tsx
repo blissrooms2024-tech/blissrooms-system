@@ -22,6 +22,7 @@ export default function ContractsClient({ role }: { role: string }) {
   const [contracts, setContracts] = useState<Contract[] | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [quickFilter, setQuickFilter] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -55,6 +56,9 @@ export default function ContractsClient({ role }: { role: string }) {
   const q = search.trim().toLowerCase();
   const filteredContracts =
     contracts?.filter((c) => {
+      if (quickFilter === "OUTSTANDING" && !(c._outstanding > 0)) return false;
+      if (quickFilter === "EXPIRING_SOON" && !c._expiringSoon) return false;
+      if (quickFilter === "RENT_ESCALATED" && !c._rentEscalated) return false;
       if (!q) return true;
       return (
         c.contractCode.toLowerCase().includes(q) ||
@@ -87,12 +91,20 @@ export default function ContractsClient({ role }: { role: string }) {
             )}
           </div>
         </div>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("🔍 搜合同号 / 房间 / 租客 / Agent...", "🔍 Search contract # / room / tenant / agent...")}
-          className="input mb-3.5 max-w-xs"
-        />
+        <div className="mb-3.5 flex flex-wrap gap-2.5">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("🔍 搜合同号 / 房间 / 租客 / Agent...", "🔍 Search contract # / room / tenant / agent...")}
+            className="input max-w-xs flex-1"
+          />
+          <select value={quickFilter} onChange={(e) => setQuickFilter(e.target.value)} className="input max-w-[180px]">
+            <option value="">{t("全部合同", "All Contracts")}</option>
+            <option value="OUTSTANDING">{t("有欠款", "Has Outstanding")}</option>
+            <option value="EXPIRING_SOON">{t("快到期", "Expiring Soon")}</option>
+            <option value="RENT_ESCALATED">{t("租金逾期超10天", "Rent Overdue 10+ Days")}</option>
+          </select>
+        </div>
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!contracts && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
         {contracts && contracts.length > 0 && (

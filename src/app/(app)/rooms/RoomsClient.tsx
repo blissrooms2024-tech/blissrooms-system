@@ -36,6 +36,8 @@ export default function RoomsClient({ role }: { role: string }) {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [airconFilter, setAirconFilter] = useState("");
 
   async function loadRooms() {
     setError("");
@@ -102,6 +104,9 @@ export default function RoomsClient({ role }: { role: string }) {
 
   const q = search.trim().toLowerCase();
   const filteredRooms = rooms?.filter((r) => {
+    if (statusFilter && r.status !== statusFilter) return false;
+    if (airconFilter === "YES" && !r.hasAircon) return false;
+    if (airconFilter === "NO" && r.hasAircon) return false;
     if (!q) return true;
     return (
       r.roomCode.toLowerCase().includes(q) ||
@@ -122,12 +127,27 @@ export default function RoomsClient({ role }: { role: string }) {
             </Link>
           )}
         </div>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={`🔍 ${t("搜 Room Code / 楼盘名字 / 类型...", "Search Room Code / Property Name / Type...")}`}
-          className="input mb-3.5 max-w-xs"
-        />
+        <div className="mb-3.5 flex flex-wrap gap-2.5">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`🔍 ${t("搜 Room Code / 楼盘名字 / 类型...", "Search Room Code / Property Name / Type...")}`}
+            className="input max-w-xs flex-1"
+          />
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input max-w-[160px]">
+            <option value="">{t("全部状态", "All Statuses")}</option>
+            {Object.keys(ROOM_STATUS_LABELS).map((k) => (
+              <option key={k} value={k}>
+                {roomStatusLabel(k, locale)}
+              </option>
+            ))}
+          </select>
+          <select value={airconFilter} onChange={(e) => setAirconFilter(e.target.value)} className="input max-w-[160px]">
+            <option value="">{t("全部冷气", "All Aircon")}</option>
+            <option value="YES">{t("有冷气", "Has Aircon")}</option>
+            <option value="NO">{t("没有冷气", "No Aircon")}</option>
+          </select>
+        </div>
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!rooms && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
         {rooms && (
