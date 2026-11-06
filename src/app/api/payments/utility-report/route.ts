@@ -16,7 +16,15 @@ export async function GET(req: NextRequest) {
 
   const period = req.nextUrl.searchParams.get("period") || "month";
   const typeFilter = req.nextUrl.searchParams.get("type") || "";
+  const unitFilter = req.nextUrl.searchParams.get("unit") || "";
   const now = new Date();
+
+  let propertyId: string | undefined;
+  if (unitFilter) {
+    const property = await prisma.property.findUnique({ where: { propertyCode: unitFilter }, select: { id: true } });
+    if (!property) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
+    propertyId = property.id;
+  }
 
   let rangeStart: Date | null = null;
   let rangeEnd: Date | null = null;
@@ -46,6 +54,7 @@ export async function GET(req: NextRequest) {
       status: "Paid",
       type: { in: types },
       ...(rangeStart && rangeEnd ? { paidDate: { gte: rangeStart, lt: rangeEnd } } : {}),
+      ...(propertyId ? { contract: { room: { propertyId } } } : {}),
     },
     orderBy: [{ roomCode: "asc" }, { paidDate: "asc" }],
     include: { contract: { select: { contractCode: true } } },

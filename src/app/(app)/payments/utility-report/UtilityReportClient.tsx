@@ -30,6 +30,11 @@ interface Report {
 
 const UTILITY_TYPES: UtilityType[] = ["AC", "DRYER", "ELECTRIC", "OTHER"];
 
+interface PropertyOption {
+  propertyCode: string;
+  name: string;
+}
+
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
@@ -48,8 +53,19 @@ export default function UtilityReportClient() {
   const [month, setMonth] = useState(currentMonth());
   const [year, setYear] = useState(new Date().getFullYear());
   const [typeFilter, setTypeFilter] = useState<UtilityType | "">("");
+  const [unitFilter, setUnitFilter] = useState("");
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/properties")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setProperties(data.properties);
+      })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setError("");
@@ -58,6 +74,7 @@ export default function UtilityReportClient() {
       if (period === "month") qs.set("month", month);
       if (period === "year") qs.set("year", String(year));
       if (typeFilter) qs.set("type", typeFilter);
+      if (unitFilter) qs.set("unit", unitFilter);
       const res = await fetch(`/api/payments/utility-report?${qs}`);
       const data = await res.json();
       if (!data.success) {
@@ -68,7 +85,7 @@ export default function UtilityReportClient() {
     } catch {
       setError(t("出错，请稍后再试", "An error occurred, please try again later"));
     }
-  }, [period, month, year, typeFilter, t]);
+  }, [period, month, year, typeFilter, unitFilter, t]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -128,6 +145,18 @@ export default function UtilityReportClient() {
             {UTILITY_TYPES.map((ty) => (
               <option key={ty} value={ty}>
                 {paymentTypeLabelLocale(ty, undefined, locale)}
+              </option>
+            ))}
+          </select>
+          <select
+            value={unitFilter}
+            onChange={(e) => setUnitFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">{t("全部楼盘", "All Units")}</option>
+            {properties.map((p) => (
+              <option key={p.propertyCode} value={p.propertyCode}>
+                {p.name}
               </option>
             ))}
           </select>
