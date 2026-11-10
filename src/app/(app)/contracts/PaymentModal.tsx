@@ -40,7 +40,6 @@ function readAsDataURL(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
-const PAY_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"];
 const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "OTHER"];
 
 function statusBadge(status: string, t: (zh: string, en: string) => string): { label: string; cls: string } {
@@ -71,13 +70,11 @@ export default function PaymentModal({
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [totals, setTotals] = useState({ due: 0, paid: 0, outstanding: 0 });
   const [hasAircon, setHasAircon] = useState(false);
-  const [form, setForm] = useState({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer", customLabel: "" });
   const [billForm, setBillForm] = useState({ type: "RENTAL", amountDue: "", dueDate: "", periodMonth: "", customLabel: "" });
   const [lumpForm, setLumpForm] = useState({ amount: "", paidDate: "", method: "Bank Transfer" });
   const [lumpFile, setLumpFile] = useState<File | null>(null);
   const [lumpLoading, setLumpLoading] = useState(false);
   const lumpFileInputRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState(false);
   const [billLoading, setBillLoading] = useState(false);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
@@ -115,48 +112,13 @@ export default function PaymentModal({
     load();
   }, [load]);
 
-  async function submitPay() {
-    if (!form.amountPaid) {
-      toast.warning(t("请填金额", "Please enter an amount"));
-      return;
-    }
-    if (form.type === "OTHER" && !form.customLabel.trim()) {
-      toast.warning(t("「其他」类型要填费用名称", "\"Other\" type needs a charge name"));
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/contracts/${contractCode}/payments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          paidDate: form.paidDate || new Date().toISOString().slice(0, 10),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message);
-        setForm({ type: "RENTAL", amountPaid: "", paidDate: "", method: "Bank Transfer", customLabel: "" });
-        load();
-        onChanged();
-      } else {
-        toast.danger(data.message);
-      }
-    } catch {
-      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function submitLump() {
     if (!lumpForm.amount) {
       toast.warning(t("请填金额", "Please enter an amount"));
       return;
     }
     if (lumpFile && lumpFile.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
     setLumpLoading(true);
@@ -443,7 +405,7 @@ export default function PaymentModal({
             <input
               ref={lumpFileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               disabled={lumpLoading}
               onChange={(e) => setLumpFile(e.target.files?.[0] ?? null)}
               className="block w-full text-xs text-gray-500 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
@@ -460,62 +422,6 @@ export default function PaymentModal({
             "If the amount doesn't cover every item, it's allocated in the order above — a partially-covered item is marked partly paid, with the remaining balance still owing."
           )}
         </p>
-      </div>
-
-      <div className="mt-3.5 rounded-lg bg-gray-50 p-3.5">
-        <b className="text-sm">➕ {t("记一笔新收款 (单一项目, 直接确认已收, 不用再审核)", "Record a New Payment (single item, confirmed as paid immediately, no review needed)")}</b>
-        <div className="mt-2 flex flex-wrap items-end gap-2.5">
-          <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">{t("项目", "Item")}</label>
-            <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-              {PAY_TYPES.map((pt) => (
-                <option key={pt} value={pt}>
-                  {paymentTypeLabelLocale(pt, null, locale)}
-                </option>
-              ))}
-            </select>
-          </div>
-          {form.type === "OTHER" && (
-            <div className="min-w-[130px] flex-1">
-              <label className="mb-1.5 block text-sm text-gray-600">{t("费用名称", "Charge Name")}</label>
-              <input
-                className="input"
-                placeholder={t("例: 清洁费", "e.g. Cleaning Fee")}
-                value={form.customLabel}
-                onChange={(e) => setForm({ ...form, customLabel: e.target.value })}
-              />
-            </div>
-          )}
-          <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">{t("金额 RM", "Amount RM")}</label>
-            <input
-              type="number"
-              className="input"
-              value={form.amountPaid}
-              onChange={(e) => setForm({ ...form, amountPaid: e.target.value })}
-            />
-          </div>
-          <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">{t("收款日期", "Payment Date")}</label>
-            <input
-              type="date"
-              className="input"
-              value={form.paidDate}
-              onChange={(e) => setForm({ ...form, paidDate: e.target.value })}
-            />
-          </div>
-          <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">{t("方式", "Method")}</label>
-            <select className="input" value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value })}>
-              <option>Bank Transfer</option>
-              <option>Cash</option>
-              <option>Cheque</option>
-            </select>
-          </div>
-          <button onClick={submitPay} disabled={loading} className="btn-primary">
-            {t("记录", "Record")}
-          </button>
-        </div>
       </div>
 
       {role === "ADMIN" && (

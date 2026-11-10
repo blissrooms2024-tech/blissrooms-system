@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, type SessionPayload } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
-import { newId } from "@/lib/id";
 
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
@@ -103,63 +101,3 @@ export async function GET(
   });
 }
 
-const addSchema = z
-  .object({
-    type: z.enum(["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "LATE_FEE", "OTHER"]),
-    amountPaid: z.coerce.number(),
-    amountDue: z.coerce.number().optional().default(0),
-    periodMonth: z.string().trim().optional().default(""),
-    dueDate: z.string().trim().optional(),
-    paidDate: z.string().trim().optional(),
-    method: z.string().trim().optional().default(""),
-    notes: z.string().trim().optional().default(""),
-    customLabel: z.string().trim().optional().default(""),
-  })
-  .refine((d) => d.type !== "OTHER" || d.customLabel, { message: "「其他」类型要填费用名称" });
-
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ contractId: string }> }
-) {
-  const user = await getCurrentUser();
-  if (!user || (user.role !== "ADMIN" && user.role !== "AGENT")) {
-    return NextResponse.json({ success: false, message: "只有 Admin 或负责的 Agent 可以记收款" }, { status: 403 });
-  }
-  const { contractId } = await params;
-  const c = await prisma.contract.findUnique({ where: { contractCode: contractId } });
-  if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
-  if (user.role === "AGENT" && c.agentId !== user.sub) {
-    return NextResponse.json({ success: false, message: "只能帮自己负责的合同记收款" }, { status: 403 });
-  }
-
-  const parsed = addSchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) {
-    const msg = parsed.error.issues[0]?.message || "请填金额";
-    return NextResponse.json({ success: false, message: msg }, { status: 400 });
-  }
-  const d = parsed.data;
-
-  await prisma.payment.create({
-    data: {
-      paymentCode: await newId("PY"),
-      contractId: c.id,
-      roomCode: (await prisma.room.findUnique({ where: { id: c.roomId } }))!.roomCode,
-      tenantId: c.tenantId,
-      tenantName: c.tenantName,
-      periodMonth: d.periodMonth,
-      type: d.type,
-      amountDue: d.amountDue,
-      amountPaid: d.amountPaid,
-      dueDate: d.dueDate ? new Date(d.dueDate) : null,
-      paidDate: d.paidDate ? new Date(d.paidDate) : new Date(),
-      status: "Paid",
-      method: d.method,
-      recordedBy: user.name,
-      notes: d.notes,
-      customLabel: d.type === "OTHER" ? d.customLabel : null,
-    },
-  });
-
-  const label = d.type === "OTHER" ? d.customLabel : d.type;
-  return NextResponse.json({ success: true, message: `✅ 已记一笔: ${label} RM${d.amountPaid.toFixed(2)}` });
-}
