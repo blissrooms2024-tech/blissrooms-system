@@ -272,6 +272,7 @@ export default function ContractActions({
               placeholder={t("你的登入密码", "Your login password")}
               value={forceDeletePassword}
               onChange={(e) => setForceDeletePassword(e.target.value)}
+              autoComplete="new-password"
               autoFocus
             />
           </div>
