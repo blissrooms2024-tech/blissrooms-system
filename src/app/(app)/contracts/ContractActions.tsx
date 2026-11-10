@@ -45,7 +45,10 @@ export default function ContractActions({
   const [moveForm, setMoveForm] = useState(false);
   const [paying, setPaying] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [forceDeletePrompt, setForceDeletePrompt] = useState(false);
+  // null while the can-delete check hasn't resolved yet, so the dialog can briefly start with
+  // the plain message before possibly switching to the force-delete (password) view.
+  const [deleteCanDelete, setDeleteCanDelete] = useState<boolean | null>(null);
+  const [deleteReason, setDeleteReason] = useState<string | null>(null);
   const [forceDeletePassword, setForceDeletePassword] = useState("");
   const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
   const [terminating, setTerminating] = useState(false);
@@ -94,18 +97,39 @@ export default function ContractActions({
     }
   }
 
+  async function startDelete() {
+    setDeleteCanDelete(null);
+    setDeleteReason(null);
+    setForceDeletePassword("");
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/contracts/${c.contractCode}/can-delete`);
+      const data = await res.json();
+      if (data.success) {
+        setDeleteCanDelete(data.canDelete);
+        setDeleteReason(data.reason);
+      } else {
+        setDeleteCanDelete(true); // fall back to a plain delete attempt if the check itself fails
+      }
+    } catch {
+      setDeleteCanDelete(true);
+    }
+  }
+
   async function confirmDelete() {
-    setDeleting(false);
     try {
       const res = await fetch(`/api/contracts/${c.contractCode}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
+        setDeleting(false);
         toast.success(data.message);
         onChanged();
       } else if (data.code === "HAS_RELATED_RECORDS") {
-        toast.danger(data.message);
-        setForceDeletePassword("");
-        setForceDeletePrompt(true);
+        // The pre-check said this was clear but the delete itself still hit related records
+        // (a race — something was added in between) — fall into the same force-delete view
+        // instead of a separate popup.
+        setDeleteCanDelete(false);
+        setDeleteReason(data.message);
       } else {
         toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
       }
@@ -129,8 +153,10 @@ export default function ContractActions({
       const data = await res.json();
       if (data.success) {
         toast.success(data.message);
-        setForceDeletePrompt(false);
+        setDeleting(false);
         setForceDeletePassword("");
+        setDeleteCanDelete(null);
+        setDeleteReason(null);
         onChanged();
       } else {
         toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
@@ -197,7 +223,7 @@ export default function ContractActions({
   }
   if (role === "ADMIN") {
     items.push({ key: "warning", label: `⚠️ ${t("警告信", "Warning Letter")}`, color: "bg-orange-600", href: `/contracts/${c.contractCode}/warning-letter` });
-    items.push({ key: "delete", label: `🗑️ ${t("删除", "Delete")}`, color: "bg-red-600", onClick: () => setDeleting(true) });
+    items.push({ key: "delete", label: `🗑️ ${t("删除", "Delete")}`, color: "bg-red-600", onClick: () => startDelete() });
   }
 
   const primaryItems = items.filter((i) => i.primary);
@@ -246,42 +272,46 @@ export default function ContractActions({
       <ConfirmDialog
         open={deleting}
         danger
-        message={t(
-          `确定删除合同 ${c.contractCode}？房间会放回空房，这个操作不能撤销。`,
-          `Delete contract ${c.contractCode}? The room will be set back to vacant — this action cannot be undone.`
-        )}
-        confirmLabel={t("确定删除", "Confirm Delete")}
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleting(false)}
-      />
-      <ConfirmDialog
-        open={forceDeletePrompt}
-        danger
-        title={`⚠️ ${t("强制删除", "Force Delete")}`}
+        title={deleteCanDelete === false ? t("🔒 强制删除", "🔒 Force Delete") : t("删除合同", "Delete Contract")}
         message={
-          <div className="space-y-2.5">
-            <p>
-              {t(
-                "这张合同已经有收款/佣金/报修/警告信等记录。强制删除会把这些记录全部一起永久删除，无法恢复。请输入你自己的登入密码确认：",
-                "This contract already has payment/commission/maintenance/warning-letter records. Force deleting will permanently delete all of those along with it — there is no undo. Enter your own login password to confirm:"
-              )}
-            </p>
-            <input
-              type="password"
-              className="input w-full"
-              placeholder={t("你的登入密码", "Your login password")}
-              value={forceDeletePassword}
-              onChange={(e) => setForceDeletePassword(e.target.value)}
-              autoComplete="new-password"
-              autoFocus
-            />
-          </div>
+          deleteCanDelete === false ? (
+            <div className="space-y-2.5">
+              <p>
+                {t(
+                  `${deleteReason}。强制删除会把这些记录全部一起永久删除，无法恢复。请输入你自己的登入密码确认：`,
+                  `${deleteReason}. Force deleting will permanently delete all of those along with it — there is no undo. Enter your own login password to confirm:`
+                )}
+              </p>
+              <input
+                type="password"
+                className="input w-full"
+                placeholder={t("你的登入密码", "Your login password")}
+                value={forceDeletePassword}
+                onChange={(e) => setForceDeletePassword(e.target.value)}
+                autoComplete="new-password"
+                autoFocus
+              />
+            </div>
+          ) : (
+            t(
+              `确定删除合同 ${c.contractCode}？房间会放回空房，这个操作不能撤销。`,
+              `Delete contract ${c.contractCode}? The room will be set back to vacant — this action cannot be undone.`
+            )
+          )
         }
-        confirmLabel={forceDeleteSaving ? t("删除中...", "Deleting...") : t("确定强制删除", "Confirm Force Delete")}
-        onConfirm={forceDelete}
+        confirmLabel={
+          deleteCanDelete === false
+            ? forceDeleteSaving
+              ? t("删除中...", "Deleting...")
+              : t("确定强制删除", "Confirm Force Delete")
+            : t("确定删除", "Confirm Delete")
+        }
+        onConfirm={deleteCanDelete === false ? forceDelete : confirmDelete}
         onCancel={() => {
-          setForceDeletePrompt(false);
+          setDeleting(false);
           setForceDeletePassword("");
+          setDeleteCanDelete(null);
+          setDeleteReason(null);
         }}
       />
       <ConfirmDialog

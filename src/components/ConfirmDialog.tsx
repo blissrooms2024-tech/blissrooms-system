@@ -32,7 +32,7 @@ export default function ConfirmDialog({
       onClick={onBackdropClick}
       className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-5"
     >
-      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <div className="mb-1.5 text-base font-semibold text-gray-900">
           {title ?? (danger ? t("⚠️ 危险操作", "⚠️ Dangerous Action") : t("确认", "Confirm"))}
         </div>
