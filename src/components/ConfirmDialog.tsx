@@ -32,11 +32,16 @@ export default function ConfirmDialog({
       onClick={onBackdropClick}
       className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-5"
     >
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-1.5 text-base font-semibold text-gray-900">
+      <div className="w-full min-w-0 max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <div className="mb-1.5 whitespace-normal text-base font-semibold text-gray-900">
           {title ?? (danger ? t("⚠️ 危险操作", "⚠️ Dangerous Action") : t("确认", "Confirm"))}
         </div>
-        <div className="mb-5 text-sm text-gray-600">{message}</div>
+        {/* whitespace-normal overrides an inherited whitespace-nowrap — this dialog renders
+            wherever it's called from in the DOM (it's just position:fixed, not a portal), and
+            a table cell's Td ("whitespace-nowrap" to keep table rows single-line) is a common
+            ancestor, which would otherwise force this message onto one unwrapped, overflowing
+            line regardless of its own width constraints. */}
+        <div className="mb-5 min-w-0 break-words whitespace-normal text-sm text-gray-600">{message}</div>
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}

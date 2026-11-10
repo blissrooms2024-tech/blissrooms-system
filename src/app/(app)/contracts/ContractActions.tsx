@@ -98,10 +98,10 @@ export default function ContractActions({
   }
 
   async function startDelete() {
-    setDeleteCanDelete(null);
-    setDeleteReason(null);
     setForceDeletePassword("");
-    setDeleting(true);
+    // Resolve which version of the dialog to show BEFORE opening it — opening immediately and
+    // then swapping its content once this resolves looked like the dialog was acting on its
+    // own, jumping to the password view with no click in between.
     try {
       const res = await fetch(`/api/contracts/${c.contractCode}/can-delete`);
       const data = await res.json();
@@ -110,10 +110,13 @@ export default function ContractActions({
         setDeleteReason(data.reason);
       } else {
         setDeleteCanDelete(true); // fall back to a plain delete attempt if the check itself fails
+        setDeleteReason(null);
       }
     } catch {
       setDeleteCanDelete(true);
+      setDeleteReason(null);
     }
+    setDeleting(true);
   }
 
   async function confirmDelete() {
