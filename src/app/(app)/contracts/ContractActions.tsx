@@ -53,7 +53,16 @@ export default function ContractActions({
 
   function openMenu() {
     const rect = moreBtnRef.current?.getBoundingClientRect();
-    if (rect) setMenuPos({ top: rect.bottom + 4, left: Math.max(rect.right - 160, 8) });
+    if (rect) {
+      // Each item is ~30px tall (py-1.5 + text) plus the 4px gaps between them and the
+      // container's own padding — estimated so a row near the bottom of the screen flips the
+      // menu upward instead of rendering items (often the last one, e.g. Delete) below the
+      // viewport where they can't be seen or clicked at all.
+      const estimatedHeight = secondaryItems.length * 30 + (secondaryItems.length - 1) * 4 + 12;
+      const fitsBelow = rect.bottom + 4 + estimatedHeight <= window.innerHeight;
+      const top = fitsBelow ? rect.bottom + 4 : Math.max(rect.top - estimatedHeight - 4, 8);
+      setMenuPos({ top, left: Math.max(rect.right - 160, 8) });
+    }
     setMenuOpen(true);
   }
 
@@ -71,29 +80,41 @@ export default function ContractActions({
   }, [menuOpen]);
 
   async function doAction(fn: "submit" | "approve") {
-    const res = await fetch(`/api/contracts/${c.contractCode}/${fn}`, { method: "POST" });
-    const data = await res.json();
-    if (data.success) toast.success(data.message);
-    else toast.danger(data.message);
-    onChanged();
+    try {
+      const res = await fetch(`/api/contracts/${c.contractCode}/${fn}`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) toast.success(data.message);
+      else toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
+      onChanged();
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    }
   }
 
   async function confirmDelete() {
     setDeleting(false);
-    const res = await fetch(`/api/contracts/${c.contractCode}`, { method: "DELETE" });
-    const data = await res.json();
-    if (data.success) toast.success(data.message);
-    else toast.danger(data.message);
-    onChanged();
+    try {
+      const res = await fetch(`/api/contracts/${c.contractCode}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) toast.success(data.message);
+      else toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
+      onChanged();
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    }
   }
 
   async function confirmTerminate() {
     setTerminating(false);
-    const res = await fetch(`/api/contracts/${c.contractCode}/terminate-arrears`, { method: "POST" });
-    const data = await res.json();
-    if (data.success) toast.success(data.message);
-    else toast.danger(data.message);
-    onChanged();
+    try {
+      const res = await fetch(`/api/contracts/${c.contractCode}/terminate-arrears`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) toast.success(data.message);
+      else toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
+      onChanged();
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    }
   }
 
   const notClosed = c.status !== "TERMINATED" && c.status !== "MOVED_OUT";
@@ -259,7 +280,7 @@ export default function ContractActions({
               <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
               <div
                 style={{ top: menuPos.top, left: menuPos.left }}
-                className="fixed z-50 flex w-40 flex-col gap-1 rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-black/5"
+                className="fixed z-50 flex max-h-[80vh] w-40 flex-col gap-1 overflow-y-auto rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-black/5"
               >
                 {secondaryItems.map((i) =>
                   i.href ? (
