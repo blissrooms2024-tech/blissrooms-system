@@ -45,6 +45,9 @@ export default function ContractActions({
   const [moveForm, setMoveForm] = useState(false);
   const [paying, setPaying] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [forceDeletePrompt, setForceDeletePrompt] = useState(false);
+  const [forceDeletePassword, setForceDeletePassword] = useState("");
+  const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -96,11 +99,46 @@ export default function ContractActions({
     try {
       const res = await fetch(`/api/contracts/${c.contractCode}`, { method: "DELETE" });
       const data = await res.json();
-      if (data.success) toast.success(data.message);
-      else toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
-      onChanged();
+      if (data.success) {
+        toast.success(data.message);
+        onChanged();
+      } else if (data.code === "HAS_RELATED_RECORDS") {
+        toast.danger(data.message);
+        setForceDeletePassword("");
+        setForceDeletePrompt(true);
+      } else {
+        toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
+      }
     } catch {
       toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    }
+  }
+
+  async function forceDelete() {
+    if (!forceDeletePassword) {
+      toast.warning(t("请输入密码", "Please enter your password"));
+      return;
+    }
+    setForceDeleteSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${c.contractCode}/force-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: forceDeletePassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setForceDeletePrompt(false);
+        setForceDeletePassword("");
+        onChanged();
+      } else {
+        toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
+      }
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    } finally {
+      setForceDeleteSaving(false);
     }
   }
 
@@ -215,6 +253,35 @@ export default function ContractActions({
         confirmLabel={t("确定删除", "Confirm Delete")}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(false)}
+      />
+      <ConfirmDialog
+        open={forceDeletePrompt}
+        danger
+        title={`⚠️ ${t("强制删除", "Force Delete")}`}
+        message={
+          <div className="space-y-2.5">
+            <p>
+              {t(
+                "这张合同已经有收款/佣金/报修/警告信等记录。强制删除会把这些记录全部一起永久删除，无法恢复。请输入你自己的登入密码确认：",
+                "This contract already has payment/commission/maintenance/warning-letter records. Force deleting will permanently delete all of those along with it — there is no undo. Enter your own login password to confirm:"
+              )}
+            </p>
+            <input
+              type="password"
+              className="input w-full"
+              placeholder={t("你的登入密码", "Your login password")}
+              value={forceDeletePassword}
+              onChange={(e) => setForceDeletePassword(e.target.value)}
+              autoFocus
+            />
+          </div>
+        }
+        confirmLabel={forceDeleteSaving ? t("删除中...", "Deleting...") : t("确定强制删除", "Confirm Force Delete")}
+        onConfirm={forceDelete}
+        onCancel={() => {
+          setForceDeletePrompt(false);
+          setForceDeletePassword("");
+        }}
       />
       <ConfirmDialog
         open={terminating}

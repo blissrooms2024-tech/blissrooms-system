@@ -214,13 +214,16 @@ export async function DELETE(
   try {
     await prisma.contract.delete({ where: { contractCode: contractId } });
   } catch (e) {
-    if (e && typeof e === "object" && "code" in e && e.code === "P2003") {
-      return NextResponse.json(
-        { success: false, message: "这张合同已经有收款/佣金记录, 不能直接删除" },
-        { status: 409 }
-      );
-    }
-    throw e;
+    // Any failure deleting a contract is, in practice, always a related record (Payment/
+    // Commission/MaintenanceRequest/WarningLetter/MoveInOutForm) blocking it via the FK
+    // constraint — not just the specific P2003 code, so this always returns a clear JSON
+    // error instead of ever letting an exception escape as a non-JSON 500 (which the client
+    // can't parse, and would otherwise surface as a misleading "network failed" message).
+    console.error("[contracts DELETE]", e);
+    return NextResponse.json(
+      { success: false, message: "这张合同已经有收款/佣金/报修/警告信等记录, 不能直接删除 — 如果确定要删, 可以用「强制删除」", code: "HAS_RELATED_RECORDS" },
+      { status: 409 }
+    );
   }
 
   return NextResponse.json({ success: true, message: "✅ 合同已删, 房间放回空房" });
