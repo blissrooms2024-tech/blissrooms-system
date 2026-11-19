@@ -38,6 +38,8 @@ export default function RoomsClient({ role }: { role: string }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [airconFilter, setAirconFilter] = useState("");
+  const [confirmingVacate, setConfirmingVacate] = useState(false);
+  const [vacating, setVacating] = useState(false);
 
   async function loadRooms() {
     setError("");
@@ -59,6 +61,25 @@ export default function RoomsClient({ role }: { role: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRooms();
   }, []);
+
+  async function runVacateExpired() {
+    setConfirmingVacate(false);
+    setVacating(true);
+    try {
+      const res = await fetch("/api/rooms/vacate-expired", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        loadRooms();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setVacating(false);
+    }
+  }
 
   async function changeStatus(roomCode: string, status: string) {
     const res = await fetch(`/api/rooms/${roomCode}`, {
@@ -122,9 +143,22 @@ export default function RoomsClient({ role }: { role: string }) {
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
           <h3 className="text-base font-semibold text-brand">{title}</h3>
           {canEdit && (
-            <Link href="/rooms/new" className="btn-primary text-sm">
-              ➕ {t("加新房间", "Add New Room")}
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setConfirmingVacate(true)}
+                disabled={vacating}
+                className="btn-soft text-sm"
+                title={t(
+                  "把所有已经过期的生效合同对应的房间改回空房 (合同本身不受影响)",
+                  "Flip any room back to vacant whose ACTIVE contract has already expired (the contract itself is unaffected)"
+                )}
+              >
+                🔄 {vacating ? t("处理中...", "Processing...") : t("立即检查过期合同", "Check Expired Contracts Now")}
+              </button>
+              <Link href="/rooms/new" className="btn-primary text-sm">
+                ➕ {t("加新房间", "Add New Room")}
+              </Link>
+            </div>
           )}
         </div>
         <div className="mb-3.5 flex flex-wrap gap-2.5">
@@ -232,19 +266,22 @@ export default function RoomsClient({ role }: { role: string }) {
           </div>
         )}
         {rooms && (
-          <div className="hidden overflow-x-auto sm:block">
+          <div className="hidden max-h-[65vh] overflow-auto sm:block">
             <table className="w-full text-sm">
               <thead>
+                {/* sticky top-0 keeps the header (and the horizontal scrollbar, which sits right
+                    under this bounded box instead of under however many rows there are) always
+                    reachable without scrolling the whole page down first. */}
                 <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th className="sticky left-0 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">Room Code</Th>
-                  <Th>{t("楼盘 Unit", "Property")}</Th>
-                  <Th>{t("类型", "Type")}</Th>
-                  <Th>{t("租金", "Rental")}</Th>
-                  <Th>{t("冷气", "Aircon")}</Th>
-                  <Th>{t("照片", "Photo")}</Th>
-                  <Th>{t("状态", "Status")}</Th>
-                  {canEdit && <Th>{t("改状态", "Change Status")}</Th>}
-                  {canEdit && <Th>{t("操作", "Actions")}</Th>}
+                  <Th className="sticky left-0 top-0 z-20 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">Room Code</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("楼盘 Unit", "Property")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("类型", "Type")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("租金", "Rental")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("冷气", "Aircon")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("照片", "Photo")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("状态", "Status")}</Th>
+                  {canEdit && <Th className="sticky top-0 z-10 bg-gray-50">{t("改状态", "Change Status")}</Th>}
+                  {canEdit && <Th className="sticky top-0 z-10 bg-gray-50">{t("操作", "Actions")}</Th>}
                 </tr>
               </thead>
               <tbody>
@@ -377,6 +414,17 @@ export default function RoomsClient({ role }: { role: string }) {
         confirmLabel={t("确定删除", "Confirm Delete")}
         onConfirm={confirmDeleteRoom}
         onCancel={() => setDeletingRoom(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmingVacate}
+        message={t(
+          "现在执行？这会把所有生效中、但到期日已经过了的合同，对应的房间改回空房 (清空租客资料)。合同本身保持生效中，不受影响，续约的话房间会自动改回已出租。已经每天自动跑一次，这个按钮是手动立即执行。",
+          "Run this now? This flips any room back to vacant (clearing the tenant) whose ACTIVE contract's expiry date has already passed. The contract itself stays ACTIVE and is unaffected — renewing it automatically re-occupies the room. This already runs automatically once a day — this button runs it immediately instead."
+        )}
+        confirmLabel={t("确定执行", "Confirm Run")}
+        onConfirm={runVacateExpired}
+        onCancel={() => setConfirmingVacate(false)}
       />
     </div>
   );
