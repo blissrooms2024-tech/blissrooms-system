@@ -7,6 +7,7 @@ import {
   PAYMENT_TYPE_LABELS,
   paymentTypeLabelLocale,
   expenseCategoryLabelLocale,
+  isDepositLiabilityType,
 } from "@/lib/config";
 import { fmtMoney, fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
@@ -169,6 +170,8 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
   }
 
   const typeKeys = report ? Object.keys(PAYMENT_TYPE_LABELS).filter((k) => report.byType[k]) : [];
+  const revenueKeys = typeKeys.filter((k) => !isDepositLiabilityType(k));
+  const liabilityKeys = typeKeys.filter((k) => isDepositLiabilityType(k));
   const canManageExpenses = role === "ADMIN";
   const neitherManagedNorLeased =
     report && report.property.managementFeeRate === null && report.property.ownerRentalAmount === null;
@@ -305,6 +308,71 @@ export default function UnitReportClient({ propertyCode, role }: { propertyCode:
               </div>
             </div>
           </div>
+
+          {(revenueKeys.length > 0 || liabilityKeys.length > 0) && (
+            <>
+              <h4>{t("📒 借贷分类汇总 (Debit & Credit Summary)", "📒 Debit & Credit Summary")}</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t("科目 Account", "Account")}</th>
+                    <th className="num">{t("借方 Debit (RM)", "Debit (RM)")}</th>
+                    <th className="num">{t("贷方 Credit (RM)", "Credit (RM)")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <b>{t("现金 / 银行 Cash / Bank", "Cash / Bank")}</b>
+                    </td>
+                    <td className="num">
+                      <b>{fmtMoney(report.total)}</b>
+                    </td>
+                    <td className="num"></td>
+                  </tr>
+                  {revenueKeys.length > 0 && (
+                    <tr>
+                      <td colSpan={3} style={{ paddingTop: "8px", fontWeight: 600, color: "#555" }}>
+                        {t("营业收入 Revenue", "Revenue")}
+                      </td>
+                    </tr>
+                  )}
+                  {revenueKeys.map((k) => (
+                    <tr key={k}>
+                      <td style={{ paddingLeft: "16px" }}>{paymentTypeLabelLocale(k, null, locale)} Income</td>
+                      <td className="num"></td>
+                      <td className="num">{fmtMoney(report.byType[k])}</td>
+                    </tr>
+                  ))}
+                  {liabilityKeys.length > 0 && (
+                    <tr>
+                      <td colSpan={3} style={{ paddingTop: "8px", fontWeight: 600, color: "#555" }}>
+                        {t("代收押金 (负债) Deposits Payable (Liability)", "Deposits Payable (Liability)")}
+                      </td>
+                    </tr>
+                  )}
+                  {liabilityKeys.map((k) => (
+                    <tr key={k}>
+                      <td style={{ paddingLeft: "16px" }}>{paymentTypeLabelLocale(k, null, locale)} Payable</td>
+                      <td className="num"></td>
+                      <td className="num">{fmtMoney(report.byType[k])}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td>
+                      <b>{t("合计 TOTAL", "TOTAL")}</b>
+                    </td>
+                    <td className="num">
+                      <b>{fmtMoney(report.total)}</b>
+                    </td>
+                    <td className="num">
+                      <b>{fmtMoney(report.total)}</b>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </>
+          )}
 
           <table>
             <thead>

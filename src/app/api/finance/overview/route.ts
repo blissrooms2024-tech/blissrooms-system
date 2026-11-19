@@ -147,6 +147,10 @@ export async function GET(req: NextRequest) {
     else otherIncome += amt;
   }
   const totalIncome = rentalIncome + depositIncome + otherIncome;
+  // Deposits are cash collected but not earned revenue (they're owed back to the tenant), so
+  // keep a Revenue (Income Statement) subtotal distinct from Total Income (actual cash in) —
+  // same Malaysian-standard-accounts treatment as the Revenue Report.
+  const revenueTotal = rentalIncome + otherIncome;
 
   // --- Actual outflow (verified-paid transactions only) -------------------------------------
   const commissionPaid = sum(paidCommissions.map((c) => Number(c.commAmount)));
@@ -260,7 +264,7 @@ export async function GET(req: NextRequest) {
     month,
     year,
     cashFlow: {
-      income: { rental: rentalIncome, deposits: depositIncome, other: otherIncome, total: totalIncome },
+      income: { rental: rentalIncome, deposits: depositIncome, other: otherIncome, total: totalIncome, revenueTotal },
       outflow: { commissionPaid, maintenancePaid, expensePaid, total: totalActualOutflow },
       netCashFlow,
       transactions,

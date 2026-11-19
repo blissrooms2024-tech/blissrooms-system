@@ -50,7 +50,7 @@ interface Overview {
   month: string;
   year: number;
   cashFlow: {
-    income: { rental: number; deposits: number; other: number; total: number };
+    income: { rental: number; deposits: number; other: number; total: number; revenueTotal: number };
     outflow: { commissionPaid: number; maintenancePaid: number; expensePaid: number; total: number };
     netCashFlow: number;
     transactions: Transaction[];
@@ -232,7 +232,11 @@ export default function FinanceOverviewClient() {
               <div className="statRow">
                 <div className="stat">
                   <div className="n">{fmtMoney(data.cashFlow.income.total)}</div>
-                  <div className="l">{tt("总收入 (实收)", "Total Income (Received)")}</div>
+                  <div className="l">{tt("总收款 (现金/银行)", "Total Collected (Cash/Bank)")}</div>
+                </div>
+                <div className="stat">
+                  <div className="n">{fmtMoney(data.cashFlow.income.revenueTotal)}</div>
+                  <div className="l">{tt("营业收入 (损益表)", "Revenue (Income Statement)")}</div>
                 </div>
                 <div className="stat alt">
                   <div className="n">{fmtMoney(data.cashFlow.outflow.total)}</div>
@@ -243,6 +247,66 @@ export default function FinanceOverviewClient() {
                   <div className="l">{tt("净现金流 (收 − 支)", "Net Cash Flow (Income − Outflow)")}</div>
                 </div>
               </div>
+
+              <h4>{tt("📒 借贷分类汇总 (Debit & Credit Summary)", "📒 Debit & Credit Summary")}</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>{tt("科目 Account", "Account")}</th>
+                    <th className="num">{tt("借方 Debit (RM)", "Debit (RM)")}</th>
+                    <th className="num">{tt("贷方 Credit (RM)", "Credit (RM)")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <b>{tt("现金 / 银行 Cash / Bank", "Cash / Bank")}</b>
+                    </td>
+                    <td className="num">
+                      <b>{fmtMoney(data.cashFlow.income.total)}</b>
+                    </td>
+                    <td className="num"></td>
+                  </tr>
+                  <tr>
+                    <td colSpan={3} style={{ paddingTop: "8px", fontWeight: 600, color: "#555" }}>
+                      {tt("营业收入 Revenue", "Revenue")}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingLeft: "16px" }}>{tt("房租 Rental Income", "Rental Income")}</td>
+                    <td className="num"></td>
+                    <td className="num">{fmtMoney(data.cashFlow.income.rental)}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingLeft: "16px" }}>
+                      {tt("其他收费 Other Income (Admin Fee/车位/冷气/烘干机/电费/罚款/其他)", "Other Income (Admin Fee/Carpark/AC/Dryer/Electricity/Late Fee/Other)")}
+                    </td>
+                    <td className="num"></td>
+                    <td className="num">{fmtMoney(data.cashFlow.income.other)}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={3} style={{ paddingTop: "8px", fontWeight: 600, color: "#555" }}>
+                      {tt("代收押金 (负债) Deposits Payable (Liability)", "Deposits Payable (Liability)")}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingLeft: "16px" }}>{tt("押金/水电押/门卡押 Deposits Payable", "Security/Utilities/Access Card Deposits Payable")}</td>
+                    <td className="num"></td>
+                    <td className="num">{fmtMoney(data.cashFlow.income.deposits)}</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <b>{tt("合计 TOTAL", "TOTAL")}</b>
+                    </td>
+                    <td className="num">
+                      <b>{fmtMoney(data.cashFlow.income.total)}</b>
+                    </td>
+                    <td className="num">
+                      <b>{fmtMoney(data.cashFlow.income.total)}</b>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
               <table>
                 <thead>
