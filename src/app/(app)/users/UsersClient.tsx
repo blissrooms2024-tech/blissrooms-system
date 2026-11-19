@@ -181,17 +181,20 @@ export default function UsersClient() {
           <div className="py-8 text-center text-sm text-gray-400">{t("没有符合的用户", "No matching users")}</div>
         )}
         {users && filtered!.length > 0 && (
-          <div className="overflow-x-auto">
+          <div className="max-h-[65vh] overflow-auto">
             <table className="w-full text-sm">
               <thead>
+                {/* sticky top-0 keeps the header (and the horizontal scrollbar, which sits right
+                    under this bounded box instead of under however many rows there are) always
+                    reachable without scrolling the whole page down first. */}
                 <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th className="hidden sm:table-cell">ID</Th>
-                  <Th className="sticky left-0 z-[1] max-w-[140px] bg-gray-50">{t("姓名", "Name")}</Th>
-                  <Th>{t("角色", "Role")}</Th>
-                  <Th>{t("房间号", "Room Code")}</Th>
-                  <Th>{t("状态", "Status")}</Th>
-                  <Th>{t("验证", "Verified")}</Th>
-                  <Th>{t("操作", "Actions")}</Th>
+                  <Th className="sticky top-0 z-10 hidden bg-gray-50 sm:table-cell">ID</Th>
+                  <Th className="sticky left-0 top-0 z-20 max-w-[140px] bg-gray-50">{t("姓名", "Name")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("角色", "Role")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("房间号", "Room Code")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("状态", "Status")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("验证", "Verified")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("操作", "Actions")}</Th>
                 </tr>
               </thead>
               <tbody>

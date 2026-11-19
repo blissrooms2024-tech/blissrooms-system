@@ -123,20 +123,23 @@ export default function ContractsClient({ role }: { role: string }) {
           </div>
         )}
         {filteredContracts && (
-          <div className="overflow-x-auto">
+          <div className="max-h-[65vh] overflow-auto">
             <table className="w-full text-sm">
               <thead>
+                {/* sticky top-0 keeps the header (and the horizontal scrollbar, which sits right
+                    under this bounded box instead of under however many rows there are) always
+                    reachable without scrolling the whole page down first. */}
                 <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th className="sticky left-0 z-[1] bg-gray-50">{t("合同号", "Contract #")}</Th>
-                  <Th>{t("房间", "Room")}</Th>
-                  <Th>{t("租客", "Tenant")}</Th>
-                  <Th>Agent</Th>
-                  <Th>{t("总款", "Total")}</Th>
-                  <Th>{t("已收", "Paid")}</Th>
-                  <Th>{t("还欠", "Owing")}</Th>
-                  <Th>{t("到期日", "Expiry Date")}</Th>
-                  <Th>{t("状态", "Status")}</Th>
-                  <Th>{t("操作", "Actions")}</Th>
+                  <Th className="sticky left-0 top-0 z-20 bg-gray-50">{t("合同号", "Contract #")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("房间", "Room")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("租客", "Tenant")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">Agent</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("总款", "Total")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("已收", "Paid")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("还欠", "Owing")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("到期日", "Expiry Date")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("状态", "Status")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("操作", "Actions")}</Th>
                 </tr>
               </thead>
               <tbody>

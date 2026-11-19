@@ -55,17 +55,17 @@ export default function AgentTenantsClient() {
       {pending.length === 0 ? (
         <div className="py-8 text-center text-sm text-gray-400">🎉 {t("全部都完成了", "Everything is completed")}</div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[65vh] overflow-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
-                <th className="px-2.5 py-1.5 font-semibold">{t("合同", "Contract")}</th>
-                <th className="px-2.5 py-1.5 font-semibold">{t("租客", "Tenant")}</th>
-                <th className="px-2.5 py-1.5 font-semibold">{t("状态", "Status")}</th>
-                <th className="px-2.5 py-1.5 font-semibold">{t("Tenant 签名", "Tenant Signature")}</th>
-                <th className="px-2.5 py-1.5 font-semibold">IC</th>
-                <th className="px-2.5 py-1.5 font-semibold">Move-in</th>
-                <th className="px-2.5 py-1.5 font-semibold">{t("押金", "Deposit")}</th>
+                <th className="sticky top-0 z-10 bg-gray-50 px-2.5 py-1.5 font-semibold">{t("合同", "Contract")}</th>
+                <th className="sticky top-0 z-10 bg-gray-50 px-2.5 py-1.5 font-semibold">{t("租客", "Tenant")}</th>
+                <th className="sticky top-0 z-10 bg-gray-50 px-2.5 py-1.5 font-semibold">{t("状态", "Status")}</th>
+                <th className="sticky top-0 z-10 bg-gray-50 px-2.5 py-1.5 font-semibold">{t("Tenant 签名", "Tenant Signature")}</th>
+                <th className="sticky top-0 z-10 bg-gray-50 px-2.5 py-1.5 font-semibold">IC</th>
+                <th className="sticky top-0 z-10 bg-gray-50 px-2.5 py-1.5 font-semibold">Move-in</th>
+                <th className="sticky top-0 z-10 bg-gray-50 px-2.5 py-1.5 font-semibold">{t("押金", "Deposit")}</th>
               </tr>
             </thead>
             <tbody>

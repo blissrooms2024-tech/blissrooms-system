@@ -124,15 +124,15 @@ export default function UserDetailClient({ userId }: { userId: string }) {
           {agentContracts.length === 0 ? (
             <div className="py-6 text-center text-sm text-gray-400">{t("还没有负责任何合同", "Not handling any contracts yet")}</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[65vh] overflow-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-left text-gray-600">
-                    <Th>{t("合同号", "Contract #")}</Th>
-                    <Th>{t("房间", "Room")}</Th>
-                    <Th>{t("租客", "Tenant")}</Th>
-                    <Th>{t("状态", "Status")}</Th>
-                    <Th>{t("佣金", "Commission")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("合同号", "Contract #")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("房间", "Room")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("租客", "Tenant")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("状态", "Status")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("佣金", "Commission")}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -173,16 +173,16 @@ export default function UserDetailClient({ userId }: { userId: string }) {
           {contracts.length === 0 ? (
             <div className="py-6 text-center text-sm text-gray-400">{t("还没有合同", "No contracts yet")}</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[65vh] overflow-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-left text-gray-600">
-                    <Th>{t("合同号", "Contract #")}</Th>
-                    <Th>{t("房间", "Room")}</Th>
-                    <Th>{t("状态", "Status")}</Th>
-                    <Th>{t("到期日", "Expiry Date")}</Th>
-                    <Th>{t("已收", "Paid")}</Th>
-                    <Th>{t("还欠", "Owing")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("合同号", "Contract #")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("房间", "Room")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("状态", "Status")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("到期日", "Expiry Date")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("已收", "Paid")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("还欠", "Owing")}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,16 +219,16 @@ export default function UserDetailClient({ userId }: { userId: string }) {
           {payments.length === 0 ? (
             <div className="py-6 text-center text-sm text-gray-400">{t("还没有账单记录", "No billing history yet")}</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[65vh] overflow-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-left text-gray-600">
-                    <Th>{t("合同", "Contract")}</Th>
-                    <Th>{t("项目", "Item")}</Th>
-                    <Th>{t("应收", "Due")}</Th>
-                    <Th>{t("已收", "Paid")}</Th>
-                    <Th>{t("状态", "Status")}</Th>
-                    <Th>{t("日期", "Date")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("合同", "Contract")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("项目", "Item")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("应收", "Due")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("已收", "Paid")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("状态", "Status")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("日期", "Date")}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -267,15 +267,15 @@ export default function UserDetailClient({ userId }: { userId: string }) {
           {maintenanceRequests.length === 0 ? (
             <div className="py-6 text-center text-sm text-gray-400">{t("还没有报修记录", "No maintenance reports yet")}</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[65vh] overflow-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-left text-gray-600">
-                    <Th>{t("编号", "Request #")}</Th>
-                    <Th>{t("房间", "Room")}</Th>
-                    <Th>{t("标题", "Title")}</Th>
-                    <Th>{t("状态", "Status")}</Th>
-                    <Th>{t("提交日期", "Submitted")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("编号", "Request #")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("房间", "Room")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("标题", "Title")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("状态", "Status")}</Th>
+                    <Th className="sticky top-0 z-10 bg-gray-50">{t("提交日期", "Submitted")}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -314,8 +314,8 @@ function Box({ label, value, color }: { label: string; value: string; color?: st
     </div>
   );
 }
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-2.5 py-1.5 font-semibold">{children}</th>;
+function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <th className={`whitespace-nowrap px-2.5 py-1.5 font-semibold ${className}`}>{children}</th>;
 }
 function Td({ children }: { children: React.ReactNode }) {
   return <td className="whitespace-nowrap px-2.5 py-1.5">{children}</td>;

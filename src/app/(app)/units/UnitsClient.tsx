@@ -222,19 +222,22 @@ export default function UnitsClient({ role }: { role: string }) {
           </div>
         )}
         {properties && (
-          <div className="hidden overflow-x-auto sm:block">
+          <div className="hidden max-h-[65vh] overflow-auto sm:block">
             <table className="w-full text-sm">
               <thead>
+                {/* sticky top-0 keeps the header (and the horizontal scrollbar, which sits right
+                    under this bounded box instead of under however many rows there are) always
+                    reachable without scrolling the whole page down first. */}
                 <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th className="sticky left-0 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">
+                  <Th className="sticky left-0 top-0 z-20 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">
                     {t("楼盘号", "Property Code")}
                   </Th>
-                  <Th>{t("名字", "Name")}</Th>
-                  <Th>{t("房间数", "Rooms")}</Th>
-                  <Th>{t("车位数", "Parking")}</Th>
-                  <Th>Landlord / Owner</Th>
-                  <Th>{t("费用", "Fee")}</Th>
-                  <Th>{t("操作", "Actions")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("名字", "Name")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("房间数", "Rooms")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("车位数", "Parking")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">Landlord / Owner</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("费用", "Fee")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("操作", "Actions")}</Th>
                 </tr>
               </thead>
               <tbody>
