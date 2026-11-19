@@ -49,11 +49,30 @@ export async function POST(
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 7);
 
+  // If the room (or its carpark) had already been auto-vacated by the daily expiry check
+  // (vacateExpiredContractRooms) before Admin got to processing this renewal, re-occupy it now —
+  // otherwise it would stay stuck showing VACANT forever even though this contract is current again.
+  const reoccupy = [
+    prisma.room.updateMany({
+      where: { id: c.roomId, currentContractId: null },
+      data: { status: "OCCUPIED", currentContractId: c.contractCode, currentTenantId: c.tenantId },
+    }),
+    ...(c.carparkRoomId
+      ? [
+          prisma.room.updateMany({
+            where: { id: c.carparkRoomId, currentContractId: null },
+            data: { status: "OCCUPIED", currentContractId: c.contractCode, currentTenantId: c.tenantId },
+          }),
+        ]
+      : []),
+  ];
+
   await prisma.$transaction([
     prisma.contract.update({
       where: { id: c.id },
       data: { expiredDate: newExpiredDate, renewalRequestedAt: null, renewalRequestedMonths: null },
     }),
+    ...reoccupy,
     prisma.payment.create({
       data: {
         paymentCode,
