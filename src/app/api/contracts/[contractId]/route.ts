@@ -71,6 +71,10 @@ export async function GET(
       _outstanding: outstanding,
       _rentEscalated: !!escalatedBill,
       _moveInDone: !!moveInForm,
+      // Same rule as the Contracts list's "⛔ 已过期" badge — an ACTIVE contract past its own
+      // expiredDate with no renewal yet, so the status badge here doesn't keep saying "生效中"
+      // once the lease term is actually over.
+      _expired: contract.status === "ACTIVE" && !!contract.expiredDate && contract.expiredDate < startOfToday,
       // Legacy-imported contracts go straight to ACTIVE with no digital signature on either
       // side — they were signed on paper before import.
       _isLegacy: contract.status === "ACTIVE" && !contract.agentSignature && !contract.tenantSignature,
