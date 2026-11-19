@@ -13,9 +13,19 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "只有 Admin 可看用户" }, { status: 403 });
   }
 
-  const [users, rooms] = await Promise.all([
+  const [users, rooms, contracts] = await Promise.all([
     prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.room.findMany({ where: { currentTenantId: { not: null } }, select: { roomCode: true, currentTenantId: true } }),
+    // Room.currentTenantId only reflects a SIGNED/ACTIVE occupancy — a tenant whose contract is
+    // still DRAFT/PENDING_APPROVE/PENDING_SIGN (not signed yet) or whose contract already ended
+    // has no room there, which otherwise shows as a bare "-" with no explanation. Falling back
+    // to their most recent contract's room (tagged with that contract's status) means Admin
+    // always sees SOMETHING for a tenant who has a contract on file, instead of just "-".
+    prisma.contract.findMany({
+      where: { tenantId: { not: null } },
+      select: { tenantId: true, status: true, room: { select: { roomCode: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const roomCodesByTenant = new Map<string, string[]>();
@@ -24,6 +34,18 @@ export async function GET() {
     const list = roomCodesByTenant.get(r.currentTenantId) ?? [];
     list.push(r.roomCode);
     roomCodesByTenant.set(r.currentTenantId, list);
+  }
+
+  // One fallback contract per tenant: the most recent ACTIVE one if there is one, otherwise
+  // just the most recent contract regardless of status (contracts are already ordered newest
+  // first, so the first one seen per tenant wins unless a later-seen one is ACTIVE).
+  const fallbackByTenant = new Map<string, { roomCode: string; status: string }>();
+  for (const c of contracts) {
+    if (!c.tenantId) continue;
+    const existing = fallbackByTenant.get(c.tenantId);
+    if (!existing || (existing.status !== "ACTIVE" && c.status === "ACTIVE")) {
+      fallbackByTenant.set(c.tenantId, { roomCode: c.room.roomCode, status: c.status });
+    }
   }
 
   // Disabled accounts sink to the bottom — Admin cares about who's currently active first, and
@@ -35,16 +57,23 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    users: sortedUsers.map((u) => ({
-      userCode: u.userCode,
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      phone: u.phone,
-      status: u.status,
-      verified: u.verified,
-      roomCode: roomCodesByTenant.get(u.id)?.join(", ") || null,
-    })),
+    users: sortedUsers.map((u) => {
+      const liveRoomCode = roomCodesByTenant.get(u.id)?.join(", ") || null;
+      const fallback = liveRoomCode ? null : fallbackByTenant.get(u.id) ?? null;
+      return {
+        userCode: u.userCode,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        phone: u.phone,
+        status: u.status,
+        verified: u.verified,
+        roomCode: liveRoomCode ?? fallback?.roomCode ?? null,
+        // Only set when the room code above isn't a live occupancy — tells the frontend to
+        // show it as "roomCode (status)" instead of a plain live unit.
+        roomContractStatus: fallback?.status ?? null,
+      };
+    }),
   });
 }
 

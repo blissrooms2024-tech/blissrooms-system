@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ROLE_LABELS, userStatusLabel } from "@/lib/config";
+import { ROLE_LABELS, userStatusLabel, contractStatusLabel } from "@/lib/config";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EditUserModal, { EditableUser } from "./EditUserModal";
@@ -17,6 +17,7 @@ interface UserRow {
   status: string;
   verified: boolean;
   roomCode: string | null;
+  roomContractStatus: string | null;
 }
 
 export default function UsersClient() {
@@ -212,9 +213,16 @@ export default function UsersClient() {
                     <Td>{ROLE_LABELS[u.role] ?? u.role}</Td>
                     <Td>
                       {u.roomCode ? (
-                        <Link href={`/rooms/${u.roomCode.split(", ")[0]}`} className="text-brand hover:underline">
-                          {u.roomCode}
-                        </Link>
+                        <>
+                          <Link href={`/rooms/${u.roomCode.split(", ")[0]}`} className="text-brand hover:underline">
+                            {u.roomCode}
+                          </Link>
+                          {u.roomContractStatus && (
+                            <span className="ml-1 text-xs text-gray-400">
+                              ({contractStatusLabel(u.roomContractStatus, locale)})
+                            </span>
+                          )}
+                        </>
                       ) : (
                         "-"
                       )}
