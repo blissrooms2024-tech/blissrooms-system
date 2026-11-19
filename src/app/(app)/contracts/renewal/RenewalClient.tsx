@@ -18,6 +18,17 @@ interface Candidate {
   daysToExpiry: number | null;
   renewalRequestedAt: string | null;
   renewalRequestedMonths: number | null;
+  roomRental: number;
+  carparkRental: number;
+  securityDeposit: number;
+  utilitiesDeposit: number;
+  accessCardDeposit: number;
+}
+
+function addDays(dateStr: string | null, days: number) {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function addMonths(dateStr: string | null, months: number) {
@@ -43,7 +54,10 @@ export default function RenewalClient() {
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [error, setError] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [commencementDate, setCommencementDate] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [roomRental, setRoomRental] = useState("");
+  const [carparkRental, setCarparkRental] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
   const [movingOut, setMovingOut] = useState<Candidate | null>(null);
@@ -72,7 +86,10 @@ export default function RenewalClient() {
 
   function openRow(c: Candidate) {
     setOpenId(c.contractCode);
+    setCommencementDate(addDays(c.expiredDate, 1));
     setNewDate(addMonths(c.expiredDate, c.renewalRequestedMonths ?? 12));
+    setRoomRental(String(c.roomRental));
+    setCarparkRental(String(c.carparkRental));
   }
 
   async function confirmRenew() {
@@ -83,7 +100,12 @@ export default function RenewalClient() {
       const res = await fetch(`/api/contracts/${openId}/renew`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newExpiredDate: newDate }),
+        body: JSON.stringify({
+          commencementDate,
+          newExpiredDate: newDate,
+          roomRental: Number(roomRental) || 0,
+          carparkRental: Number(carparkRental) || 0,
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -131,8 +153,8 @@ export default function RenewalClient() {
         </div>
         <div className="mb-3.5 rounded-lg bg-brand-light/40 p-3.5 text-sm text-gray-600">
           {t(
-            `这里列出快到期 (提前 2 个月内) 或已经到期的生效中合同。租客要续约的话请他们直接联系 Admin，确认后在这里帮他们改新的到期日，系统会自动开一笔 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单给租客上传交易单。`,
-            `This lists active contracts that are expiring soon (within 2 months) or have already expired. If a tenant wants to renew, have them contact Admin directly — once confirmed, update their new expiry date here, and the system will automatically create a RM${FEES.RENEWAL.toFixed(2)} renewal admin fee bill for the tenant to upload a transaction slip against.`
+            `这里列出快到期 (提前 2 个月内) 或已经到期的生效中合同。租客要续约的话请他们直接联系 Admin，确认后在这里帮他们开一份新合同 (可以改房租等细节)，系统会开一笔 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单，押金直接带过去不用重新交，Agent 和租客要重新签名新合同才会生效。`,
+            `This lists active contracts that are expiring soon (within 2 months) or have already expired. If a tenant wants to renew, have them contact Admin directly — once confirmed, open a fresh contract here (you can adjust the rent and other details). The system creates a RM${FEES.RENEWAL.toFixed(2)} renewal admin fee bill, deposits carry over without being re-collected, and the Agent and tenant both need to sign the new contract before it takes effect.`
           )}
         </div>
 
@@ -187,7 +209,7 @@ export default function RenewalClient() {
                     )}
                     {openId !== c.contractCode && (
                       <button onClick={() => openRow(c)} className="btn-primary text-sm">
-                        🔄 {t("续约", "Renew")}
+                        🔄 {t("续约 (开新合同)", "Renew (New Contract)")}
                       </button>
                     )}
                     <button
@@ -200,19 +222,58 @@ export default function RenewalClient() {
                 </div>
 
                 {openId === c.contractCode && (
-                  <div className="mt-3 flex flex-wrap items-end gap-2.5 border-t border-gray-100 pt-3">
-                    <div>
-                      <label className="mb-1.5 block text-sm text-gray-600">{t("新到期日", "New Expiry Date")}</label>
-                      <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="input" />
+                  <div className="mt-3 space-y-2.5 border-t border-gray-100 pt-3">
+                    <div className="flex flex-wrap items-end gap-2.5">
+                      <div>
+                        <label className="mb-1.5 block text-sm text-gray-600">{t("新合同生效日期", "New Contract Start Date")}</label>
+                        <input
+                          type="date"
+                          value={commencementDate}
+                          onChange={(e) => setCommencementDate(e.target.value)}
+                          className="input"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm text-gray-600">{t("新到期日", "New Expiry Date")}</label>
+                        <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="input" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm text-gray-600">{t("新房租 RM", "New Rent RM")}</label>
+                        <input
+                          type="number"
+                          step="1"
+                          value={roomRental}
+                          onChange={(e) => setRoomRental(e.target.value)}
+                          className="input w-[110px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm text-gray-600">{t("新车位租金 RM", "New Carpark RM")}</label>
+                        <input
+                          type="number"
+                          step="1"
+                          value={carparkRental}
+                          onChange={(e) => setCarparkRental(e.target.value)}
+                          className="input w-[110px]"
+                        />
+                      </div>
                     </div>
-                    <button onClick={() => setConfirming(true)} disabled={saving} className="btn-primary text-sm">
-                      {saving
-                        ? t("处理中...", "Processing...")
-                        : t(`确认续约 (开 RM${FEES.RENEWAL.toFixed(2)} 行政费)`, `Confirm Renewal (creates a RM${FEES.RENEWAL.toFixed(2)} admin fee bill)`)}
-                    </button>
-                    <button onClick={() => setOpenId(null)} className="btn-soft text-sm">
-                      {t("取消", "Cancel")}
-                    </button>
+                    <p className="text-xs text-gray-500">
+                      {t(
+                        `押金会直接带过去 (押金 RM${c.securityDeposit.toFixed(2)} / 水电押 RM${c.utilitiesDeposit.toFixed(2)} / 门卡押 RM${c.accessCardDeposit.toFixed(2)})，不用租客重新交。`,
+                        `Deposits carry over as-is (Security RM${c.securityDeposit.toFixed(2)} / Utilities RM${c.utilitiesDeposit.toFixed(2)} / Access Card RM${c.accessCardDeposit.toFixed(2)}) — the tenant doesn't pay them again.`
+                      )}
+                    </p>
+                    <div className="flex flex-wrap gap-2.5">
+                      <button onClick={() => setConfirming(true)} disabled={saving} className="btn-primary text-sm">
+                        {saving
+                          ? t("处理中...", "Processing...")
+                          : t(`确认, 开新合同 (开 RM${FEES.RENEWAL.toFixed(2)} 行政费)`, `Confirm — Create New Contract (creates a RM${FEES.RENEWAL.toFixed(2)} admin fee bill)`)}
+                      </button>
+                      <button onClick={() => setOpenId(null)} className="btn-soft text-sm">
+                        {t("取消", "Cancel")}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -224,10 +285,10 @@ export default function RenewalClient() {
       <ConfirmDialog
         open={confirming}
         message={t(
-          `确定把 ${openId} 续约到 ${newDate}？会自动开一笔 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单给租客。`,
-          `Renew ${openId} to ${newDate}? This will automatically create a RM${FEES.RENEWAL.toFixed(2)} renewal admin fee bill for the tenant.`
+          `确定帮 ${openId} 开一份新合同吗？新合同期限 ${commencementDate} ~ ${newDate}，房租 RM${roomRental}。旧合同会在新合同双方签完名后自动结束，押金带过去，并开一笔 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单给租客。`,
+          `Create a new contract for ${openId}? The new term runs ${commencementDate} ~ ${newDate} at RM${roomRental}/month. The old contract will close automatically once both the Agent and tenant sign the new one; deposits carry over, and a RM${FEES.RENEWAL.toFixed(2)} renewal admin fee bill will be created for the tenant.`
         )}
-        confirmLabel={t("确定续约", "Confirm Renewal")}
+        confirmLabel={t("确定, 开新合同", "Confirm — Create New Contract")}
         onConfirm={confirmRenew}
         onCancel={() => setConfirming(false)}
       />

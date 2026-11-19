@@ -120,6 +120,7 @@ export const CONTRACT_STATUS_LABELS: Record<string, string> = {
   EXPIRED: "已到期",
   TERMINATED: "已终止",
   MOVED_OUT: "已搬出",
+  RENEWED: "已续约",
 };
 
 export const CONTRACT_STATUS_LABELS_EN: Record<string, string> = {
@@ -131,6 +132,7 @@ export const CONTRACT_STATUS_LABELS_EN: Record<string, string> = {
   EXPIRED: "Expired",
   TERMINATED: "Terminated",
   MOVED_OUT: "Moved Out",
+  RENEWED: "Renewed",
 };
 
 export function contractStatusLabel(status: string, locale: "zh" | "en"): string {

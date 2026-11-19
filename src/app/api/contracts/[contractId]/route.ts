@@ -93,8 +93,8 @@ export async function PATCH(
   const { contractId } = await params;
   const contract = await prisma.contract.findUnique({ where: { contractCode: contractId } });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
-  if (contract.status === "TERMINATED" || contract.status === "MOVED_OUT") {
-    return NextResponse.json({ success: false, message: "这合同已经终止/搬出, 不能再改了" }, { status: 409 });
+  if (contract.status === "TERMINATED" || contract.status === "MOVED_OUT" || contract.status === "RENEWED") {
+    return NextResponse.json({ success: false, message: "这合同已经终止/搬出/续约结束, 不能再改了" }, { status: 409 });
   }
 
   const parsed = contractEditSchema.safeParse(await req.json().catch(() => null));

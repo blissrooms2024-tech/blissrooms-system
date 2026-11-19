@@ -44,6 +44,10 @@ enum ContractStatus {
   EXPIRED
   TERMINATED
   MOVED_OUT
+  /// This contract's term ended because the tenant renewed into a fresh contract (see
+  /// renewedFromContractId on the new one) — distinct from MOVED_OUT (tenant left) or
+  /// TERMINATED (ended for cause).
+  RENEWED
 }
 
 enum PaymentType {
@@ -229,6 +233,11 @@ model Contract {
   /// process it (contract reserves Admin's absolute right to decline), on the 续约管理 page.
   renewalRequestedAt     DateTime?
   renewalRequestedMonths Int?
+  /// Set on the NEW contract created by the Admin "续约" (renew) flow — points back at the
+  /// contractCode of the contract it renews. That old contract gets marked RENEWED once this
+  /// one is fully signed (ACTIVE). Not a relation (same convention as Room.currentContractId)
+  /// since the two contracts don't need to cascade or be joined in normal queries.
+  renewedFromContractId String?
 
   roomRental        Decimal @db.Decimal(10, 2)
   carparkRental     Decimal @default(0) @db.Decimal(10, 2)

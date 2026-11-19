@@ -184,7 +184,7 @@ export default function ContractActions({
     }
   }
 
-  const notClosed = c.status !== "TERMINATED" && c.status !== "MOVED_OUT";
+  const notClosed = c.status !== "TERMINATED" && c.status !== "MOVED_OUT" && c.status !== "RENEWED";
 
   type Item = { key: string; label: string; color: string; onClick?: () => void; href?: string; primary?: boolean };
   const items: Item[] = [];

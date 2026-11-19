@@ -43,6 +43,13 @@ export async function GET() {
       : null,
     renewalRequestedAt: c.renewalRequestedAt,
     renewalRequestedMonths: c.renewalRequestedMonths,
+    // Prefills for the "续约开新合同" form — Admin usually keeps these the same, just adjusts
+    // the ones that changed (e.g. a rent increase).
+    roomRental: Number(c.roomRental),
+    carparkRental: Number(c.carparkRental),
+    securityDeposit: Number(c.securityDeposit),
+    utilitiesDeposit: Number(c.utilitiesDeposit),
+    accessCardDeposit: Number(c.accessCardDeposit),
   }));
 
   return NextResponse.json({ success: true, contracts: list });

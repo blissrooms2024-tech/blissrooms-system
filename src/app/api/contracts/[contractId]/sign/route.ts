@@ -78,15 +78,25 @@ export async function POST(
     await prisma.contract.update({ where: { contractCode: contractId }, data: { status: "ACTIVE" } });
     await prisma.room.update({
       where: { id: c2.roomId },
-      data: { status: "OCCUPIED", currentTenantId: c2.tenantId },
+      data: { status: "OCCUPIED", currentTenantId: c2.tenantId, currentContractId: c2.contractCode },
     });
     if (c2.carparkRoomId) {
       await prisma.room.update({
         where: { id: c2.carparkRoomId },
-        data: { status: "OCCUPIED", currentTenantId: c2.tenantId },
+        data: { status: "OCCUPIED", currentTenantId: c2.tenantId, currentContractId: c2.contractCode },
       });
     }
     message += " | 🎉 双方已签, 合同生效, 房间转为已出租";
+
+    // This contract was created by the "续约" (renew) flow — now that it's actually signed,
+    // the old one it replaces is done. Only flip it if it's still ACTIVE, so an old contract
+    // that was already closed some other way (e.g. force-deleted) isn't touched.
+    if (c2.renewedFromContractId) {
+      await prisma.contract.updateMany({
+        where: { contractCode: c2.renewedFromContractId, status: "ACTIVE" },
+        data: { status: "RENEWED" },
+      });
+    }
   }
 
   return NextResponse.json({ success: true, message, signUrl });
