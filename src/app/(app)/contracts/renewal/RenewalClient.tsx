@@ -46,6 +46,8 @@ export default function RenewalClient() {
   const [newDate, setNewDate] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [movingOut, setMovingOut] = useState<Candidate | null>(null);
+  const [movingOutSaving, setMovingOutSaving] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -95,6 +97,26 @@ export default function RenewalClient() {
       toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function confirmMoveOut() {
+    if (!movingOut) return;
+    setMovingOutSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${movingOut.contractCode}/move-out`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setMovingOut(null);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setMovingOutSaving(false);
     }
   }
 
@@ -168,6 +190,12 @@ export default function RenewalClient() {
                         🔄 {t("续约", "Renew")}
                       </button>
                     )}
+                    <button
+                      onClick={() => setMovingOut(c)}
+                      className="rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-100"
+                    >
+                      🚪 {t("搬出", "Move Out")}
+                    </button>
                   </div>
                 </div>
 
@@ -202,6 +230,18 @@ export default function RenewalClient() {
         confirmLabel={t("确定续约", "Confirm Renewal")}
         onConfirm={confirmRenew}
         onCancel={() => setConfirming(false)}
+      />
+
+      <ConfirmDialog
+        open={!!movingOut}
+        danger
+        message={t(
+          `确定 ${movingOut?.tenantName} (${movingOut?.contractCode}) 已经搬出吗？这会把合同标记为已搬出，房间 ${movingOut?.roomCode} 马上变回空房，可以租给新租客。`,
+          `Confirm ${movingOut?.tenantName} (${movingOut?.contractCode}) has moved out? This marks the contract as moved out and immediately frees up room ${movingOut?.roomCode} for a new tenant.`
+        )}
+        confirmLabel={movingOutSaving ? t("处理中...", "Processing...") : t("确定搬出", "Confirm Move Out")}
+        onConfirm={confirmMoveOut}
+        onCancel={() => setMovingOut(null)}
       />
     </div>
   );

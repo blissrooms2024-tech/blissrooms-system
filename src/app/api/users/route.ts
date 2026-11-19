@@ -26,9 +26,16 @@ export async function GET() {
     roomCodesByTenant.set(r.currentTenantId, list);
   }
 
+  // Disabled accounts sink to the bottom — Admin cares about who's currently active first, and
+  // a long list of already-moved-out tenants would otherwise bury them. Array.sort is stable,
+  // so within each group the original createdAt order is kept.
+  const sortedUsers = [...users].sort(
+    (a, b) => (a.status === "DISABLED" ? 1 : 0) - (b.status === "DISABLED" ? 1 : 0)
+  );
+
   return NextResponse.json({
     success: true,
-    users: users.map((u) => ({
+    users: sortedUsers.map((u) => ({
       userCode: u.userCode,
       name: u.name,
       email: u.email,
