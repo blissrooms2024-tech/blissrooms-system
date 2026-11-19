@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-import { RENT_ARREARS } from "@/lib/config";
 import { notifyTenantContractTerminated } from "@/lib/mail";
 import { fmtDate } from "@/lib/format";
 
-/** Admin manually confirms ending a contract for rent arrears — sets it TERMINATED, frees the
- * room, and records that the deposit is forfeited. This is deliberately a manual, explicit
- * action: the cron only notifies Admin once arrears cross the escalation threshold, it never
- * calls this itself. */
+const schema = z.object({
+  reason: z.string().trim().optional().default(""),
+});
+
+/** Admin unilaterally ends a contract — for rent arrears, a tenant who's absconded, a breach,
+ * or any other reason that can't wait for the lease to run its course. Sets it TERMINATED,
+ * frees the room immediately, and records the deposit as forfeited (Finance Overview already
+ * treats any TERMINATED contract's deposit as forfeited rather than held). Deliberately not
+ * gated on any system-detected condition (e.g. rent arrears) — Admin needs to be able to act
+ * the moment they find out a tenant is gone, not wait for a threshold to trip. */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
   const user = await getCurrentUser();
@@ -23,24 +29,13 @@ export async function POST(
     include: { room: true, carparkRoom: true, tenant: true },
   });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
-  if (contract.status === "TERMINATED" || contract.status === "MOVED_OUT") {
-    return NextResponse.json({ success: false, message: "这张合同已经结束了" }, { status: 409 });
+  if (contract.status !== "ACTIVE") {
+    return NextResponse.json({ success: false, message: "只能终止生效中的合同" }, { status: 409 });
   }
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
-  const overdueRent = await prisma.payment.findFirst({
-    where: { contractId: contract.id, type: "RENTAL", status: "PENDING", dueDate: { lte: escalationCutoff } },
-  });
-  if (!overdueRent) {
-    return NextResponse.json(
-      { success: false, message: `这张合同没有逾期超过 ${RENT_ARREARS.ESCALATION_DAYS} 天的房租, 不能用这个操作终止` },
-      { status: 409 }
-    );
-  }
+  const { reason } = schema.parse(await req.json().catch(() => ({})));
 
-  const note = `[系统] ${fmtDate(new Date().toISOString())} 因房租逾期超过 ${RENT_ARREARS.ESCALATION_DAYS} 天未缴, Admin (${user.name}) 终止合同, 押金没收。`;
+  const note = `[系统] ${fmtDate(new Date().toISOString())} Admin (${user.name}) 终止合同${reason ? `，原因: ${reason}` : ""}，押金没收。`;
 
   await prisma.contract.update({
     where: { contractCode: contractId },
@@ -53,13 +48,13 @@ export async function POST(
   if (contract.room.currentContractId === contract.contractCode) {
     await prisma.room.update({
       where: { id: contract.roomId },
-      data: { status: "VACANT", currentContractId: null },
+      data: { status: "VACANT", currentContractId: null, currentTenantId: null },
     });
   }
   if (contract.carparkRoom && contract.carparkRoom.currentContractId === contract.contractCode) {
     await prisma.room.update({
       where: { id: contract.carparkRoom.id },
-      data: { status: "VACANT", currentContractId: null },
+      data: { status: "VACANT", currentContractId: null, currentTenantId: null },
     });
   }
 

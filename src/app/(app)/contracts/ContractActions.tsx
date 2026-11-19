@@ -52,6 +52,7 @@ export default function ContractActions({
   const [forceDeletePassword, setForceDeletePassword] = useState("");
   const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
   const [terminating, setTerminating] = useState(false);
+  const [terminateReason, setTerminateReason] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -174,10 +175,15 @@ export default function ContractActions({
   async function confirmTerminate() {
     setTerminating(false);
     try {
-      const res = await fetch(`/api/contracts/${c.contractCode}/terminate-arrears`, { method: "POST" });
+      const res = await fetch(`/api/contracts/${c.contractCode}/terminate-arrears`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: terminateReason }),
+      });
       const data = await res.json();
       if (data.success) toast.success(data.message);
       else toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
+      setTerminateReason("");
       onChanged();
     } catch {
       toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
@@ -205,13 +211,13 @@ export default function ContractActions({
   if (role === "ADMIN" && c.status === "PENDING_APPROVE") {
     items.push({ key: "approve", label: `✅ ${t("批准", "Approve")}`, color: "bg-green-700", onClick: () => doAction("approve"), primary: true });
   }
-  if (role === "ADMIN" && c._rentEscalated && notClosed) {
+  if (role === "ADMIN" && c.status === "ACTIVE") {
     items.push({
       key: "terminate",
       label: `🔒 ${t("终止+没收押金", "Terminate + Forfeit Deposit")}`,
       color: "bg-red-800",
       onClick: () => setTerminating(true),
-      primary: true,
+      primary: c._rentEscalated,
     });
   }
   if (role === "ADMIN") {
@@ -320,13 +326,31 @@ export default function ContractActions({
       <ConfirmDialog
         open={terminating}
         danger
-        message={t(
-          `确定终止合同 ${c.contractCode}（${c.tenantName}）？押金会标记没收，房间放回空房，这个操作不能撤销。`,
-          `Terminate contract ${c.contractCode} (${c.tenantName})? The deposit will be marked forfeited and the room set back to vacant — this action cannot be undone.`
-        )}
+        message={
+          <div className="space-y-2.5">
+            <p>
+              {t(
+                `确定终止合同 ${c.contractCode}（${c.tenantName}）？押金会标记没收，房间放回空房，这个操作不能撤销。`,
+                `Terminate contract ${c.contractCode} (${c.tenantName})? The deposit will be marked forfeited and the room set back to vacant — this action cannot be undone.`
+              )}
+            </p>
+            <div>
+              <label className="mb-1 block text-xs text-gray-500">{t("原因 (选填)", "Reason (optional)")}</label>
+              <input
+                value={terminateReason}
+                onChange={(e) => setTerminateReason(e.target.value)}
+                placeholder={t("例如: 租客失联/跑了", "e.g. Tenant has gone missing / absconded")}
+                className="input w-full text-sm"
+              />
+            </div>
+          </div>
+        }
         confirmLabel={t("确定终止+没收押金", "Confirm Terminate + Forfeit Deposit")}
         onConfirm={confirmTerminate}
-        onCancel={() => setTerminating(false)}
+        onCancel={() => {
+          setTerminating(false);
+          setTerminateReason("");
+        }}
       />
     </>
   );
