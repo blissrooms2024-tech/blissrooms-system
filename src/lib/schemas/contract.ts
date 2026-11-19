@@ -21,6 +21,10 @@ export const contractFormSchema = z.object({
   utilitiesDeposit: z.coerce.number().min(0).default(0),
   accessCardDeposit: z.coerce.number().min(0).default(0),
   adminFee: z.coerce.number().min(0).default(0),
+  // Pro-rata rent for a tenant moving in early — Agent enters the amount and due date
+  // directly (no formula), and it's billed immediately as its own PENDING bill on creation.
+  prorataAmount: z.coerce.number().min(0).default(0),
+  prorataDueDate: optDate,
   remarks: z.string().trim().optional().default(""),
   nationality: z.string().trim().optional().default(""),
   contactNumber: z.string().trim().optional().default(""),
@@ -48,7 +52,7 @@ export type ContractFormInput = z.infer<typeof contractFormSchema>;
 /** Editing a contract corrects its printed details but never re-links the tenant account
  * (tenantId is set once at creation via tenantCode) — so this takes free-text name/IC instead. */
 export const contractEditSchema = contractFormSchema
-  .omit({ roomCode: true, agentId: true, tenantCode: true })
+  .omit({ roomCode: true, agentId: true, tenantCode: true, prorataAmount: true, prorataDueDate: true })
   .extend({
     tenantName: z.string().trim().min(1),
     tenantIc: z.string().trim().optional().default(""),

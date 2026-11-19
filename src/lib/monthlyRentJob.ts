@@ -9,7 +9,11 @@ import { notifyTenantBillCreated } from "@/lib/mail";
  * their verify-email link. Idempotent per contract+periodMonth, so re-running it (via cron
  * retry, or an Admin's manual catch-up trigger) never doubles up a tenant's rent bill. Shared
  * by the scheduled cron and the Admin-triggered manual "generate now" action, so both paths
- * behave identically. */
+ * behave identically.
+ *
+ * A contract with waiveFirstMonthRent set gets this first RENTAL bill recorded as already Paid
+ * (their booking fee already covers it) instead of a PENDING bill to collect — then the flag is
+ * cleared so every month after this one bills normally. */
 export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
   const now = new Date();
   const nextMonthYear = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
@@ -25,6 +29,7 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
   let rentalCreated = 0;
   let carparkCreated = 0;
   let skippedExpiring = 0;
+  let waivedByBookingFee = 0;
 
   for (const c of contracts) {
     if (c.expiredDate && c.expiredDate < dueDate) {
@@ -37,38 +42,62 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
     });
     if (!existingRental) {
       const paymentCode = await newId("PY");
-      await prisma.payment.create({
-        data: {
-          paymentCode,
-          contractId: c.id,
-          roomCode: c.room.roomCode,
-          tenantId: c.tenantId,
-          tenantName: c.tenantName,
-          periodMonth,
-          type: "RENTAL",
-          amountDue: c.roomRental,
-          amountPaid: 0,
-          dueDate,
-          status: "PENDING",
-          recordedBy,
-        },
-      });
-      rentalCreated++;
-      if (c.tenant) {
-        await notifyTenantBillCreated(
-          c.tenant,
-          {
+      if (c.waiveFirstMonthRent) {
+        await prisma.payment.create({
+          data: {
             paymentCode,
-            contractCode: c.contractCode,
+            contractId: c.id,
             roomCode: c.room.roomCode,
-            type: "RENTAL",
-            amountDue: Number(c.roomRental),
-            amountPaid: 0,
-            dueDate: dueDate.toISOString(),
+            tenantId: c.tenantId,
+            tenantName: c.tenantName,
             periodMonth,
+            type: "RENTAL",
+            amountDue: c.roomRental,
+            amountPaid: c.roomRental,
+            dueDate,
+            paidDate: new Date(),
+            status: "Paid",
+            method: "Booking Fee 抵扣",
+            recordedBy,
+            notes: "新租客首月房租, 用入住时的 Booking Fee 抵扣, 不用再交",
           },
-          "system-cron"
-        );
+        });
+        await prisma.contract.update({ where: { id: c.id }, data: { waiveFirstMonthRent: false } });
+        waivedByBookingFee++;
+      } else {
+        await prisma.payment.create({
+          data: {
+            paymentCode,
+            contractId: c.id,
+            roomCode: c.room.roomCode,
+            tenantId: c.tenantId,
+            tenantName: c.tenantName,
+            periodMonth,
+            type: "RENTAL",
+            amountDue: c.roomRental,
+            amountPaid: 0,
+            dueDate,
+            status: "PENDING",
+            recordedBy,
+          },
+        });
+        rentalCreated++;
+        if (c.tenant) {
+          await notifyTenantBillCreated(
+            c.tenant,
+            {
+              paymentCode,
+              contractCode: c.contractCode,
+              roomCode: c.room.roomCode,
+              type: "RENTAL",
+              amountDue: Number(c.roomRental),
+              amountPaid: 0,
+              dueDate: dueDate.toISOString(),
+              periodMonth,
+            },
+            "system-cron"
+          );
+        }
       }
     }
 
@@ -115,5 +144,5 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
     }
   }
 
-  return { periodMonth, rentalCreated, carparkCreated, skippedExpiring };
+  return { periodMonth, rentalCreated, carparkCreated, skippedExpiring, waivedByBookingFee };
 }

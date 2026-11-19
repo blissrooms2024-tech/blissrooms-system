@@ -29,6 +29,8 @@ const initialForm = {
   utilitiesDeposit: "",
   accessCardDeposit: "0",
   adminFee: "",
+  prorataAmount: "",
+  prorataDueDate: "",
   remarks: "",
   // Not agent-editable here — nationality/occupation/company/carPlate/emergency contact are
   // secondary personal info the tenant fills in themselves after signup (my-tenancy → 个人资料),
@@ -226,6 +228,31 @@ export default function ContractForm({
             <input className="input" value={form.remarks} onChange={(e) => set("remarks", e.target.value)} />
           </Field>
         </Row>
+
+        <Row>
+          <Field label={t("Pro-rata 租金 RM (提前入住, 选填)", "Pro-rata Rent RM (early move-in, optional)")}>
+            <input
+              type="number"
+              className="input"
+              value={form.prorataAmount}
+              onChange={(e) => set("prorataAmount", e.target.value)}
+            />
+          </Field>
+          <Field label={t("Pro-rata 到期日", "Pro-rata Due Date")}>
+            <input
+              type="date"
+              className="input"
+              value={form.prorataDueDate}
+              onChange={(e) => set("prorataDueDate", e.target.value)}
+            />
+          </Field>
+        </Row>
+        <p className="-mt-1 text-xs text-gray-400">
+          {t(
+            "租客提前入住才需要填：金额自己算好填进去，建立合同后系统会马上开一笔账单给租客。",
+            "Only needed if the tenant is moving in early: enter the amount you've calculated — the system opens a bill for it immediately once the contract is created."
+          )}
+        </p>
 
         <p className="pt-1 text-xs text-gray-400">
           {t(

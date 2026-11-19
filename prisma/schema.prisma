@@ -233,6 +233,14 @@ model Contract {
   /// process it (contract reserves Admin's absolute right to decline), on the 续约管理 page.
   renewalRequestedAt     DateTime?
   renewalRequestedMonths Int?
+  /// True for a brand-new tenant's first contract only (not legacy imports, not renewals) —
+  /// their booking fee (earnestDeposit, same amount as one month's roomRental) already covers
+  /// their first full calendar month's rent. The monthly-rent cron checks this: the first
+  /// RENTAL bill it would otherwise create PENDING for this contract is instead recorded as
+  /// already settled by the booking fee, and this flips back to false so later months bill
+  /// normally. Pro-rata rent for the partial move-in period (if any) is a separate up-front
+  /// bill and isn't affected by this flag.
+  waiveFirstMonthRent Boolean @default(false)
   /// Set on the NEW contract created by the Admin "续约" (renew) flow — points back at the
   /// contractCode of the contract it renews. That old contract gets marked RENEWED once this
   /// one is fully signed (ACTIVE). Not a relation (same convention as Room.currentContractId)

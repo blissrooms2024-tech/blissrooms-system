@@ -13,8 +13,8 @@ export async function POST() {
 
   const result = await runMonthlyRentJob(`Admin (${user.name}) - 手动生成`);
   const message = `✅ 已生成 ${result.periodMonth} 房租账单: 房租 ${result.rentalCreated} 笔, 车位 ${result.carparkCreated} 笔${
-    result.skippedExpiring ? ` (跳过: ${result.skippedExpiring} 份快到期)` : ""
-  }`;
+    result.waivedByBookingFee ? `, ${result.waivedByBookingFee} 笔新租客首月用 Booking Fee 抵扣` : ""
+  }${result.skippedExpiring ? ` (跳过: ${result.skippedExpiring} 份快到期)` : ""}`;
 
   return NextResponse.json({ success: true, message, ...result });
 }

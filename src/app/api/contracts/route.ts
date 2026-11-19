@@ -5,6 +5,7 @@ import { newId } from "@/lib/id";
 import { serialize } from "@/lib/serialize";
 import { contractFormSchema } from "@/lib/schemas/contract";
 import { RULES } from "@/lib/config";
+import { notifyTenantBillCreated } from "@/lib/mail";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -45,6 +46,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "房间和租客姓名一定要填" }, { status: 400 });
   }
   const d = parsed.data;
+  if (d.prorataAmount > 0 && !d.prorataDueDate) {
+    return NextResponse.json({ success: false, message: "填了 Pro-rata 租金就一定要选到期日" }, { status: 400 });
+  }
 
   const room = await prisma.room.findUnique({ where: { roomCode: d.roomCode }, include: { property: true } });
   if (!room) return NextResponse.json({ success: false, message: "找不到这间房" }, { status: 404 });
@@ -137,6 +141,9 @@ export async function POST(req: NextRequest) {
       utilDryer: d.utilDryer,
       utilAircond: d.utilAircond,
       utilElectric: d.utilElectric,
+      // A brand-new tenant's booking fee (earnestDeposit, above) covers their first full
+      // calendar month's rent — the monthly-rent cron consumes this flag on that first bill.
+      waiveFirstMonthRent: true,
     },
   });
 
@@ -151,12 +158,47 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  let prorataMsg = "";
+  if (d.prorataAmount > 0 && d.prorataDueDate) {
+    const paymentCode = await newId("PY");
+    await prisma.payment.create({
+      data: {
+        paymentCode,
+        contractId: contract.id,
+        roomCode: room.roomCode,
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        type: "RENTAL",
+        amountDue: d.prorataAmount,
+        amountPaid: 0,
+        dueDate: d.prorataDueDate,
+        status: "PENDING",
+        recordedBy: user.name,
+        notes: "Pro-rata 租金 (提前入住)",
+      },
+    });
+    await notifyTenantBillCreated(
+      tenant,
+      {
+        paymentCode,
+        contractCode: contract.contractCode,
+        roomCode: room.roomCode,
+        type: "RENTAL",
+        amountDue: d.prorataAmount,
+        amountPaid: 0,
+        dueDate: d.prorataDueDate.toISOString(),
+      },
+      user.name
+    );
+    prorataMsg = ` | Pro-rata 租金账单已开: RM${d.prorataAmount.toFixed(2)}`;
+  }
+
   const utils = [d.utilElectric && "Electric", d.utilAircond && "Aircond", d.utilDryer && "Dryer"].filter(Boolean);
   const utilMsg = utils.length ? ` | 水电: ${utils.join(", ")}` : " | 水电: 无勾选";
 
   return NextResponse.json({
     success: true,
-    message: `✅ 合同已建: ${contract.contractCode} (草稿) | 租客账号: ${tenant.email}${utilMsg}`,
+    message: `✅ 合同已建: ${contract.contractCode} (草稿) | 租客账号: ${tenant.email}${utilMsg}${prorataMsg}`,
     id: contract.contractCode,
   });
 }
