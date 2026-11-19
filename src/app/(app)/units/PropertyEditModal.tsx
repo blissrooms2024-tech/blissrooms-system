@@ -4,6 +4,7 @@ import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
+import { extractDepositFromNotes } from "@/lib/parseDeposit";
 
 export interface EditableProperty {
   propertyCode: string;
@@ -169,13 +170,29 @@ export default function PropertyEditModal({
                   <label className="mb-1.5 block text-sm text-gray-600">
                     {t("付 Owner 押金 RM (可退还)", "Deposit to Owner RM (Refundable)")}
                   </label>
-                  <input
-                    type="number"
-                    step="1"
-                    value={ownerDeposit}
-                    onChange={(e) => setOwnerDeposit(e.target.value)}
-                    className="input"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="1"
+                      value={ownerDeposit}
+                      onChange={(e) => setOwnerDeposit(e.target.value)}
+                      className="input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const parsed = extractDepositFromNotes(notes);
+                        if (parsed === null) {
+                          toast.warning(t("备注里面找不到押金金额 (RM...)", "Couldn't find a deposit amount (RM...) in the notes"));
+                          return;
+                        }
+                        setOwnerDeposit(String(parsed));
+                      }}
+                      className="btn-soft shrink-0 whitespace-nowrap text-xs"
+                    >
+                      📋 {t("从备注填入", "Fill from Notes")}
+                    </button>
+                  </div>
                 </div>
               </>
             )}

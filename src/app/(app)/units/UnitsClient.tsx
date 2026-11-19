@@ -32,6 +32,10 @@ export default function UnitsClient({ role }: { role: string }) {
   const [deletingProperty, setDeletingProperty] = useState<PropertyRow | null>(null);
   const [search, setSearch] = useState("");
   const canEdit = role === "ADMIN";
+  const [depositCandidates, setDepositCandidates] = useState<
+    { propertyCode: string; name: string; notes: string | null; parsedAmount: number }[] | null
+  >(null);
+  const [applyingDeposit, setApplyingDeposit] = useState(false);
 
   async function load() {
     setError("");
@@ -67,6 +71,43 @@ export default function UnitsClient({ role }: { role: string }) {
     setDeletingProperty(null);
   }
 
+  async function loadDepositCandidates() {
+    try {
+      const res = await fetch("/api/properties/deposit-from-notes");
+      const data = await res.json();
+      if (!data.success) {
+        toast.danger(data.message);
+        return;
+      }
+      if (data.candidates.length === 0) {
+        toast.success(t("检查完了，没有需要填的押金", "Checked — nothing needs filling in"));
+        return;
+      }
+      setDepositCandidates(data.candidates);
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    }
+  }
+
+  async function applyDepositCandidates() {
+    setApplyingDeposit(true);
+    try {
+      const res = await fetch("/api/properties/deposit-from-notes", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setDepositCandidates(null);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setApplyingDeposit(false);
+    }
+  }
+
   const q = search.trim().toLowerCase();
   const filteredProperties =
     properties?.filter((p) => {
@@ -84,9 +125,21 @@ export default function UnitsClient({ role }: { role: string }) {
         <div className="mb-3.5 flex items-center justify-between">
           <h3 className="text-base font-semibold text-brand">{t("🏢 楼盘清单", "🏢 Property List")}</h3>
           {canEdit && (
-            <Link href="/units/new" className="btn-primary text-sm">
-              {t("➕ 加新楼盘", "➕ Add Property")}
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadDepositCandidates}
+                className="btn-soft text-sm"
+                title={t(
+                  "找出有备注但还没填 Owner 押金的楼盘，从备注里的金额自动填",
+                  "Find properties with notes but no Owner Deposit on file yet, and fill it from the amount in the notes"
+                )}
+              >
+                📋 {t("从备注自动算押金", "Fill Deposit from Notes")}
+              </button>
+              <Link href="/units/new" className="btn-primary text-sm">
+                {t("➕ 加新楼盘", "➕ Add Property")}
+              </Link>
+            </div>
           )}
         </div>
         <input
@@ -266,6 +319,33 @@ export default function UnitsClient({ role }: { role: string }) {
         confirmLabel={t("确定删除", "Confirm Delete")}
         onConfirm={confirmDeleteProperty}
         onCancel={() => setDeletingProperty(null)}
+      />
+
+      <ConfirmDialog
+        open={!!depositCandidates}
+        message={
+          <div className="space-y-2">
+            <p>
+              {t(
+                `以下 ${depositCandidates?.length ?? 0} 个楼盘会填入这些押金金额 (从备注自动算出):`,
+                `These ${depositCandidates?.length ?? 0} properties will have this Owner Deposit filled in (parsed from their notes):`
+              )}
+            </p>
+            <div className="max-h-[40vh] space-y-1 overflow-y-auto rounded-lg bg-gray-50 p-2 text-xs">
+              {depositCandidates?.map((c) => (
+                <div key={c.propertyCode} className="flex items-center justify-between gap-2 border-b border-gray-200 py-1 last:border-0">
+                  <span className="truncate">
+                    {c.propertyCode} · {c.name}
+                  </span>
+                  <span className="shrink-0 font-semibold text-brand">RM{c.parsedAmount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        }
+        confirmLabel={applyingDeposit ? t("处理中...", "Processing...") : t("确定套用", "Confirm Apply")}
+        onConfirm={applyDepositCandidates}
+        onCancel={() => setDepositCandidates(null)}
       />
     </div>
   );
