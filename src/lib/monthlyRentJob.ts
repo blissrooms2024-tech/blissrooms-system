@@ -4,11 +4,12 @@ import { notifyTenantBillCreated } from "@/lib/mail";
 
 /** Opens next month's RENTAL bill (and CARPARK bill, if the contract has one) for every ACTIVE
  * contract, due on the 5th of that next month. Skips a contract whose expiredDate falls before
- * that due date, and skips any contract whose tenant account isn't verified yet (User.verified)
- * — typically a legacy-imported record Admin hasn't finished checking. Idempotent per
- * contract+periodMonth, so re-running it (via cron retry, or an Admin's manual catch-up trigger)
- * never doubles up a tenant's rent bill. Shared by the scheduled cron and the Admin-triggered
- * manual "generate now" action, so both paths behave identically. */
+ * that due date. Every tenant's own data is on file now, so this no longer waits on
+ * User.verified — it bills every ACTIVE contract regardless of whether the tenant has clicked
+ * their verify-email link. Idempotent per contract+periodMonth, so re-running it (via cron
+ * retry, or an Admin's manual catch-up trigger) never doubles up a tenant's rent bill. Shared
+ * by the scheduled cron and the Admin-triggered manual "generate now" action, so both paths
+ * behave identically. */
 export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
   const now = new Date();
   const nextMonthYear = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
@@ -24,15 +25,10 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
   let rentalCreated = 0;
   let carparkCreated = 0;
   let skippedExpiring = 0;
-  let skippedUnverified = 0;
 
   for (const c of contracts) {
     if (c.expiredDate && c.expiredDate < dueDate) {
       skippedExpiring++;
-      continue;
-    }
-    if (!c.tenant || !c.tenant.verified) {
-      skippedUnverified++;
       continue;
     }
 
@@ -119,5 +115,5 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
     }
   }
 
-  return { periodMonth, rentalCreated, carparkCreated, skippedExpiring, skippedUnverified };
+  return { periodMonth, rentalCreated, carparkCreated, skippedExpiring };
 }

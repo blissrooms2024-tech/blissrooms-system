@@ -10,9 +10,9 @@ import { notifyTenantLateFee, sendWarningLetter, notifyAdminsRentEscalation } fr
  * total. Excludes LATE_FEE rows themselves so penalties don't compound into penalties on
  * penalties. On top of that, overdue RENTAL bills specifically escalate: day 7 auto-sends the
  * tenant a warning letter, day 10 emails every Admin that the contract needs a manual decision
- * on termination + deposit forfeiture (never auto-executed). Skips any bill whose tenant
- * account isn't verified yet (User.verified) — typically a legacy-imported record Admin
- * hasn't finished checking, so it shouldn't accrue penalties on its own. */
+ * on termination + deposit forfeiture (never auto-executed). Every tenant's own data is on file
+ * now, so this no longer waits on User.verified — only a bill with no tenant linked at all
+ * (a genuine data gap) is skipped. */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -30,14 +30,11 @@ export async function GET(req: NextRequest) {
   let charged = 0;
   let warned = 0;
   let escalated = 0;
-  let skippedUnverified = 0;
+  let skippedNoTenant = 0;
   for (const bill of overdue) {
-    // Don't penalize a tenant whose account hasn't been verified yet — typically a legacy-
-    // imported record Admin hasn't finished double-checking. Once Admin verifies the account
-    // (or the tenant does), this bill becomes eligible on the cron's next run.
     const tenant = bill.tenantId ? await prisma.user.findUnique({ where: { id: bill.tenantId } }) : null;
-    if (!tenant || !tenant.verified) {
-      skippedUnverified++;
+    if (!tenant) {
+      skippedNoTenant++;
       continue;
     }
 
@@ -126,5 +123,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, charged, warned, escalated, skippedUnverified });
+  return NextResponse.json({ success: true, charged, warned, escalated, skippedNoTenant });
 }
