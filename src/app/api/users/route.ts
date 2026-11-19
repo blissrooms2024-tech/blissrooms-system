@@ -60,6 +60,11 @@ export async function GET() {
     users: sortedUsers.map((u) => {
       const liveRoomCode = roomCodesByTenant.get(u.id)?.join(", ") || null;
       const fallback = liveRoomCode ? null : fallbackByTenant.get(u.id) ?? null;
+      // A DISABLED tenant's contract sometimes never actually got flipped to MOVED_OUT (e.g. the
+      // old auto-disable-on-expiry cron only ever touched the account, never the contract) —
+      // showing the raw "ACTIVE" status next to a disabled account reads as a contradiction, so
+      // treat it as moved out for display purposes here regardless of the stored enum value.
+      const displayStatus = fallback && u.status === "DISABLED" && fallback.status === "ACTIVE" ? "MOVED_OUT" : fallback?.status ?? null;
       return {
         userCode: u.userCode,
         name: u.name,
@@ -71,7 +76,7 @@ export async function GET() {
         roomCode: liveRoomCode ?? fallback?.roomCode ?? null,
         // Only set when the room code above isn't a live occupancy — tells the frontend to
         // show it as "roomCode (status)" instead of a plain live unit.
-        roomContractStatus: fallback?.status ?? null,
+        roomContractStatus: displayStatus,
       };
     }),
   });
