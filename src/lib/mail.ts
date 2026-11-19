@@ -71,16 +71,26 @@ async function send(to: string, subject: string, html: string, type: string, rel
   return status;
 }
 
-export async function sendVerifyEmail(user: { name: string; email: string }, token: string, triggeredBy: string) {
-  const link = `${APP_URL}/api/auth/verify?token=${token}`;
-  const html = `<div style="font-family:Arial;font-size:14px;line-height:1.6;">
-    <h2 style="color:#0b5394;">Bliss Rooms — Email Verification</h2>
-    <p>Hi ${user.name},</p>
-    <p>Please click the button below to verify your email:</p>
-    <p><a href="${link}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">✅ Verify Email</a></p>
-    <p style="color:#888;font-size:12px;">If the button doesn't work, copy this link: ${link}</p>
-    <p style="color:#888;font-size:12px;">Bliss Rooms Enterprise</p></div>`;
-  return send(user.email, "Bliss Rooms — Please Verify Your Email", html, "VerifyEmail", user.email, triggeredBy);
+export async function sendVerifyEmail(
+  user: { name: string; email: string },
+  token: string,
+  password: string,
+  triggeredBy: string
+) {
+  const verifyLink = `${APP_URL}/api/auth/verify?token=${token}`;
+  const loginLink = `${APP_URL}/login`;
+  const html = wrap(
+    "Welcome to Bliss Rooms",
+    `<p>Hi ${user.name},</p>
+     <p>Welcome to Bliss Rooms! Please click the button below to verify your email first:</p>
+     <p><a href="${verifyLink}" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">✅ Verify Email</a></p>
+     <p>Then use the link and login details below to log in to the website:</p>
+     <p><a href="${loginLink}" style="background:#1e7e34;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">🔑 Go to Login Page</a></p>
+     <p>Login ID (Email): <b>${user.email}</b><br/>Password: <b>${password}</b></p>
+     <p style="color:#888;font-size:12px;">If the buttons don't work, copy these links:<br/>Verify: ${verifyLink}<br/>Login: ${loginLink}</p>
+     <p>If you run into any problem, please WhatsApp <b>0124392491</b> to report it and we'll help sort it out.</p>`
+  );
+  return send(user.email, "Welcome to Bliss Rooms — Verify Your Email", html, "VerifyEmail", user.email, triggeredBy);
 }
 
 export async function sendResetEmail(user: { name: string; email: string }, token: string) {
