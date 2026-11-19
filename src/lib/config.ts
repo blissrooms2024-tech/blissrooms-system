@@ -205,6 +205,17 @@ export function paymentTypeLabelLocale(type: string, customLabel: string | null 
   return locale === "en" ? paymentTypeLabelEn(type, customLabel) : paymentTypeLabel(type, customLabel);
 }
 
+/** Refundable deposits (DEPOSIT, UTILITIES, ACCESS_CARD) are money held in trust for the
+ * tenant — a Balance Sheet liability, not earned income — while every other payment type is
+ * genuine operating revenue for the Income Statement. Used by the Revenue Report to present
+ * collections the way a Malaysian-standard set of accounts would: Revenue vs Deposits
+ * Payable, rather than lumping everything collected into one "营业额" figure. */
+export const DEPOSIT_LIABILITY_TYPES = ["DEPOSIT", "UTILITIES", "ACCESS_CARD"] as const;
+
+export function isDepositLiabilityType(type: string): boolean {
+  return (DEPOSIT_LIABILITY_TYPES as readonly string[]).includes(type);
+}
+
 export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
   SUBMITTED: "已提交",
   ACKNOWLEDGED: "已受理",

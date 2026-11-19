@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { isDepositLiabilityType } from "@/lib/config";
 
 /** Company-wide revenue report behind the dashboard's 营业额 boxes — same idea as the
  * per-property monthly report, just rolled up across every property. */
@@ -62,12 +63,25 @@ export async function GET(req: NextRequest) {
     .map(([name, amount]) => ({ name, amount }))
     .sort((a, b) => b.amount - a.amount);
 
+  // Malaysian-standard accounting treats a refundable deposit as money held in trust (a
+  // Balance Sheet liability owed back to the tenant), not earned income — only the rest counts
+  // as actual operating revenue for the Income Statement, even though both sides are cash
+  // collected (Debited to Cash/Bank) the same way.
+  let revenueTotal = 0;
+  let depositLiabilityTotal = 0;
+  for (const [type, amt] of Object.entries(byType)) {
+    if (isDepositLiabilityType(type)) depositLiabilityTotal += amt;
+    else revenueTotal += amt;
+  }
+
   return NextResponse.json({
     success: true,
     period,
     month,
     year,
     total,
+    revenueTotal,
+    depositLiabilityTotal,
     byType,
     byProperty,
     transactionCount: payments.length,

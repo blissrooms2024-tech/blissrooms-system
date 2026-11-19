@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { COMPANY, CONTRACT_IMAGES, PAYMENT_TYPE_LABELS, paymentTypeLabelLocale } from "@/lib/config";
+import { COMPANY, CONTRACT_IMAGES, PAYMENT_TYPE_LABELS, paymentTypeLabelLocale, isDepositLiabilityType } from "@/lib/config";
 import { fmtMoney } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import { REPORT_DOC_STYLE } from "@/lib/reportDocStyle";
@@ -15,6 +15,8 @@ interface Report {
   month: string;
   year: number;
   total: number;
+  revenueTotal: number;
+  depositLiabilityTotal: number;
   byType: Record<string, number>;
   byProperty: { name: string; amount: number }[];
   transactionCount: number;
@@ -84,6 +86,8 @@ export default function RevenueReportClient() {
   }
 
   const typeKeys = report ? Object.keys(PAYMENT_TYPE_LABELS).filter((k) => report.byType[k]) : [];
+  const revenueKeys = typeKeys.filter((k) => !isDepositLiabilityType(k));
+  const liabilityKeys = typeKeys.filter((k) => isDepositLiabilityType(k));
   const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
 
   return (
@@ -166,12 +170,88 @@ export default function RevenueReportClient() {
               <div className="n">{fmtMoney(report.total)}</div>
               <div className="l">
                 {periodLabels[report.period]}
-                {t("营业额", " Revenue")}
+                {t("总收款 (现金/银行)", " Total Collected (Cash/Bank)")}
               </div>
+            </div>
+            <div className="stat">
+              <div className="n">{fmtMoney(report.revenueTotal)}</div>
+              <div className="l">{t("营业收入 (损益表)", "Revenue (Income Statement)")}</div>
+            </div>
+            <div className="stat alt">
+              <div className="n">{fmtMoney(report.depositLiabilityTotal)}</div>
+              <div className="l">{t("代收押金 (负债, 资产负债表)", "Deposits Held (Liability, Balance Sheet)")}</div>
             </div>
           </div>
 
-          <h4>{t("🧾 按项目分类", "🧾 By Category")}</h4>
+          <h4>{t("📒 借贷分类汇总 (Debit & Credit Summary)", "📒 Debit & Credit Summary")}</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>{t("科目 Account", "Account")}</th>
+                <th className="num">{t("借方 Debit (RM)", "Debit (RM)")}</th>
+                <th className="num">{t("贷方 Credit (RM)", "Credit (RM)")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <b>{t("现金 / 银行 Cash / Bank", "Cash / Bank")}</b>
+                </td>
+                <td className="num">
+                  <b>{fmtMoney(report.total)}</b>
+                </td>
+                <td className="num"></td>
+              </tr>
+              {revenueKeys.length > 0 && (
+                <tr>
+                  <td colSpan={3} style={{ paddingTop: "8px", fontWeight: 600, color: "#555" }}>
+                    {t("营业收入 Revenue", "Revenue")}
+                  </td>
+                </tr>
+              )}
+              {revenueKeys.map((k) => (
+                <tr key={k}>
+                  <td style={{ paddingLeft: "16px" }}>{paymentTypeLabelLocale(k, null, locale)} Income</td>
+                  <td className="num"></td>
+                  <td className="num">{fmtMoney(report.byType[k])}</td>
+                </tr>
+              ))}
+              {liabilityKeys.length > 0 && (
+                <tr>
+                  <td colSpan={3} style={{ paddingTop: "8px", fontWeight: 600, color: "#555" }}>
+                    {t("代收押金 (负债) Deposits Payable (Liability)", "Deposits Payable (Liability)")}
+                  </td>
+                </tr>
+              )}
+              {liabilityKeys.map((k) => (
+                <tr key={k}>
+                  <td style={{ paddingLeft: "16px" }}>{paymentTypeLabelLocale(k, null, locale)} Payable</td>
+                  <td className="num"></td>
+                  <td className="num">{fmtMoney(report.byType[k])}</td>
+                </tr>
+              ))}
+              {typeKeys.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="empty">
+                    {t("这段时间没有收款记录", "No income records for this period")}
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <td>
+                  <b>{t("合计 TOTAL", "TOTAL")}</b>
+                </td>
+                <td className="num">
+                  <b>{fmtMoney(report.total)}</b>
+                </td>
+                <td className="num">
+                  <b>{fmtMoney(report.total)}</b>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4>{t("🧾 营业收入明细 (损益表)", "🧾 Revenue Breakdown (Income Statement)")}</h4>
           <table>
             <thead>
               <tr>
@@ -180,14 +260,41 @@ export default function RevenueReportClient() {
               </tr>
             </thead>
             <tbody>
-              {typeKeys.length === 0 && (
+              {revenueKeys.length === 0 && (
                 <tr>
                   <td colSpan={2} className="empty">
-                    {t("这段时间没有收款记录", "No income records for this period")}
+                    {t("这段时间没有营业收入记录", "No revenue records for this period")}
                   </td>
                 </tr>
               )}
-              {typeKeys.map((k) => (
+              {revenueKeys.map((k) => (
+                <tr key={k}>
+                  <td>{paymentTypeLabelLocale(k, null, locale)}</td>
+                  <td className="num">
+                    <b>{fmtMoney(report.byType[k])}</b>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h4>{t("🔒 代收押金明细 (负债, 资产负债表)", "🔒 Deposits Payable (Liability, Balance Sheet)")}</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>{t("项目", "Category")}</th>
+                <th className="num">{t("金额", "Amount")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {liabilityKeys.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="empty">
+                    {t("这段时间没有代收押金记录", "No deposit records for this period")}
+                  </td>
+                </tr>
+              )}
+              {liabilityKeys.map((k) => (
                 <tr key={k}>
                   <td>{paymentTypeLabelLocale(k, null, locale)}</td>
                   <td className="num">
