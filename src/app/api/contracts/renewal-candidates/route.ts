@@ -16,11 +16,16 @@ export async function GET() {
   startOfToday.setHours(0, 0, 0, 0);
   const cutoff = new Date(startOfToday);
   cutoff.setMonth(cutoff.getMonth() + RULES.NOTICE_MONTHS);
+  // Once a contract's been expired this long, the tenant's assumed to have already moved out —
+  // keeping it on the renewal list forever would just clutter it with units Admin has nothing
+  // left to action.
+  const hideOverdueCutoff = new Date(startOfToday.getTime() - RULES.RENEWAL_LIST_HIDE_AFTER_DAYS * 24 * 3600 * 1000);
 
   const contracts = await prisma.contract.findMany({
     where: {
       status: "ACTIVE",
       OR: [{ expiredDate: { lte: cutoff } }, { renewalRequestedAt: { not: null } }],
+      AND: [{ OR: [{ expiredDate: null }, { expiredDate: { gte: hideOverdueCutoff } }] }],
     },
     orderBy: { expiredDate: "asc" },
     include: { room: { select: { roomCode: true } } },

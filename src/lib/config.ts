@@ -33,6 +33,7 @@ export const RULES = {
   DEFAULT_COMM_RATE: 0.5, // Agent默认佣金率
   MOVE_OUT_WINDOW_DAYS: 14, // 到期前14天才开放 Move-out
   LEASE_EXPIRY_GRACE_DAYS: 5, // 合同过期后5天宽限期，第6天自动停用租客账号 (除非已续约/还有其他未过期合同)
+  RENEWAL_LIST_HIDE_AFTER_DAYS: 10, // 续约管理列表：过期超过10天就不显示了，当作租客已经搬走
 } as const;
 
 export const COMPANY = {
