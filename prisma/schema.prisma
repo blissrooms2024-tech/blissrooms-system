@@ -254,6 +254,11 @@ model Contract {
   earnestDeposit    Decimal @default(0) @db.Decimal(10, 2)
   accessCardDeposit Decimal @default(0) @db.Decimal(10, 2)
   adminFee          Decimal @default(0) @db.Decimal(10, 2)
+  /// Pro-rata rent charged for an early move-in (if any) — shown on the tenancy agreement
+  /// document as its own line item, same as the other move-in charges below, and folded into
+  /// totalOutstanding. Set at contract creation, or added to by the Admin "开 Pro-rata 账单"
+  /// action on an already-existing contract.
+  prorataAmount     Decimal @default(0) @db.Decimal(10, 2)
   totalOutstanding  Decimal @default(0) @db.Decimal(10, 2)
 
   status ContractStatus @default(DRAFT)

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
 import { RENT_ARREARS, RULES } from "@/lib/config";
+import { computeBillBreakdown } from "@/lib/billBreakdown";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -24,7 +25,7 @@ export async function GET() {
       prisma.contract.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        include: { room: { select: { roomCode: true } } },
+        include: { room: { select: { roomCode: true, isCarpark: true } } },
       }),
       prisma.payment.findMany({
         select: { contractId: true, type: true, status: true, amountDue: true, amountPaid: true },
@@ -55,50 +56,14 @@ export async function GET() {
     const escalatedSet = new Set(escalatedRentBills.map((b) => b.contractId));
     const list = contracts.map((c) => {
       const contractPayments = paymentsByContract.get(c.id) ?? [];
-      const paid = contractPayments
-        .filter((p) => p.status === "Paid")
-        .reduce((s, p) => s + Number(p.amountPaid), 0);
-
-      // Mirrors /api/contracts/[contractId]/payments's "Owing" fix: the move-in totalOutstanding
-      // never grows as later recurring bills (rent/carpark/utilities for new months) get issued,
-      // so it alone can't tell us what's really still owed. It's the still-unbilled remainder of
-      // the move-in breakdown (skipping any item that already has its own open bill, to avoid
-      // double-counting) plus every currently open (PENDING/REJECTED) bill's amountDue.
-      //
-      // "due" per type also has to track whichever is larger of the contract's own reference
-      // rate and everything ever actually billed for it (same as the per-contract endpoint) —
-      // otherwise a recurring type (RENTAL/CARPARK) stuck at one month's rate would make
-      // "已收" outgrow "应收" and look like a data error once several months have been billed.
-      const billedTotalByType: Record<string, number> = {};
-      for (const p of contractPayments) {
-        billedTotalByType[p.type] = (billedTotalByType[p.type] || 0) + Number(p.amountDue);
-      }
-      const due: Record<string, number> = {
-        DEPOSIT: Math.max(Number(c.securityDeposit), billedTotalByType.DEPOSIT || 0),
-        UTILITIES: Math.max(Number(c.utilitiesDeposit), billedTotalByType.UTILITIES || 0),
-        ADMIN_FEE: Math.max(Number(c.adminFee), billedTotalByType.ADMIN_FEE || 0),
-        ACCESS_CARD: Math.max(Number(c.accessCardDeposit), billedTotalByType.ACCESS_CARD || 0),
-        CARPARK: Math.max(Number(c.carparkRental), billedTotalByType.CARPARK || 0),
-        RENTAL: Math.max(Number(c.roomRental), billedTotalByType.RENTAL || 0),
-      };
-      const paidByType: Record<string, number> = {};
-      for (const p of contractPayments) {
-        if (p.status !== "Paid") continue;
-        paidByType[p.type] = (paidByType[p.type] || 0) + Number(p.amountPaid);
-      }
-      const openBillTypes = new Set<string>(
-        contractPayments.filter((p) => p.status === "PENDING" || p.status === "REJECTED").map((p) => p.type)
+      // Single source of truth for 总款/已收/还欠 — shared with the per-contract Payments
+      // breakdown, the Contract detail page, the lump-sum form and the user-detail drill-down,
+      // so this list's figures can never again drift apart from what those other pages show.
+      const { totalDue, totalPaid: paid, totalOutstanding: outstanding } = computeBillBreakdown(
+        c,
+        contractPayments,
+        c.room.isCarpark
       );
-      const unbilledBreakdownTotal = Object.entries(due)
-        .filter(([type]) => !openBillTypes.has(type))
-        .reduce((s, [type, dd]) => s + Math.max(dd - (paidByType[type] || 0), 0), 0);
-      const openBillsTotal = contractPayments
-        .filter((p) => p.status === "PENDING" || p.status === "REJECTED")
-        .reduce((s, p) => s + Number(p.amountDue), 0);
-      const outstanding = unbilledBreakdownTotal + openBillsTotal;
-      // Not c.totalOutstanding (a static move-in-time snapshot) — the sum of the same per-type
-      // "due" values above, so "总款" always equals "已收 + 还欠" on this list too.
-      const totalDue = Object.values(due).reduce((s, dd) => s + dd, 0);
 
       const expiringSoon =
         c.status === "ACTIVE" && !!c.expiredDate && c.expiredDate >= startOfToday && c.expiredDate <= expiringSoonCutoff;

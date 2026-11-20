@@ -43,6 +43,7 @@ interface ContractDetail extends ActionableContract {
   pdfLink: string | null;
   icFront: string | null;
   icBack: string | null;
+  _due: number;
   _paid: number;
   _pendingReview: number;
   _outstanding: number;
@@ -192,7 +193,7 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
           <Info label={t("水电押金", "Utilities Deposit")}>{fmt(c.utilitiesDeposit)}</Info>
           <Info label={t("门卡押金", "Access Card Deposit")}>{fmt(c.accessCardDeposit)}</Info>
           <Info label="Admin Fee">{fmt(c.adminFee)}</Info>
-          <Info label={t("总款", "Total")}>{fmt(c.totalOutstanding)}</Info>
+          <Info label={t("总款", "Total")}>{fmt(c._due)}</Info>
           <Info label={t("已收", "Paid")}>
             {fmt(c._paid)}
             {c._pendingReview > 0 && (

@@ -24,6 +24,7 @@ export interface AgreementContract {
   earnestDeposit: number;
   accessCardDeposit: number;
   adminFee: number;
+  prorataAmount: number;
   totalOutstanding: number;
   remarks: string | null;
   nationality: string | null;
@@ -175,6 +176,9 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
           <Row label="Utility Deposit (Electricity, Water & Sewerage)" value={fmtMoney(c.utilitiesDeposit)} />
           <Row label="Admin Fee (Non-refundable)" value={fmtMoney(c.adminFee)} />
           <Row label="Access Card Deposit" value={fmtMoney(c.accessCardDeposit)} />
+          {c.prorataAmount > 0 && (
+            <Row label="Pro-rata Rental (Early Move-in)" value={fmtMoney(c.prorataAmount)} />
+          )}
           <tr>
             <td>
               <b>Total Outstanding to be paid before handover of keys</b>
@@ -293,6 +297,14 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
             </td>
             <td>{fmtMoney(c.adminFee)}</td>
           </tr>
+          {c.prorataAmount > 0 && (
+            <tr>
+              <td>
+                <b>Pro-rata Rental (Early Move-in)</b>
+              </td>
+              <td colSpan={3}>{fmtMoney(c.prorataAmount)}</td>
+            </tr>
+          )}
         </tbody>
       </table>
       {c.remarks && (

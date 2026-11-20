@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, type SessionPayload } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
+import { computeBillBreakdown } from "@/lib/billBreakdown";
 
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
@@ -10,12 +11,6 @@ function canView(user: SessionPayload, contract: { agentId: string; tenantId: st
   if (contract.tenantId === user.sub) return true;
   return false;
 }
-
-const BREAKDOWN_ITEMS = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "RENTAL"] as const;
-// A contract whose own room IS a carpark (roomCode ends in -CPxx) only ever has RFID/access
-// card deposit + the carpark rent itself — security/utility deposit, admin fee and room rental
-// stay 0 forever, so showing them as "cleared RM0" rows just clutters the tenant's bill view.
-const CARPARK_ONLY_ITEMS = ["ACCESS_CARD", "CARPARK"] as const;
 
 export async function GET(
   _req: NextRequest,
@@ -39,58 +34,7 @@ export async function GET(
     orderBy: { id: "desc" },
   });
 
-  // A recurring type (RENTAL/CARPARK) gets billed again every month, so its lifetime "due" has
-  // to grow with every bill issued — the contract's own roomRental/carparkRental is only a
-  // single month's reference rate. Using whichever is larger keeps a never-yet-billed item
-  // showing its sensible default (the reference rate, before any bill exists) while letting
-  // "应收" track reality once multiple months have actually been billed — otherwise "已收"
-  // outgrowing a stuck-at-one-month "应收" looks like a data error to Admin.
-  const billedTotalByType: Record<string, number> = {};
-  for (const p of payments) {
-    billedTotalByType[p.type] = (billedTotalByType[p.type] || 0) + Number(p.amountDue);
-  }
-  const due: Record<string, number> = {
-    DEPOSIT: Math.max(Number(c.securityDeposit), billedTotalByType.DEPOSIT || 0),
-    UTILITIES: Math.max(Number(c.utilitiesDeposit), billedTotalByType.UTILITIES || 0),
-    ADMIN_FEE: Math.max(Number(c.adminFee), billedTotalByType.ADMIN_FEE || 0),
-    ACCESS_CARD: Math.max(Number(c.accessCardDeposit), billedTotalByType.ACCESS_CARD || 0),
-    CARPARK: Math.max(Number(c.carparkRental), billedTotalByType.CARPARK || 0),
-    RENTAL: Math.max(Number(c.roomRental), billedTotalByType.RENTAL || 0),
-  };
-  const paidByType: Record<string, number> = {};
-  for (const p of payments) {
-    if (p.status !== "Paid") continue;
-    paidByType[p.type] = (paidByType[p.type] || 0) + Number(p.amountPaid);
-  }
-
-  const items = c.room.isCarpark ? CARPARK_ONLY_ITEMS : BREAKDOWN_ITEMS;
-  const breakdown = items.map((item) => {
-    const dd = due[item] || 0;
-    const pd = paidByType[item] || 0;
-    return { item, due: dd, paid: pd, outstanding: Math.max(dd - pd, 0) };
-  });
-
-  // Deliberately NOT c.totalOutstanding (a static move-in-time snapshot that never grows as
-  // later recurring bills get issued) — this sums the same per-type "due" the breakdown table
-  // shows, so "总款" always equals "已收 + 还欠" instead of silently drifting apart from them.
-  const totalDue = breakdown.reduce((s, b) => s + b.due, 0);
-  const totalPaid = payments.filter((p) => p.status === "Paid").reduce((s, p) => s + Number(p.amountPaid), 0);
-
-  // "Owing" must reflect everything the tenant still has to pay right now — not just the
-  // move-in lump sum (c.totalOutstanding), which never grows as later recurring bills
-  // (rent/carpark/utilities for new months) get issued. So it's the still-unbilled remainder
-  // of the move-in breakdown (skipping any item that already has its own open bill below, to
-  // avoid double-counting) plus every currently open (PENDING/REJECTED) bill's amountDue —
-  // PENDING_REVIEW is excluded since the tenant has already paid and is just awaiting approval.
-  const openBillTypes = new Set(
-    payments.filter((p) => p.status === "PENDING" || p.status === "REJECTED").map((p) => p.type)
-  );
-  const unbilledBreakdownTotal = breakdown
-    .filter((b) => b.outstanding > 0 && !openBillTypes.has(b.item))
-    .reduce((s, b) => s + b.outstanding, 0);
-  const openBillsTotal = payments
-    .filter((p) => p.status === "PENDING" || p.status === "REJECTED")
-    .reduce((s, p) => s + Number(p.amountDue), 0);
+  const { breakdown, totalDue, totalPaid, totalOutstanding } = computeBillBreakdown(c, payments, c.room.isCarpark);
 
   const { agent, ...contractRest } = c;
   return NextResponse.json({
@@ -100,7 +44,7 @@ export async function GET(
     breakdown,
     totalDue,
     totalPaid,
-    totalOutstanding: unbilledBreakdownTotal + openBillsTotal,
+    totalOutstanding,
   });
 }
 

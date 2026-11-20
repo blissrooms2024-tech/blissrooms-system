@@ -4,6 +4,7 @@ import { getCurrentUser, type SessionPayload } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
 import { contractEditSchema } from "@/lib/schemas/contract";
 import { RENT_ARREARS } from "@/lib/config";
+import { computeBillBreakdown } from "@/lib/billBreakdown";
 
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
@@ -34,14 +35,15 @@ export async function GET(
   startOfToday.setHours(0, 0, 0, 0);
   const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
 
-  const [paidAgg, pendingReviewAgg, escalatedBill, moveInForm] = await Promise.all([
-    prisma.payment.aggregate({
-      where: { contractId: contract.id, status: "Paid" },
-      _sum: { amountPaid: true },
+  const [payments, pendingReviewAgg, escalatedBill, moveInForm] = await Promise.all([
+    prisma.payment.findMany({
+      where: { contractId: contract.id },
+      select: { type: true, amountDue: true, amountPaid: true, status: true },
     }),
     // Once a tenant has uploaded a slip, the ball is in Admin's court (the 交易单审核 queue) —
-    // the contract summary shouldn't keep nagging "还欠" for money that's already been sent and
-    // is just waiting on review, so it counts toward `paid` here the same as a confirmed one.
+    // shown as a separate footnote so Admin knows some of "还欠" is already in review, without
+    // folding it into 已收/还欠 themselves (those stay Paid-only, same definition as every other
+    // page that shows a contract's totals).
     prisma.payment.aggregate({
       where: { contractId: contract.id, status: "PENDING_REVIEW" },
       _sum: { amountPaid: true },
@@ -55,10 +57,12 @@ export async function GET(
       select: { id: true },
     }),
   ]);
-  const confirmedPaid = Number(paidAgg._sum.amountPaid ?? 0);
   const pendingReview = Number(pendingReviewAgg._sum.amountPaid ?? 0);
-  const paid = confirmedPaid + pendingReview;
-  const outstanding = Math.max(Number(contract.totalOutstanding) - paid, 0);
+  // Single source of truth for 总款/已收/还欠 — shared with the Payments breakdown, the
+  // Contracts list, the lump-sum form and the user-detail drill-down, so this page can never
+  // again show a different "还欠" than those other pages do for the same contract (it used to:
+  // this route alone still used the static move-in-time totalOutstanding snapshot).
+  const { totalDue, totalPaid, totalOutstanding } = computeBillBreakdown(contract, payments, contract.room.isCarpark);
 
   const { agent, ...rest } = contract;
   return NextResponse.json({
@@ -66,9 +70,10 @@ export async function GET(
     contract: serialize({
       ...rest,
       agentIc: agent.ic,
-      _paid: paid,
+      _due: totalDue,
+      _paid: totalPaid,
       _pendingReview: pendingReview,
-      _outstanding: outstanding,
+      _outstanding: totalOutstanding,
       _rentEscalated: !!escalatedBill,
       _moveInDone: !!moveInForm,
       // Same rule as the Contracts list's "⛔ 已过期" badge — an ACTIVE contract past its own

@@ -59,6 +59,16 @@ export async function POST(
       notes: "Pro-rata 租金 (提前入住)",
     },
   });
+  // So the tenancy agreement document — which only ever reads straight off the Contract's own
+  // fields, same as every other move-in charge it prints — picks this up too, not just the
+  // billing side.
+  await prisma.contract.update({
+    where: { id: c.id },
+    data: {
+      prorataAmount: { increment: parsed.data.amount },
+      totalOutstanding: { increment: parsed.data.amount },
+    },
+  });
 
   if (c.tenant) {
     await notifyTenantBillCreated(

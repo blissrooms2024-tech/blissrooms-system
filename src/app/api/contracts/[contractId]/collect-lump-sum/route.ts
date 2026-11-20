@@ -5,9 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
 import { newId } from "@/lib/id";
 import { fmtMoney } from "@/lib/format";
-
-const BREAKDOWN_ITEMS = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "RENTAL"] as const;
-const CARPARK_ONLY_ITEMS = ["ACCESS_CARD", "CARPARK"] as const;
+import { computeBillBreakdown } from "@/lib/billBreakdown";
 
 const schema = z.object({
   amount: z.coerce.number().positive(),
@@ -43,31 +41,17 @@ export async function POST(
   }
   const { amount, dataUrl, paidDate, method } = parsed.data;
 
-  const due: Record<string, number> = {
-    DEPOSIT: Number(c.securityDeposit),
-    UTILITIES: Number(c.utilitiesDeposit),
-    ADMIN_FEE: Number(c.adminFee),
-    ACCESS_CARD: Number(c.accessCardDeposit),
-    CARPARK: Number(c.carparkRental),
-    RENTAL: Number(c.roomRental),
-  };
-
+  // Same due/paid/outstanding math as the Payments breakdown and everywhere else a contract's
+  // totals are shown — this route used to compute "due" from the contract's reference rates
+  // alone (ignoring anything already billed beyond that), so its own "还欠总额" cap could land
+  // on a completely different number than what Admin/Agent could actually see on screen.
   const allPayments = await prisma.payment.findMany({ where: { contractId: c.id } });
-  const paidByType: Record<string, number> = {};
-  for (const p of allPayments) {
-    if (p.status !== "Paid") continue;
-    paidByType[p.type] = (paidByType[p.type] || 0) + Number(p.amountPaid);
-  }
-
-  const items = c.room.isCarpark ? CARPARK_ONLY_ITEMS : BREAKDOWN_ITEMS;
-  const eligible = items
-    .map((item) => ({ item, outstanding: Math.max((due[item] || 0) - (paidByType[item] || 0), 0) }))
-    .filter((row) => row.outstanding > 0);
+  const { breakdown, totalOutstanding } = computeBillBreakdown(c, allPayments, c.room.isCarpark);
+  const eligible = breakdown.filter((row) => row.outstanding > 0);
 
   if (eligible.length === 0) {
     return NextResponse.json({ success: false, message: "没有可以收款的项目" }, { status: 400 });
   }
-  const totalOutstanding = eligible.reduce((s, r) => s + r.outstanding, 0);
   if (amount > totalOutstanding) {
     return NextResponse.json(
       { success: false, message: `金额超过还欠总额 (${fmtMoney(totalOutstanding)})，请填不超过这个数` },
@@ -85,24 +69,72 @@ export async function POST(
       if (remaining <= 0) break;
       const alloc = Math.min(row.outstanding, remaining);
       remaining -= alloc;
-      await prisma.payment.create({
-        data: {
-          paymentCode: await newId("PY"),
-          contractId: c.id,
-          roomCode: c.room.roomCode,
-          tenantId: c.tenantId,
-          tenantName: c.tenantName,
-          type: row.item,
-          amountDue: row.outstanding,
-          amountPaid: alloc,
-          paidDate: paidDateValue,
-          method: method || null,
-          status: "Paid",
-          receiptLink: url,
-          notes: eligible.length > 1 ? "合并收款 (一笔涵盖多个项目)" : null,
-          recordedBy: user.name,
-        },
-      });
+
+      // If this item already has an open (PENDING/REJECTED) bill and this payment fully covers
+      // it, settle THAT bill directly instead of creating a brand-new record for the same
+      // money — this used to always create a fresh row regardless, leaving the original bill
+      // dangling open while a second record counted the same cash, inflating "应收" further
+      // every time lump-sum collection was used on an item that already had a bill out.
+      const openBill = allPayments.find((p) => p.type === row.item && (p.status === "PENDING" || p.status === "REJECTED"));
+      const openBillRemainder = openBill ? Math.max(Number(openBill.amountDue) - Number(openBill.amountPaid), 0) : 0;
+
+      if (openBill && openBillRemainder > 0 && alloc >= openBillRemainder) {
+        await prisma.payment.update({
+          where: { id: openBill.id },
+          data: {
+            status: "Paid",
+            amountPaid: openBill.amountDue,
+            paidDate: paidDateValue,
+            method: method || openBill.method,
+            receiptLink: url ?? openBill.receiptLink,
+            reviewedBy: user.name,
+            reviewedAt: new Date(),
+            reviewNote: null,
+          },
+        });
+        // Any extra beyond that bill's own amount (this item's "due" can also include an
+        // unbilled remainder on top of it) still needs its own ad-hoc record.
+        const extra = alloc - openBillRemainder;
+        if (extra > 0) {
+          await prisma.payment.create({
+            data: {
+              paymentCode: await newId("PY"),
+              contractId: c.id,
+              roomCode: c.room.roomCode,
+              tenantId: c.tenantId,
+              tenantName: c.tenantName,
+              type: row.item,
+              amountDue: extra,
+              amountPaid: extra,
+              paidDate: paidDateValue,
+              method: method || null,
+              status: "Paid",
+              receiptLink: url,
+              notes: "合并收款 (一笔涵盖多个项目)",
+              recordedBy: user.name,
+            },
+          });
+        }
+      } else {
+        await prisma.payment.create({
+          data: {
+            paymentCode: await newId("PY"),
+            contractId: c.id,
+            roomCode: c.room.roomCode,
+            tenantId: c.tenantId,
+            tenantName: c.tenantName,
+            type: row.item,
+            amountDue: row.outstanding,
+            amountPaid: alloc,
+            paidDate: paidDateValue,
+            method: method || null,
+            status: "Paid",
+            receiptLink: url,
+            notes: eligible.length > 1 ? "合并收款 (一笔涵盖多个项目)" : null,
+            recordedBy: user.name,
+          },
+        });
+      }
       created.push({ item: row.item, amount: alloc, full: alloc >= row.outstanding });
     }
 

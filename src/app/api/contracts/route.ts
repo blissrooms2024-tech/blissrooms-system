@@ -93,7 +93,13 @@ export async function POST(req: NextRequest) {
   }
 
   const total =
-    d.roomRental + d.securityDeposit + d.utilitiesDeposit + d.accessCardDeposit + d.adminFee + d.carparkRental;
+    d.roomRental +
+    d.securityDeposit +
+    d.utilitiesDeposit +
+    d.accessCardDeposit +
+    d.adminFee +
+    d.carparkRental +
+    d.prorataAmount;
 
   const now = new Date();
   const autoDeleteAt = new Date(now.getTime() + RULES.DRAFT_AUTO_DELETE_DAYS * 24 * 60 * 60 * 1000);
@@ -123,6 +129,7 @@ export async function POST(req: NextRequest) {
       earnestDeposit: d.roomRental,
       accessCardDeposit: d.accessCardDeposit,
       adminFee: d.adminFee,
+      prorataAmount: d.prorataAmount,
       totalOutstanding: total,
       status: "DRAFT",
       commStatus: "Pending",
