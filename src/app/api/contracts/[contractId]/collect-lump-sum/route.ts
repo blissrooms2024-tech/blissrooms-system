@@ -106,6 +106,13 @@ export async function POST(
           });
         }
       } else {
+        // amountDue is exactly what this record actually collects (alloc), never the item's
+        // full outstanding — this used to put the FULL outstanding here even on a partial
+        // allocation, so a partially-covered item's "应收" kept silently inflating by its own
+        // still-unpaid remainder every time a partial lump-sum touched it, on top of what was
+        // already owed. The real remaining shortfall (row.outstanding - alloc, if any) simply
+        // stays unbilled, to be collected by a later payment same as any other never-yet-billed
+        // amount.
         await prisma.payment.create({
           data: {
             paymentCode: await newId("PY"),
@@ -114,7 +121,7 @@ export async function POST(
             tenantId: c.tenantId,
             tenantName: c.tenantName,
             type: row.item,
-            amountDue: row.outstanding,
+            amountDue: alloc,
             amountPaid: alloc,
             paidDate: paidDateValue,
             method: method || null,
