@@ -46,18 +46,8 @@ export async function POST(
   // alone (ignoring anything already billed beyond that), so its own "还欠总额" cap could land
   // on a completely different number than what Admin/Agent could actually see on screen.
   const allPayments = await prisma.payment.findMany({ where: { contractId: c.id } });
-  const { breakdown, totalOutstanding } = computeBillBreakdown(c, allPayments, c.room.isCarpark);
+  const { breakdown } = computeBillBreakdown(c, allPayments, c.room.isCarpark);
   const eligible = breakdown.filter((row) => row.outstanding > 0);
-
-  if (eligible.length === 0) {
-    return NextResponse.json({ success: false, message: "没有可以收款的项目" }, { status: 400 });
-  }
-  if (amount > totalOutstanding) {
-    return NextResponse.json(
-      { success: false, message: `金额超过还欠总额 (${fmtMoney(totalOutstanding)})，请填不超过这个数` },
-      { status: 400 }
-    );
-  }
 
   try {
     const paidDateValue = paidDate ? new Date(paidDate) : new Date();
@@ -138,10 +128,22 @@ export async function POST(
       created.push({ item: row.item, amount: alloc, full: alloc >= row.outstanding });
     }
 
+    // Anything left over after every owing item is fully covered is money paid ahead — banked
+    // on the contract as credit instead of rejecting the payment outright, and automatically
+    // consumed in full the next time a new bill this contract gets opened for an amount the
+    // credit can cover.
+    if (remaining > 0) {
+      await prisma.contract.update({ where: { id: c.id }, data: { creditBalance: { increment: remaining } } });
+    }
+
     const partial = created.find((x) => !x.full);
-    const message = partial
-      ? `✅ 已记 ${created.length} 个项目的收款，其中 ${partial.item} 只收了部分`
-      : `✅ 已记 ${created.length} 个项目的收款`;
+    const creditMsg = remaining > 0 ? ` | 多收 ${fmtMoney(remaining)} 已记为预收余额` : "";
+    const message =
+      created.length === 0
+        ? `✅ 已记为预收余额: ${fmtMoney(remaining)}`
+        : partial
+          ? `✅ 已记 ${created.length} 个项目的收款，其中 ${partial.item} 只收了部分${creditMsg}`
+          : `✅ 已记 ${created.length} 个项目的收款${creditMsg}`;
     return NextResponse.json({ success: true, message });
   } catch (e) {
     return NextResponse.json(

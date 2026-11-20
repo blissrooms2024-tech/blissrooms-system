@@ -260,6 +260,13 @@ model Contract {
   /// action on an already-existing contract.
   prorataAmount     Decimal @default(0) @db.Decimal(10, 2)
   totalOutstanding  Decimal @default(0) @db.Decimal(10, 2)
+  /// Money collected via lump-sum that exceeded what was actually owed at the time (tenant
+  /// paid ahead) — not tied to any specific bill. Automatically consumed in full the next time
+  /// a new bill for this contract is opened for an amount the credit can fully cover (never
+  /// partially, so a partly-credited bill never sits PENDING with an invisible amountPaid);
+  /// never subtracted from the Payments breakdown's own "还欠", which only reflects bills
+  /// already issued.
+  creditBalance     Decimal @default(0) @db.Decimal(10, 2)
 
   status ContractStatus @default(DRAFT)
 

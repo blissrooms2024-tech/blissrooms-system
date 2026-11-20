@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
+import { tryApplyCreditToNewBill } from "@/lib/creditBalance";
 
 /** Opens next month's RENTAL bill (and CARPARK bill, if the contract has one) for every ACTIVE
  * contract, due on the 5th of that next month. Skips a contract whose expiredDate falls before
@@ -30,6 +31,7 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
   let carparkCreated = 0;
   let skippedExpiring = 0;
   let waivedByBookingFee = 0;
+  let creditApplied = 0;
 
   for (const c of contracts) {
     if (c.expiredDate && c.expiredDate < dueDate) {
@@ -65,7 +67,7 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
         await prisma.contract.update({ where: { id: c.id }, data: { waiveFirstMonthRent: false } });
         waivedByBookingFee++;
       } else {
-        await prisma.payment.create({
+        const payment = await prisma.payment.create({
           data: {
             paymentCode,
             contractId: c.id,
@@ -82,7 +84,10 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
           },
         });
         rentalCreated++;
-        if (c.tenant) {
+        const settledByCredit = await tryApplyCreditToNewBill(c.id, payment.id, Number(c.roomRental));
+        if (settledByCredit) {
+          creditApplied++;
+        } else if (c.tenant) {
           await notifyTenantBillCreated(
             c.tenant,
             {
@@ -107,7 +112,7 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
       });
       if (!existingCarpark) {
         const paymentCode = await newId("PY");
-        await prisma.payment.create({
+        const payment = await prisma.payment.create({
           data: {
             paymentCode,
             contractId: c.id,
@@ -124,7 +129,10 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
           },
         });
         carparkCreated++;
-        if (c.tenant) {
+        const settledByCredit = await tryApplyCreditToNewBill(c.id, payment.id, Number(c.carparkRental));
+        if (settledByCredit) {
+          creditApplied++;
+        } else if (c.tenant) {
           await notifyTenantBillCreated(
             c.tenant,
             {
@@ -144,5 +152,5 @@ export async function runMonthlyRentJob(recordedBy = "System (Cron)") {
     }
   }
 
-  return { periodMonth, rentalCreated, carparkCreated, skippedExpiring, waivedByBookingFee };
+  return { periodMonth, rentalCreated, carparkCreated, skippedExpiring, waivedByBookingFee, creditApplied };
 }

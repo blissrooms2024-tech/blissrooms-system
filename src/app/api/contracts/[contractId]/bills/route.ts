@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
+import { tryApplyCreditToNewBill } from "@/lib/creditBalance";
 
 /** Bill types Admin can issue through the tenant-uploads-slip → Admin-approves flow.
  * Covers the move-in Outstanding (DEPOSIT/ADMIN_FEE/ACCESS_CARD/first RENTAL) as well as
@@ -62,7 +63,7 @@ export async function POST(
   }
 
   const paymentCode = await newId("PY");
-  await prisma.payment.create({
+  const payment = await prisma.payment.create({
     data: {
       paymentCode,
       contractId: c.id,
@@ -81,6 +82,12 @@ export async function POST(
     },
   });
 
+  const label = d.type === "OTHER" ? d.customLabel : d.type;
+  const settledByCredit = await tryApplyCreditToNewBill(c.id, payment.id, d.amountDue);
+  if (settledByCredit) {
+    return NextResponse.json({ success: true, message: `✅ 账单已开: ${label} RM${d.amountDue.toFixed(2)} — 已用预收余额抵扣` });
+  }
+
   if (c.tenant) {
     await notifyTenantBillCreated(
       c.tenant,
@@ -98,6 +105,5 @@ export async function POST(
     );
   }
 
-  const label = d.type === "OTHER" ? d.customLabel : d.type;
   return NextResponse.json({ success: true, message: `✅ 账单已开: ${label} RM${d.amountDue.toFixed(2)}` });
 }

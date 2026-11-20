@@ -95,6 +95,7 @@ export default function PaymentModal({
   const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editAmountSaving, setEditAmountSaving] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -107,6 +108,7 @@ export default function PaymentModal({
     setPayments(data.payments);
     setTotals({ due: data.totalDue, paid: data.totalPaid, outstanding: data.totalOutstanding });
     setHasAircon(!!data.contract?.room?.hasAircon);
+    setCreditBalance(Number(data.contract?.creditBalance ?? 0));
   }, [contractCode, toast]);
 
   useEffect(() => {
@@ -368,7 +370,18 @@ export default function PaymentModal({
         <Box label={t("总款", "Total")} value={fmt(totals.due)} />
         <Box label={t("已收", "Paid")} value={fmt(totals.paid)} />
         <Box label={t("还欠", "Owing")} value={fmt(totals.outstanding)} color="text-red-600" />
+        {creditBalance > 0 && (
+          <Box label={t("预收余额", "Credit Balance")} value={fmt(creditBalance)} color="text-green-700" />
+        )}
       </div>
+      {creditBalance > 0 && (
+        <p className="mb-1 -mt-2 text-xs text-gray-500">
+          {t(
+            "租客多付的钱已记为预收余额，下次开新账单时金额够的话会自动抵扣。",
+            "Money paid ahead is kept as credit balance — the next bill opened for this contract will be automatically settled from it if the credit fully covers it."
+          )}
+        </p>
+      )}
 
       {breakdown && (
         <table className="mb-3.5 w-full text-sm">
