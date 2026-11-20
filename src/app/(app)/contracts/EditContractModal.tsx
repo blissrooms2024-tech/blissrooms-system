@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
@@ -26,8 +26,55 @@ export default function EditContractModal({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [vacantCarparks, setVacantCarparks] = useState<{ roomCode: string; propertyName: string }[]>([]);
+  const PRORATA_NOTE = "Pro-rata 租金 (提前入住)";
+  const [prorataBills, setProrataBills] = useState<{ amountDue: number; dueDate: string | null; status: string }[]>([]);
+  const [prorataAmount, setProrataAmount] = useState("");
+  const [prorataDueDate, setProrataDueDate] = useState("");
+  const [prorataSaving, setProrataSaving] = useState(false);
+
+  const loadProrata = useCallback(() => {
+    fetch(`/api/contracts/${contractCode}/payments`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return;
+        setProrataBills(
+          (data.payments as { notes: string | null; amountDue: number; dueDate: string | null; status: string }[])
+            .filter((p) => p.notes === PRORATA_NOTE)
+        );
+      });
+  }, [contractCode]);
+
+  async function submitProrata() {
+    if (!prorataAmount || Number(prorataAmount) <= 0 || !prorataDueDate) {
+      toast.warning(t("请填金额和到期日", "Please fill in the amount and due date"));
+      return;
+    }
+    setProrataSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${contractCode}/prorata-bill`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(prorataAmount), dueDate: prorataDueDate }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setProrataAmount("");
+        setProrataDueDate("");
+        loadProrata();
+        onSaved();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setProrataSaving(false);
+    }
+  }
 
   useEffect(() => {
+    loadProrata();
     Promise.all([
       fetch(`/api/contracts/${contractCode}`).then((r) => r.json()),
       fetch("/api/contracts/page-data").then((r) => r.json()),
@@ -74,7 +121,7 @@ export default function EditContractModal({
       }
       setVacantCarparks(carparks);
     });
-  }, [contractCode]);
+  }, [contractCode, loadProrata]);
 
   function set(key: string, value: string) {
     setForm((f) => (f ? { ...f, [key]: value } : f));
@@ -204,6 +251,38 @@ export default function EditContractModal({
               <input className="input" value={form.remarks} onChange={(e) => set("remarks", e.target.value)} />
             </Field>
           </Row>
+
+          <div className="rounded-lg bg-amber-50 p-3.5">
+            <b className="text-sm text-brand">💰 {t("Pro-rata 租金 (提前入住)", "Pro-rata Rent (Early Move-in)")}</b>
+            <p className="mt-1 text-xs text-gray-500">
+              {t(
+                "租客提前入住才需要开：金额自己算好填进去，确定后马上单独开一笔账单给租客（不会跟上面的「保存修改」混在一起，不会重复开账单）。",
+                "Only needed if the tenant is moving in early: enter the amount you've calculated — confirming opens a separate bill immediately (kept apart from \"Save Changes\" above, so it's never billed twice)."
+              )}
+            </p>
+            {prorataBills.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs text-gray-700">
+                {prorataBills.map((b, i) => (
+                  <li key={i}>
+                    ✅ {t("已开过", "Already issued")}: RM{Number(b.amountDue).toFixed(2)} — {t("到期日", "Due")} {dv(b.dueDate)} ({b.status})
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-2 flex flex-wrap items-end gap-2.5">
+              <div className="min-w-[130px] flex-1">
+                <label className="mb-1.5 block text-sm text-gray-600">{t("Pro-rata 租金 RM", "Pro-rata Rent RM")}</label>
+                <input type="number" className="input" value={prorataAmount} onChange={(e) => setProrataAmount(e.target.value)} />
+              </div>
+              <div className="min-w-[130px] flex-1">
+                <label className="mb-1.5 block text-sm text-gray-600">{t("到期日", "Due Date")}</label>
+                <input type="date" className="input" value={prorataDueDate} onChange={(e) => setProrataDueDate(e.target.value)} />
+              </div>
+              <button onClick={submitProrata} disabled={prorataSaving} className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
+                {prorataSaving ? t("处理中...", "Processing...") : t("确定, 开账单", "Confirm — Open Bill")}
+              </button>
+            </div>
+          </div>
 
           <div className="pt-1 text-sm font-semibold text-brand">👤 {t("个人资料", "Personal Information")}</div>
           <Row>

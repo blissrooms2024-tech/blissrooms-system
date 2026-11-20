@@ -92,6 +92,9 @@ export default function PaymentModal({
   const [markPaidDate, setMarkPaidDate] = useState("");
   const [markPaidMethod, setMarkPaidMethod] = useState("Bank Transfer");
   const [markPaidSaving, setMarkPaidSaving] = useState(false);
+  const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editAmountSaving, setEditAmountSaving] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -318,6 +321,39 @@ export default function PaymentModal({
     }
   }
 
+  function startEditAmount(p: PaymentRow) {
+    setEditingAmountId(p.id);
+    setEditAmount(String(p.status === "Paid" ? p.amountPaid : p.amountDue));
+  }
+
+  async function saveEditAmount(id: string) {
+    if (!editAmount || Number(editAmount) < 0) {
+      toast.warning(t("请填金额", "Please enter an amount"));
+      return;
+    }
+    setEditAmountSaving(true);
+    try {
+      const res = await fetch(`/api/payments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "edit-amount", amountDue: Number(editAmount) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setEditingAmountId(null);
+        load();
+        onChanged();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setEditAmountSaving(false);
+    }
+  }
+
   const paidHistory = payments.filter((p) => p.status === "Paid");
   const bills = payments.filter((p) => p.status !== "Paid");
   const billTypeOptions = BILL_TYPES.filter((t) => t !== "AC" || hasAircon);
@@ -526,7 +562,32 @@ export default function PaymentModal({
                       )}
                     </td>
                     <td className="px-2.5 py-1.5">
-                      {role === "ADMIN" && editingPeriodId === b.id ? (
+                      {role === "ADMIN" && editingAmountId === b.id ? (
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs text-gray-500">{t("金额 RM", "Amount RM")}</label>
+                          <input
+                            type="number"
+                            className="input text-xs"
+                            value={editAmount}
+                            onChange={(e) => setEditAmount(e.target.value)}
+                          />
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => saveEditAmount(b.id)}
+                              disabled={editAmountSaving}
+                              className="rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              {t("保存", "Save")}
+                            </button>
+                            <button
+                              onClick={() => setEditingAmountId(null)}
+                              className="rounded-md bg-gray-100 px-2.5 py-1 text-xs text-gray-600"
+                            >
+                              {t("取消", "Cancel")}
+                            </button>
+                          </div>
+                        </div>
+                      ) : role === "ADMIN" && editingPeriodId === b.id ? (
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs text-gray-500">{t("月份 (选填)", "Month (optional)")}</label>
                           <input
@@ -611,6 +672,11 @@ export default function PaymentModal({
                               ✏️ {t("改月份/到期日", "Edit Month / Due Date")}
                             </button>
                           )}
+                          {role === "ADMIN" && (
+                            <button type="button" onClick={() => startEditAmount(b)} className="text-xs font-semibold text-brand underline">
+                              ✏️ {t("改金额", "Edit Amount")}
+                            </button>
+                          )}
                           {role !== "ADMIN" ? (
                             <span className="text-xs text-gray-400">{t("等 Admin 审核", "Waiting for Admin review")}</span>
                           ) : rejectingId === b.id ? (
@@ -679,6 +745,13 @@ export default function PaymentModal({
                             ✏️ {t("改月份", "Edit Month")}
                           </button>
                           <button
+                            type="button"
+                            onClick={() => startEditAmount(b)}
+                            className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                          >
+                            ✏️ {t("改金额", "Edit Amount")}
+                          </button>
+                          <button
                             onClick={() => setDeletingBill(b)}
                             className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
                           >
@@ -727,7 +800,45 @@ export default function PaymentModal({
                 {paymentTypeLabelLocale(p.type, p.customLabel, locale)}
                 {p.periodMonth && <span className="text-gray-400"> ({p.periodMonth})</span>}
               </td>
-              <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
+              <td className="px-2.5 py-1.5">
+                {editingAmountId === p.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      className="input h-7 w-20 py-0 text-xs"
+                    />
+                    <button
+                      onClick={() => saveEditAmount(p.id)}
+                      disabled={editAmountSaving}
+                      className="rounded-md bg-green-700 px-2 py-1 text-xs font-semibold text-white"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setEditingAmountId(null)}
+                      className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600"
+                    >
+                      ✗
+                    </button>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    {fmt(p.amountPaid)}
+                    {role === "ADMIN" && (
+                      <button
+                        type="button"
+                        onClick={() => startEditAmount(p)}
+                        className="text-xs text-gray-400 hover:text-brand"
+                        title={t("改金额", "Edit Amount")}
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </span>
+                )}
+              </td>
               <td className="px-2.5 py-1.5">
                 {editingId === p.id ? (
                   <div className="flex items-center gap-1.5">

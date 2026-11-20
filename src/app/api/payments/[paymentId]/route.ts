@@ -19,7 +19,11 @@ const markPaidSchema = z.object({
   paidDate: z.string().trim().optional(),
   method: z.string().trim().optional(),
 });
-const patchSchema = z.union([editPeriodSchema, markPaidSchema, fixDateSchema]);
+const editAmountSchema = z.object({
+  action: z.literal("edit-amount"),
+  amountDue: z.coerce.number().min(0, "请填金额"),
+});
+const patchSchema = z.union([editPeriodSchema, markPaidSchema, editAmountSchema, fixDateSchema]);
 
 /** Admin-side corrections to a bill after it's been created:
  * - fix-paid-date (default, no `action` needed — the original/only use case before
@@ -33,7 +37,14 @@ const patchSchema = z.union([editPeriodSchema, markPaidSchema, fixDateSchema]);
  *   and losing an already-uploaded slip.
  * - mark-paid: Admin confirms a bill as paid directly (e.g. tenant paid cash/offline), with
  *   a chosen paid date/method, skipping the usual tenant-uploads-slip-then-Admin-approves
- *   flow entirely. Works on any not-yet-Paid bill (PENDING/PENDING_REVIEW/REJECTED). */
+ *   flow entirely. Works on any not-yet-Paid bill (PENDING/PENDING_REVIEW/REJECTED).
+ * - edit-amount: corrects a mis-entered amount directly on the bill/record itself. Needed
+ *   because every "应收" total is `max(contract's own reference field, sum of this type's
+ *   billed amountDue)` — once a wrong amount has actually been billed, raising/lowering the
+ *   contract-level field alone can't bring the total back down, since the old Payment row's
+ *   amountDue still counts. Works on any status; a Paid record's amountPaid is kept in sync
+ *   with the corrected amountDue (a Paid row always represents a fully-settled amount, not a
+ *   partial one). */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
@@ -109,6 +120,17 @@ export async function PATCH(
     }
 
     return NextResponse.json({ success: true, message: `✅ ${payment.paymentCode} 已标记为已付` });
+  }
+
+  if (parsed.data.action === "edit-amount") {
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        amountDue: parsed.data.amountDue,
+        ...(payment.status === "Paid" ? { amountPaid: parsed.data.amountDue } : {}),
+      },
+    });
+    return NextResponse.json({ success: true, message: "✅ 金额已更新" });
   }
 
   if (payment.status !== "Paid") {
