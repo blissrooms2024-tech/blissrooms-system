@@ -92,6 +92,11 @@ export default function ContractsClient({ role }: { role: string }) {
                 📥 {t("导入旧合同", "Import Legacy")}
               </Link>
             )}
+            {role === "ADMIN" && (
+              <Link href="/contracts/duplicate-check" className="btn-soft text-sm">
+                🔍 {t("重复账单检查", "Duplicate Bill Check")}
+              </Link>
+            )}
             {canCreate && (
               <Link href="/contracts/new" className="btn-primary text-sm">
                 📝 {t("开新合同", "New Contract")}
