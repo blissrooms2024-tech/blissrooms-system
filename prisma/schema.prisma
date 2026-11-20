@@ -62,6 +62,12 @@ enum PaymentType {
   ELECTRIC
   LATE_FEE
   OTHER
+  /// A ledger entry for the contract's prepaid credit balance — never created by hand, only by
+  /// lump-sum overpayment (positive: money banked as credit), a later bill auto-settled from
+  /// that credit (negative: credit drawn down), or an Admin correction to the running balance
+  /// (either sign). Every change to Contract.creditBalance must have a matching row here, so
+  /// the balance is always a receipt-backed, auditable figure instead of a bare mutable number.
+  CREDIT
 }
 
 enum MoveType {

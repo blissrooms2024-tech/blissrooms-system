@@ -173,6 +173,7 @@ export const PAYMENT_TYPE_LABELS: Record<string, string> = {
   ELECTRIC: "电费",
   LATE_FEE: "迟交罚款",
   OTHER: "其他",
+  CREDIT: "预收余额",
 };
 
 /** Shows Admin's own custom name for a type=OTHER charge (e.g. "清洁费") instead of the
@@ -196,6 +197,7 @@ export const PAYMENT_TYPE_LABELS_EN: Record<string, string> = {
   ELECTRIC: "Electricity Usage",
   LATE_FEE: "Late Payment Penalty",
   OTHER: "Other",
+  CREDIT: "Credit Balance",
 };
 
 export function paymentTypeLabelEn(type: string, customLabel?: string | null): string {
@@ -211,8 +213,15 @@ export function paymentTypeLabelLocale(type: string, customLabel: string | null 
  * tenant — a Balance Sheet liability, not earned income — while every other payment type is
  * genuine operating revenue for the Income Statement. Used by the Revenue Report to present
  * collections the way a Malaysian-standard set of accounts would: Revenue vs Deposits
- * Payable, rather than lumping everything collected into one "营业额" figure. */
-export const DEPOSIT_LIABILITY_TYPES = ["DEPOSIT", "UTILITIES", "ACCESS_CARD"] as const;
+ * Payable, rather than lumping everything collected into one "营业额" figure.
+ *
+ * CREDIT (a tenant's prepaid/advance balance) belongs here too — it's Deferred Revenue, money
+ * already received but not yet earned against any specific bill — so a lump-sum overpayment
+ * doesn't get counted as revenue the moment it's received, only once it later settles an
+ * actual RENTAL/ADMIN_FEE/etc bill (that bill's own Payment row is what counts as revenue at
+ * that point; the matching negative CREDIT row that draws down the advance nets back out of
+ * this same liability bucket, not out of revenue). */
+export const DEPOSIT_LIABILITY_TYPES = ["DEPOSIT", "UTILITIES", "ACCESS_CARD", "CREDIT"] as const;
 
 export function isDepositLiabilityType(type: string): boolean {
   return (DEPOSIT_LIABILITY_TYPES as readonly string[]).includes(type);

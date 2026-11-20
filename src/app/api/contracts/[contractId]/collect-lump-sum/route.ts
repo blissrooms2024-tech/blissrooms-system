@@ -138,8 +138,28 @@ export async function POST(
     // Anything left over after every owing item is fully covered is money paid ahead — banked
     // on the contract as credit instead of rejecting the payment outright, and automatically
     // consumed in full the next time a new bill this contract gets opened for an amount the
-    // credit can cover.
+    // credit can cover. Recorded as its own CREDIT-type Payment row (not just a silent counter
+    // bump) so there's a receipt-backed, auditable entry for exactly how much was received and
+    // when, same as every other dollar this system ever collects.
     if (remaining > 0) {
+      await prisma.payment.create({
+        data: {
+          paymentCode: await newId("PY"),
+          contractId: c.id,
+          roomCode: c.room.roomCode,
+          tenantId: c.tenantId,
+          tenantName: c.tenantName,
+          type: "CREDIT",
+          amountDue: remaining,
+          amountPaid: remaining,
+          paidDate: paidDateValue,
+          method: method || null,
+          status: "Paid",
+          receiptLink: url,
+          notes: "预收余额 (一笔过收款多收)",
+          recordedBy: user.name,
+        },
+      });
       await prisma.contract.update({ where: { id: c.id }, data: { creditBalance: { increment: remaining } } });
     }
 
