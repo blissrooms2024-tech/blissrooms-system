@@ -710,12 +710,13 @@ export default function PaymentModal({
             <th className="px-2.5 py-1.5 font-semibold">{t("日期", "Date")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("方式", "Method")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("收据", "Receipt")}</th>
+            {role === "ADMIN" && <th className="px-2.5 py-1.5 font-semibold"></th>}
           </tr>
         </thead>
         <tbody>
           {paidHistory.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-3 text-center text-gray-400">
+              <td colSpan={role === "ADMIN" ? 6 : 5} className="py-3 text-center text-gray-400">
                 {t("还没有收款记录", "No payment records yet")}
               </td>
             </tr>
@@ -786,6 +787,18 @@ export default function PaymentModal({
                   🧾 Receipt
                 </Link>
               </td>
+              {role === "ADMIN" && (
+                <td className="px-2.5 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setDeletingBill(p)}
+                    className="text-xs font-semibold text-red-600 hover:underline"
+                    title={t("删除这笔收款记录", "Delete this payment record")}
+                  >
+                    🗑️ {t("删除", "Delete")}
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -799,14 +812,18 @@ export default function PaymentModal({
         title={`⚠️ ${deletingBill?.type === "LATE_FEE" ? t("撤销罚款", "Waive Penalty") : t("删除账单", "Delete Bill")}`}
         message={t(
           `确定要删除这笔 ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (${deletingBill ? fmt(deletingBill.amountDue) : ""}) 账单吗？${
-            deletingBill?.status === "PENDING_REVIEW"
-              ? "租客已经上传的交易单也会一起消失，无法恢复。"
-              : "此操作不能撤销。"
+            deletingBill?.status === "Paid"
+              ? "这是已经确认收到的收款记录，删除后「已收」会减少，「还欠」会相应增加，此操作不能撤销。"
+              : deletingBill?.status === "PENDING_REVIEW"
+                ? "租客已经上传的交易单也会一起消失，无法恢复。"
+                : "此操作不能撤销。"
           }`,
           `Are you sure you want to delete this ${deletingBill ? paymentTypeLabelLocale(deletingBill.type, deletingBill.customLabel, locale) : ""} (${deletingBill ? fmt(deletingBill.amountDue) : ""}) bill? ${
-            deletingBill?.status === "PENDING_REVIEW"
-              ? "The tenant's already-uploaded transaction slip will be discarded too, with no way to recover it."
-              : "This action cannot be undone."
+            deletingBill?.status === "Paid"
+              ? "This is a confirmed payment record — deleting it will reduce the amount paid and increase the amount still owing. This action cannot be undone."
+              : deletingBill?.status === "PENDING_REVIEW"
+                ? "The tenant's already-uploaded transaction slip will be discarded too, with no way to recover it."
+                : "This action cannot be undone."
           }`
         )}
         confirmLabel={t("确定删除", "Confirm Delete")}

@@ -127,11 +127,12 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: "✅ 已更新收款日期" });
 }
 
-/** Admin removes a bill that was issued by mistake — a late-fee penalty waived, a wrong-month
- * duplicate, or any bill Admin decides shouldn't exist, including PENDING_REVIEW ones that
- * already have a tenant-uploaded slip (Admin confirmed they want this for cleaning up a messy
- * Outstanding Bills list, understanding it discards that slip and any paid amount — there's no
- * undo). Still refuses an already-Paid/confirmed record; that's the actual settled ledger. */
+/** Admin removes a payment record by mistake — a late-fee penalty waived, a wrong-month
+ * duplicate, a mis-entered amount in the Payment History, or any bill/record Admin decides
+ * shouldn't exist, including PENDING_REVIEW ones that already have a tenant-uploaded slip, and
+ * already-Paid records in the Payment History (deleting one reduces "已收" and correspondingly
+ * increases "还欠" for that contract). Admin confirmed they want this for cleaning up mistakes —
+ * there's no undo either way. */
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
@@ -143,14 +144,16 @@ export async function DELETE(
   const { paymentId } = await params;
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment) return NextResponse.json({ success: false, message: "找不到这笔账单" }, { status: 404 });
-  if (payment.status === "Paid") {
-    return NextResponse.json({ success: false, message: "这笔账单已经付款确认, 不能直接删除" }, { status: 409 });
-  }
 
   await prisma.payment.delete({ where: { id: paymentId } });
 
   return NextResponse.json({
     success: true,
-    message: payment.type === "LATE_FEE" ? "✅ 罚款已撤销" : "✅ 账单已删除",
+    message:
+      payment.type === "LATE_FEE"
+        ? "✅ 罚款已撤销"
+        : payment.status === "Paid"
+          ? "✅ 收款记录已删除"
+          : "✅ 账单已删除",
   });
 }
