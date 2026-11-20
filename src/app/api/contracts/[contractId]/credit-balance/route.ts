@@ -3,18 +3,15 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
+import { computeCreditBalance } from "@/lib/creditBalance";
 
 const schema = z.object({ creditBalance: z.coerce.number().min(0, "请填金额") });
 
-/** Admin-only direct correction of a contract's prepaid credit balance — for whenever the
- * running total (built up/consumed automatically by lump-sum overpayment and auto-settled
- * bills) doesn't match what Admin knows is actually true, the same escape hatch every other
- * amount in the system already has via "改金额".
- *
- * Unlike a plain "改金额" on an existing record, this one has nothing to directly correct — the
- * balance is a running total, not a single row — so the correction itself is recorded as a new
- * CREDIT-type Payment row for the difference (Admin keys in a number; the record of that entry
- * is what makes it an adjustment Admin can account for later, not just an invisible edit). */
+/** Admin-only correction of a contract's prepaid credit balance. The balance is never a single
+ * stored number to overwrite — it's always the live sum of this contract's CREDIT-type Payment
+ * rows — so a correction here is itself just one more row, for the difference between what
+ * Admin says it should be and what the ledger currently adds up to, same as every other Admin
+ * correction in this system leaves its own trace instead of silently editing history. */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
@@ -32,29 +29,27 @@ export async function PATCH(
     return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message ?? "资料不对" }, { status: 400 });
   }
 
-  const diff = parsed.data.creditBalance - Number(c.creditBalance);
-  if (diff !== 0) {
-    await prisma.payment.create({
-      data: {
-        paymentCode: await newId("PY"),
-        contractId: c.id,
-        roomCode: c.room.roomCode,
-        tenantId: c.tenantId,
-        tenantName: c.tenantName,
-        type: "CREDIT",
-        amountDue: diff,
-        amountPaid: diff,
-        paidDate: new Date(),
-        status: "Paid",
-        notes: `Admin 手动调整预收余额 (由 ${user.name} 修改)`,
-        recordedBy: user.name,
-      },
-    });
+  const current = await computeCreditBalance(c.id);
+  const diff = parsed.data.creditBalance - current;
+  if (diff === 0) {
+    return NextResponse.json({ success: true, message: "✅ 预收余额没有变化" });
   }
 
-  await prisma.contract.update({
-    where: { id: c.id },
-    data: { creditBalance: parsed.data.creditBalance },
+  await prisma.payment.create({
+    data: {
+      paymentCode: await newId("PY"),
+      contractId: c.id,
+      roomCode: c.room.roomCode,
+      tenantId: c.tenantId,
+      tenantName: c.tenantName,
+      type: "CREDIT",
+      amountDue: diff,
+      amountPaid: diff,
+      paidDate: new Date(),
+      status: "Paid",
+      notes: `Admin 手动调整预收余额 (由 ${user.name} 修改)`,
+      recordedBy: user.name,
+    },
   });
 
   return NextResponse.json({ success: true, message: "✅ 预收余额已更新" });

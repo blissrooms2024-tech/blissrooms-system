@@ -35,11 +35,18 @@ export async function GET(
   });
 
   const { breakdown, totalDue, totalPaid, totalOutstanding } = computeBillBreakdown(c, payments, c.room.isCarpark);
+  // Not a stored field — always the live sum of this contract's CREDIT-type rows (already have
+  // every payment in hand here, so no extra query needed), the same way totalDue/totalPaid/
+  // totalOutstanding above are derived rather than cached, for the same reason: a cached number
+  // can drift from its own ledger; a sum of the ledger itself cannot.
+  const creditBalance = payments
+    .filter((p) => p.type === "CREDIT" && p.status === "Paid")
+    .reduce((s, p) => s + Number(p.amountPaid), 0);
 
   const { agent, ...contractRest } = c;
   return NextResponse.json({
     success: true,
-    contract: serialize({ ...contractRest, agentIc: agent.ic }),
+    contract: serialize({ ...contractRest, agentIc: agent.ic, creditBalance }),
     payments: serialize(payments),
     breakdown,
     totalDue,

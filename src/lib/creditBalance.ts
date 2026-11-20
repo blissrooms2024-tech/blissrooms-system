@@ -1,6 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
 
+/** The contract's prepaid credit balance isn't a separately stored field — it's always just the
+ * live sum of this contract's CREDIT-type Payment rows (positive deposits, negative draw-downs,
+ * either sign for an Admin correction). Computing it fresh every time, instead of caching it on
+ * Contract and trying to keep that cache in lockstep with the ledger, is what guarantees it can
+ * never drift out of sync with its own history — including when Admin corrects one of these
+ * rows directly via the ordinary "改金额" button every other Payment type already has. */
+export async function computeCreditBalance(contractId: string): Promise<number> {
+  const agg = await prisma.payment.aggregate({
+    where: { contractId, type: "CREDIT", status: "Paid" },
+    _sum: { amountPaid: true },
+  });
+  return Number(agg._sum.amountPaid ?? 0);
+}
+
 /** When a newly-opened bill can be fully covered by a contract's existing prepaid credit
  * (money collected via lump-sum that exceeded what was actually owed at the time), settle it
  * immediately instead of leaving it PENDING for the tenant to pay again.
@@ -12,7 +26,7 @@ import { newId } from "@/lib/id";
  *
  * Also records a negative CREDIT-type Payment row for the draw-down, so the balance change has
  * the same paper trail as every other movement of this money (the deposit that created it, and
- * any Admin correction) — never just a silent counter decrement.
+ * any Admin correction).
  *
  * Returns true if the bill was settled this way (caller should skip its usual
  * "bill issued" tenant notification). */
@@ -22,12 +36,14 @@ export async function tryApplyCreditToNewBill(
   amountDue: number
 ): Promise<boolean> {
   if (amountDue <= 0) return false;
+  const credit = await computeCreditBalance(contractId);
+  if (credit < amountDue) return false;
+
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
-    select: { creditBalance: true, tenantId: true, tenantName: true, room: { select: { roomCode: true } } },
+    select: { tenantId: true, tenantName: true, room: { select: { roomCode: true } } },
   });
-  const credit = Number(contract?.creditBalance ?? 0);
-  if (!contract || credit < amountDue) return false;
+  if (!contract) return false;
 
   const payment = await prisma.payment.update({
     where: { id: paymentId },
@@ -53,10 +69,6 @@ export async function tryApplyCreditToNewBill(
       notes: `抵扣账单 ${payment.paymentCode} (预收余额已用)`,
       recordedBy: "System",
     },
-  });
-  await prisma.contract.update({
-    where: { id: contractId },
-    data: { creditBalance: { decrement: amountDue } },
   });
   return true;
 }

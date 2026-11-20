@@ -148,7 +148,6 @@ export async function POST(
           recordedBy: user.name,
         },
       });
-      await prisma.contract.update({ where: { id: c.id }, data: { creditBalance: { increment: remaining } } });
     }
 
     const partial = created.find((x) => !x.full);

@@ -62,11 +62,13 @@ enum PaymentType {
   ELECTRIC
   LATE_FEE
   OTHER
-  /// A ledger entry for the contract's prepaid credit balance — never created by hand, only by
+  /// A ledger entry for a contract's prepaid credit balance — never created by hand, only by
   /// lump-sum overpayment (positive: money banked as credit), a later bill auto-settled from
-  /// that credit (negative: credit drawn down), or an Admin correction to the running balance
-  /// (either sign). Every change to Contract.creditBalance must have a matching row here, so
-  /// the balance is always a receipt-backed, auditable figure instead of a bare mutable number.
+  /// that credit (negative: credit drawn down), or an Admin correction (either sign). There is
+  /// no separate "credit balance" field anywhere — the balance is always just the live sum of
+  /// this type's amountPaid for a contract, so it can never drift out of sync with its own
+  /// ledger (editing or deleting one of these rows, the same way any other Payment row can be
+  /// corrected, is itself what changes the balance — there's nothing else to keep in sync).
   CREDIT
 }
 
@@ -266,13 +268,6 @@ model Contract {
   /// action on an already-existing contract.
   prorataAmount     Decimal @default(0) @db.Decimal(10, 2)
   totalOutstanding  Decimal @default(0) @db.Decimal(10, 2)
-  /// Money collected via lump-sum that exceeded what was actually owed at the time (tenant
-  /// paid ahead) — not tied to any specific bill. Automatically consumed in full the next time
-  /// a new bill for this contract is opened for an amount the credit can fully cover (never
-  /// partially, so a partly-credited bill never sits PENDING with an invisible amountPaid);
-  /// never subtracted from the Payments breakdown's own "还欠", which only reflects bills
-  /// already issued.
-  creditBalance     Decimal @default(0) @db.Decimal(10, 2)
 
   status ContractStatus @default(DRAFT)
 
