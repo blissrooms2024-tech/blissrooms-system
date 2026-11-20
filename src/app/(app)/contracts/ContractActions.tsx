@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import Modal from "@/components/Modal";
 import EditContractModal from "./EditContractModal";
 import SignatureModal from "./SignatureModal";
 import ICUploadModal from "./ICUploadModal";
@@ -53,6 +54,10 @@ export default function ContractActions({
   const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [terminateReason, setTerminateReason] = useState("");
+  const [prorataOpen, setProrataOpen] = useState(false);
+  const [prorataAmount, setProrataAmount] = useState("");
+  const [prorataDueDate, setProrataDueDate] = useState("");
+  const [prorataSaving, setProrataSaving] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -190,6 +195,35 @@ export default function ContractActions({
     }
   }
 
+  async function submitProrata() {
+    if (!prorataAmount || Number(prorataAmount) <= 0 || !prorataDueDate) {
+      toast.warning(t("请填金额和到期日", "Please fill in the amount and due date"));
+      return;
+    }
+    setProrataSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${c.contractCode}/prorata-bill`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(prorataAmount), dueDate: prorataDueDate }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setProrataOpen(false);
+        setProrataAmount("");
+        setProrataDueDate("");
+        onChanged();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    } finally {
+      setProrataSaving(false);
+    }
+  }
+
   const notClosed = c.status !== "TERMINATED" && c.status !== "MOVED_OUT" && c.status !== "RENEWED";
 
   type Item = { key: string; label: string; color: string; onClick?: () => void; href?: string; primary?: boolean };
@@ -229,6 +263,12 @@ export default function ContractActions({
   }
   if (role === "ADMIN" && notClosed) {
     items.push({ key: "edit", label: `✏️ ${t("编辑", "Edit")}`, color: "bg-brand", onClick: () => setEditing(true) });
+    items.push({
+      key: "prorata",
+      label: `💰 ${t("开 Pro-rata 账单", "Open Pro-rata Bill")}`,
+      color: "bg-amber-600",
+      onClick: () => setProrataOpen(true),
+    });
   }
   if (role === "ADMIN") {
     items.push({ key: "warning", label: `⚠️ ${t("警告信", "Warning Letter")}`, color: "bg-orange-600", href: `/contracts/${c.contractCode}/warning-letter` });
@@ -260,6 +300,42 @@ export default function ContractActions({
       )}
       {uploadingPdf && (
         <ContractPdfModal contractCode={c.contractCode} onClose={() => setUploadingPdf(false)} onUploaded={onChanged} />
+      )}
+      {prorataOpen && (
+        <Modal onClose={() => setProrataOpen(false)}>
+          <h3 className="mb-3.5 text-lg font-bold text-brand">
+            💰 {t("开 Pro-rata 账单", "Open Pro-rata Bill")} — {c.contractCode}
+          </h3>
+          <p className="mb-3.5 text-sm text-gray-500">
+            {t(
+              "租客提前入住才需要开：金额自己算好填进去，确定后马上开一笔账单给租客。",
+              "Only needed if the tenant is moving in early: enter the amount you've calculated — confirming opens a bill for it immediately."
+            )}
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("Pro-rata 租金 RM", "Pro-rata Rent RM")}</label>
+              <input
+                type="number"
+                className="input"
+                value={prorataAmount}
+                onChange={(e) => setProrataAmount(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("到期日", "Due Date")}</label>
+              <input
+                type="date"
+                className="input"
+                value={prorataDueDate}
+                onChange={(e) => setProrataDueDate(e.target.value)}
+              />
+            </div>
+            <button onClick={submitProrata} disabled={prorataSaving} className="btn-primary w-full">
+              {prorataSaving ? t("处理中...", "Processing...") : t("确定, 开账单", "Confirm — Open Bill")}
+            </button>
+          </div>
+        </Modal>
       )}
       {moveForm && (
         <MoveFormModal
