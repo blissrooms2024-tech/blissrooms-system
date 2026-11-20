@@ -59,60 +59,48 @@ export async function POST(
       if (remaining <= 0) break;
       const alloc = Math.min(row.outstanding, remaining);
       remaining -= alloc;
+      let toAllocate = alloc;
 
-      // If this item already has an open (PENDING/REJECTED) bill and this payment fully covers
-      // it, settle THAT bill directly instead of creating a brand-new record for the same
-      // money — this used to always create a fresh row regardless, leaving the original bill
-      // dangling open while a second record counted the same cash, inflating "应收" further
-      // every time lump-sum collection was used on an item that already had a bill out.
-      const openBill = allPayments.find((p) => p.type === row.item && (p.status === "PENDING" || p.status === "REJECTED"));
-      const openBillRemainder = openBill ? Math.max(Number(openBill.amountDue) - Number(openBill.amountPaid), 0) : 0;
+      // Settle every open (PENDING/REJECTED) bill of this type, oldest due date first, before
+      // falling back to an ad-hoc record for whatever's left over — settling only the FIRST one
+      // found (the old behaviour) left every other open bill of the same type dangling
+      // unpaid, even though row.outstanding (and so "alloc" here) already counts their amounts
+      // too. A contract can genuinely have more than one open bill of the same type (e.g. a
+      // duplicate-bill situation, or simply more than one unpaid month at once), and leaving
+      // any of them untouched means their amountDue keeps re-counting toward "应收" the next
+      // time it's computed, even though the cash for it was already collected right here.
+      const openBills = allPayments
+        .filter((p) => p.type === row.item && (p.status === "PENDING" || p.status === "REJECTED"))
+        .sort((a, b) => (a.dueDate?.getTime() ?? 0) - (b.dueDate?.getTime() ?? 0));
 
-      if (openBill && openBillRemainder > 0 && alloc >= openBillRemainder) {
+      for (const bill of openBills) {
+        if (toAllocate <= 0) break;
+        const billRemainder = Math.max(Number(bill.amountDue) - Number(bill.amountPaid), 0);
+        // Skip (not break) one this payment can't fully clear — a later, smaller bill in the
+        // list might still be affordable with what's left, and should get the same chance.
+        if (billRemainder <= 0 || toAllocate < billRemainder) continue;
         await prisma.payment.update({
-          where: { id: openBill.id },
+          where: { id: bill.id },
           data: {
             status: "Paid",
-            amountPaid: openBill.amountDue,
+            amountPaid: bill.amountDue,
             paidDate: paidDateValue,
-            method: method || openBill.method,
-            receiptLink: url ?? openBill.receiptLink,
+            method: method || bill.method,
+            receiptLink: url ?? bill.receiptLink,
             reviewedBy: user.name,
             reviewedAt: new Date(),
             reviewNote: null,
           },
         });
-        // Any extra beyond that bill's own amount (this item's "due" can also include an
-        // unbilled remainder on top of it) still needs its own ad-hoc record.
-        const extra = alloc - openBillRemainder;
-        if (extra > 0) {
-          await prisma.payment.create({
-            data: {
-              paymentCode: await newId("PY"),
-              contractId: c.id,
-              roomCode: c.room.roomCode,
-              tenantId: c.tenantId,
-              tenantName: c.tenantName,
-              type: row.item,
-              amountDue: extra,
-              amountPaid: extra,
-              paidDate: paidDateValue,
-              method: method || null,
-              status: "Paid",
-              receiptLink: url,
-              notes: "合并收款 (一笔涵盖多个项目)",
-              recordedBy: user.name,
-            },
-          });
-        }
-      } else {
-        // amountDue is exactly what this record actually collects (alloc), never the item's
-        // full outstanding — this used to put the FULL outstanding here even on a partial
-        // allocation, so a partially-covered item's "应收" kept silently inflating by its own
-        // still-unpaid remainder every time a partial lump-sum touched it, on top of what was
-        // already owed. The real remaining shortfall (row.outstanding - alloc, if any) simply
-        // stays unbilled, to be collected by a later payment same as any other never-yet-billed
-        // amount.
+        toAllocate -= billRemainder;
+      }
+
+      // amountDue is exactly what this ad-hoc record actually collects, never the item's full
+      // outstanding — putting the full outstanding here on a partial allocation used to make a
+      // partially-covered item's "应收" silently inflate by its own still-unpaid remainder on
+      // top of what was already owed. The real remaining shortfall (if any) simply stays
+      // unbilled, to be collected by a later payment same as any other never-yet-billed amount.
+      if (toAllocate > 0) {
         await prisma.payment.create({
           data: {
             paymentCode: await newId("PY"),
@@ -121,8 +109,8 @@ export async function POST(
             tenantId: c.tenantId,
             tenantName: c.tenantName,
             type: row.item,
-            amountDue: alloc,
-            amountPaid: alloc,
+            amountDue: toAllocate,
+            amountPaid: toAllocate,
             paidDate: paidDateValue,
             method: method || null,
             status: "Paid",
