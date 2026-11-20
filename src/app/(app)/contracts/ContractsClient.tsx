@@ -11,6 +11,7 @@ interface Contract extends ActionableContract {
   roomCode?: string;
   expiredDate: string | null;
   remarks: string | null;
+  _due: number;
   _paid: number;
   _outstanding: number;
   _expiringSoon?: boolean;
@@ -165,7 +166,7 @@ export default function ContractsClient({ role }: { role: string }) {
                     <Td>{c.room?.roomCode}</Td>
                     <Td>{c.tenantName}</Td>
                     <Td>{c.agentName}</Td>
-                    <Td>{fmt(c.totalOutstanding)}</Td>
+                    <Td>{fmt(c._due)}</Td>
                     <Td>{fmt(c._paid)}</Td>
                     <Td>
                       {c._outstanding > 0 ? (

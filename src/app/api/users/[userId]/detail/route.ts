@@ -75,24 +75,28 @@ export async function GET(
 
     const contracts = tenantContracts.map((c) => {
       const cp = paymentsByContract.get(c.id) ?? [];
-      const due: Record<string, number> = {
-        DEPOSIT: Number(c.securityDeposit),
-        UTILITIES: Number(c.utilitiesDeposit),
-        ADMIN_FEE: Number(c.adminFee),
-        ACCESS_CARD: Number(c.accessCardDeposit),
-        CARPARK: Number(c.carparkRental),
-        RENTAL: Number(c.roomRental),
-      };
       const billedByType: Record<string, number> = {};
       const paidByType: Record<string, number> = {};
       for (const p of cp) {
         billedByType[p.type] = (billedByType[p.type] || 0) + Number(p.amountDue);
         if (p.status === "Paid") paidByType[p.type] = (paidByType[p.type] || 0) + Number(p.amountPaid);
       }
+      // Whichever is larger of the contract's own reference rate and everything ever actually
+      // billed — same as the Contracts list and per-contract breakdown, so this total always
+      // equals paid + outstanding instead of silently drifting from them (c.totalOutstanding is
+      // a static move-in-time snapshot that never grows as later recurring bills get issued).
+      const due: Record<string, number> = {
+        DEPOSIT: Math.max(Number(c.securityDeposit), billedByType.DEPOSIT || 0),
+        UTILITIES: Math.max(Number(c.utilitiesDeposit), billedByType.UTILITIES || 0),
+        ADMIN_FEE: Math.max(Number(c.adminFee), billedByType.ADMIN_FEE || 0),
+        ACCESS_CARD: Math.max(Number(c.accessCardDeposit), billedByType.ACCESS_CARD || 0),
+        CARPARK: Math.max(Number(c.carparkRental), billedByType.CARPARK || 0),
+        RENTAL: Math.max(Number(c.roomRental), billedByType.RENTAL || 0),
+      };
       const openBillTypes = new Set<string>(cp.filter((p) => p.status === "PENDING" || p.status === "REJECTED").map((p) => p.type));
       const unbilledBreakdownTotal = Object.entries(due)
         .filter(([type]) => !openBillTypes.has(type))
-        .reduce((s, [type, dd]) => s + Math.max(Math.max(dd, billedByType[type] || 0) - (paidByType[type] || 0), 0), 0);
+        .reduce((s, [type, dd]) => s + Math.max(dd - (paidByType[type] || 0), 0), 0);
       const openBillsTotal = cp
         .filter((p) => p.status === "PENDING" || p.status === "REJECTED")
         .reduce((s, p) => s + Number(p.amountDue), 0);
@@ -103,7 +107,7 @@ export async function GET(
         roomCode: c.room.roomCode,
         status: c.status,
         expiredDate: c.expiredDate,
-        totalOutstanding: Number(c.totalOutstanding),
+        totalOutstanding: Object.values(due).reduce((s, dd) => s + dd, 0),
         paid,
         outstanding: unbilledBreakdownTotal + openBillsTotal,
       };

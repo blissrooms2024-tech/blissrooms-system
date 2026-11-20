@@ -70,7 +70,10 @@ export async function GET(
     return { item, due: dd, paid: pd, outstanding: Math.max(dd - pd, 0) };
   });
 
-  const totalDue = Number(c.totalOutstanding);
+  // Deliberately NOT c.totalOutstanding (a static move-in-time snapshot that never grows as
+  // later recurring bills get issued) — this sums the same per-type "due" the breakdown table
+  // shows, so "总款" always equals "已收 + 还欠" instead of silently drifting apart from them.
+  const totalDue = breakdown.reduce((s, b) => s + b.due, 0);
   const totalPaid = payments.filter((p) => p.status === "Paid").reduce((s, p) => s + Number(p.amountPaid), 0);
 
   // "Owing" must reflect everything the tenant still has to pay right now — not just the
