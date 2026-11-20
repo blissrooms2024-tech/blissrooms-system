@@ -96,6 +96,9 @@ export default function PaymentModal({
   const [editAmount, setEditAmount] = useState("");
   const [editAmountSaving, setEditAmountSaving] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
+  const [editingCredit, setEditingCredit] = useState(false);
+  const [editCreditValue, setEditCreditValue] = useState("");
+  const [editCreditSaving, setEditCreditSaving] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/contracts/${contractCode}/payments`);
@@ -356,6 +359,38 @@ export default function PaymentModal({
     }
   }
 
+  function startEditCredit() {
+    setEditCreditValue(String(creditBalance));
+    setEditingCredit(true);
+  }
+
+  async function saveEditCredit() {
+    if (editCreditValue === "" || Number(editCreditValue) < 0) {
+      toast.warning(t("请填金额", "Please enter an amount"));
+      return;
+    }
+    setEditCreditSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${contractCode}/credit-balance`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creditBalance: Number(editCreditValue) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setEditingCredit(false);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setEditCreditSaving(false);
+    }
+  }
+
   const paidHistory = payments.filter((p) => p.status === "Paid");
   const bills = payments.filter((p) => p.status !== "Paid");
   const billTypeOptions = BILL_TYPES.filter((t) => t !== "AC" || hasAircon);
@@ -370,8 +405,48 @@ export default function PaymentModal({
         <Box label={t("总款", "Total")} value={fmt(totals.due)} />
         <Box label={t("已收", "Paid")} value={fmt(totals.paid)} />
         <Box label={t("还欠", "Owing")} value={fmt(totals.outstanding)} color="text-red-600" />
-        {creditBalance > 0 && (
-          <Box label={t("预收余额", "Credit Balance")} value={fmt(creditBalance)} color="text-green-700" />
+        {(creditBalance > 0 || (role === "ADMIN" && editingCredit)) && (
+          <div className="flex-1 rounded-lg bg-gray-50 p-3 text-center">
+            {editingCredit ? (
+              <div className="flex items-center justify-center gap-1.5">
+                <input
+                  type="number"
+                  className="input h-7 w-24 py-0 text-center text-sm"
+                  value={editCreditValue}
+                  onChange={(e) => setEditCreditValue(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  onClick={saveEditCredit}
+                  disabled={editCreditSaving}
+                  className="rounded-md bg-green-700 px-2 py-1 text-xs font-semibold text-white"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={() => setEditingCredit(false)}
+                  className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600"
+                >
+                  ✗
+                </button>
+              </div>
+            ) : (
+              <div className="text-lg font-bold text-green-700">
+                {fmt(creditBalance)}
+                {role === "ADMIN" && (
+                  <button
+                    type="button"
+                    onClick={startEditCredit}
+                    className="ml-1.5 align-middle text-xs text-gray-400 hover:text-brand"
+                    title={t("改预收余额", "Edit Credit Balance")}
+                  >
+                    ✏️
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="text-xs text-gray-500">{t("预收余额", "Credit Balance")}</div>
+          </div>
         )}
       </div>
       {creditBalance > 0 && (
@@ -381,6 +456,11 @@ export default function PaymentModal({
             "Money paid ahead is kept as credit balance — the next bill opened for this contract will be automatically settled from it if the credit fully covers it."
           )}
         </p>
+      )}
+      {role === "ADMIN" && creditBalance === 0 && !editingCredit && (
+        <button type="button" onClick={startEditCredit} className="mb-2 -mt-2 block text-xs text-gray-400 hover:text-brand">
+          ✏️ {t("设置预收余额", "Set Credit Balance")}
+        </button>
       )}
 
       {breakdown && (
