@@ -5,6 +5,7 @@ import Link from "next/link";
 import { contractStatusLabel } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useToast } from "@/components/Toast";
 import ContractActions, { type ActionableContract } from "./ContractActions";
 
 interface Contract extends ActionableContract {
@@ -22,10 +23,30 @@ interface Contract extends ActionableContract {
 
 export default function ContractsClient({ role }: { role: string }) {
   const { locale, t } = useLanguage();
+  const toast = useToast();
   const [contracts, setContracts] = useState<Contract[] | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState("");
+  const [backfilling, setBackfilling] = useState(false);
+
+  async function runProrataBackfill() {
+    setBackfilling(true);
+    try {
+      const res = await fetch("/api/contracts/backfill-prorata-amount", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    } finally {
+      setBackfilling(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setError("");
@@ -49,8 +70,6 @@ export default function ContractsClient({ role }: { role: string }) {
   }, [t]);
 
   useEffect(() => {
-    // setState happens after the fetch's await, not synchronously in the effect body.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
@@ -97,6 +116,19 @@ export default function ContractsClient({ role }: { role: string }) {
               <Link href="/contracts/duplicate-check" className="btn-soft text-sm">
                 🔍 {t("重复账单检查", "Duplicate Bill Check")}
               </Link>
+            )}
+            {role === "ADMIN" && (
+              <button
+                onClick={runProrataBackfill}
+                disabled={backfilling}
+                title={t(
+                  "补回旧合同的 Pro-rata 记录，让合同 PDF 也能显示出来 (可重复执行，不会重复计算)",
+                  "Backfills older contracts' Pro-rata record so it also shows on the agreement PDF (safe to run more than once)"
+                )}
+                className="btn-soft text-sm disabled:opacity-50"
+              >
+                🔧 {backfilling ? t("处理中...", "Processing...") : t("补回 Pro-rata 记录", "Backfill Pro-rata")}
+              </button>
             )}
             {canCreate && (
               <Link href="/contracts/new" className="btn-primary text-sm">
