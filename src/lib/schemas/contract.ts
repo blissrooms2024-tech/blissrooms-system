@@ -52,7 +52,7 @@ export type ContractFormInput = z.infer<typeof contractFormSchema>;
 /** Editing a contract corrects its printed details but never re-links the tenant account
  * (tenantId is set once at creation via tenantCode) — so this takes free-text name/IC instead. */
 export const contractEditSchema = contractFormSchema
-  .omit({ roomCode: true, agentId: true, tenantCode: true, prorataAmount: true, prorataDueDate: true })
+  .omit({ roomCode: true, agentId: true, tenantCode: true })
   .extend({
     tenantName: z.string().trim().min(1),
     tenantIc: z.string().trim().optional().default(""),

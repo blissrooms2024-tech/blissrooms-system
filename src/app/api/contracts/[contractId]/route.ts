@@ -5,6 +5,10 @@ import { serialize } from "@/lib/serialize";
 import { contractEditSchema } from "@/lib/schemas/contract";
 import { RENT_ARREARS } from "@/lib/config";
 import { computeBillBreakdown } from "@/lib/billBreakdown";
+import { newId } from "@/lib/id";
+import { notifyTenantBillCreated } from "@/lib/mail";
+
+const PRORATA_NOTE = "Pro-rata 租金 (提前入住)";
 
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
@@ -96,7 +100,10 @@ export async function PATCH(
     return NextResponse.json({ success: false, message: "只有 Admin 可以编辑" }, { status: 403 });
   }
   const { contractId } = await params;
-  const contract = await prisma.contract.findUnique({ where: { contractCode: contractId } });
+  const contract = await prisma.contract.findUnique({
+    where: { contractCode: contractId },
+    include: { room: true, tenant: true },
+  });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (contract.status === "TERMINATED" || contract.status === "MOVED_OUT" || contract.status === "RENEWED") {
     return NextResponse.json({ success: false, message: "这合同已经终止/搬出/续约结束, 不能再改了" }, { status: 409 });
@@ -107,8 +114,35 @@ export async function PATCH(
     return NextResponse.json({ success: false, message: "资料格式不对" }, { status: 400 });
   }
   const d = parsed.data;
+
+  // A Pro-rata bill only ever opens ONCE per contract — same one-time guarantee the old
+  // dedicated "开 Pro-rata 账单" action gave, just folded into the regular save now instead of
+  // a separate click. Once that bill exists, the field becomes read-only in effect: resaving
+  // the edit form (with the same or a different number in it) never creates a second bill or
+  // silently drifts the contract's own prorataAmount out of sync with what was actually billed
+  // — correcting it afterward means editing that Payment record directly (the "改金额" button
+  // in Payments), same as any other bill.
+  const existingProrataBill = await prisma.payment.findFirst({
+    where: { contractId: contract.id, notes: PRORATA_NOTE },
+  });
+  let prorataAmountForTotal = Number(contract.prorataAmount);
+  let createProrataBill = false;
+  if (!existingProrataBill && d.prorataAmount > 0) {
+    if (!d.prorataDueDate) {
+      return NextResponse.json({ success: false, message: "填了 Pro-rata 租金就一定要选到期日" }, { status: 400 });
+    }
+    prorataAmountForTotal = d.prorataAmount;
+    createProrataBill = true;
+  }
+
   const total =
-    d.roomRental + d.securityDeposit + d.utilitiesDeposit + d.accessCardDeposit + d.adminFee + d.carparkRental;
+    d.roomRental +
+    d.securityDeposit +
+    d.utilitiesDeposit +
+    d.accessCardDeposit +
+    d.adminFee +
+    d.carparkRental +
+    prorataAmountForTotal;
 
   const newCarparkRoom = d.carparkRoomCode
     ? await prisma.room.findUnique({ where: { roomCode: d.carparkRoomCode } })
@@ -148,6 +182,7 @@ export async function PATCH(
       earnestDeposit: d.roomRental,
       accessCardDeposit: d.accessCardDeposit,
       adminFee: d.adminFee,
+      prorataAmount: prorataAmountForTotal,
       totalOutstanding: total,
       remarks: d.remarks,
       nationality: d.nationality,
@@ -189,7 +224,44 @@ export async function PATCH(
     }
   }
 
-  return NextResponse.json({ success: true, message: `✅ 合同已更新: ${contractId}` });
+  let prorataMsg = "";
+  if (createProrataBill && d.prorataDueDate) {
+    const paymentCode = await newId("PY");
+    await prisma.payment.create({
+      data: {
+        paymentCode,
+        contractId: contract.id,
+        roomCode: contract.room.roomCode,
+        tenantId: contract.tenantId,
+        tenantName: contract.tenantName,
+        type: "RENTAL",
+        amountDue: d.prorataAmount,
+        amountPaid: 0,
+        dueDate: d.prorataDueDate,
+        status: "PENDING",
+        recordedBy: user.name,
+        notes: PRORATA_NOTE,
+      },
+    });
+    if (contract.tenant) {
+      await notifyTenantBillCreated(
+        contract.tenant,
+        {
+          paymentCode,
+          contractCode: contractId,
+          roomCode: contract.room.roomCode,
+          type: "RENTAL",
+          amountDue: d.prorataAmount,
+          amountPaid: 0,
+          dueDate: d.prorataDueDate.toISOString(),
+        },
+        user.name
+      );
+    }
+    prorataMsg = ` | Pro-rata 租金账单已开: RM${d.prorataAmount.toFixed(2)}`;
+  }
+
+  return NextResponse.json({ success: true, message: `✅ 合同已更新: ${contractId}${prorataMsg}` });
 }
 
 export async function DELETE(
