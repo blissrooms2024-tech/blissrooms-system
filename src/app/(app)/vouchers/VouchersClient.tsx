@@ -30,6 +30,7 @@ interface OccupiedContract {
   contractCode: string;
   roomCode: string;
   tenantName: string;
+  isCarpark: boolean;
 }
 
 export default function VouchersClient({ role }: { role: string }) {
@@ -39,6 +40,7 @@ export default function VouchersClient({ role }: { role: string }) {
   const [error, setError] = useState("");
   const [issuing, setIssuing] = useState(false);
   const [occupied, setOccupied] = useState<OccupiedContract[]>([]);
+  const [roomSearch, setRoomSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ amount: "", reason: "", expiryDate: "", template: "blue" as VoucherTemplate });
   const [saving, setSaving] = useState(false);
@@ -82,16 +84,20 @@ export default function VouchersClient({ role }: { role: string }) {
         return;
       }
       // Only occupied rooms (an ACTIVE contract with a live tenant) — a vacant room has no one
-      // to give a voucher to, so it would just be clutter in the picker.
+      // to give a voucher to, so it would just be clutter in the picker. This also naturally
+      // includes carpark-only contracts (a tenant who rents just a parking bay, no room) since
+      // those are ACTIVE contracts too — their "room" is just the carpark itself.
       const list: OccupiedContract[] = data.contracts
         .filter((c: { status: string }) => c.status === "ACTIVE")
-        .map((c: { contractCode: string; tenantName: string; room?: { roomCode: string } }) => ({
+        .map((c: { contractCode: string; tenantName: string; room?: { roomCode: string; isCarpark: boolean } }) => ({
           contractCode: c.contractCode,
           roomCode: c.room?.roomCode ?? "",
           tenantName: c.tenantName,
+          isCarpark: c.room?.isCarpark ?? false,
         }))
         .sort((a: OccupiedContract, b: OccupiedContract) => a.roomCode.localeCompare(b.roomCode));
       setOccupied(list);
+      setRoomSearch("");
     } catch {
       toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
     }
@@ -106,8 +112,18 @@ export default function VouchersClient({ role }: { role: string }) {
     });
   }
 
-  function toggleAll() {
-    setSelected((prev) => (prev.size === occupied.length ? new Set() : new Set(occupied.map((o) => o.contractCode))));
+  function toggleAll(visible: OccupiedContract[]) {
+    const visibleCodes = visible.map((o) => o.contractCode);
+    const allVisibleSelected = visibleCodes.length > 0 && visibleCodes.every((code) => selected.has(code));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        for (const code of visibleCodes) next.delete(code);
+      } else {
+        for (const code of visibleCodes) next.add(code);
+      }
+      return next;
+    });
   }
 
   async function submitIssue() {
@@ -256,33 +272,61 @@ export default function VouchersClient({ role }: { role: string }) {
           <h3 className="mb-3.5 text-lg font-bold text-brand">🎟️ {t("发放代金券", "Issue Voucher")}</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-sm text-gray-600">
-                <span>{t("选房间 (可以多选)", "Select Rooms (multiple allowed)")}</span>
-                {occupied.length > 0 && (
-                  <button type="button" onClick={toggleAll} className="text-xs font-semibold text-brand hover:underline">
-                    {selected.size === occupied.length ? t("取消全选", "Deselect All") : t("全选", "Select All")}
-                  </button>
-                )}
-              </label>
-              <div className="max-h-[300px] overflow-auto rounded-lg border border-gray-200">
-                {occupied.length === 0 && (
-                  <div className="p-3 text-center text-xs text-gray-400">{t("载入中...", "Loading...")}</div>
-                )}
-                {occupied.map((o) => (
-                  <label
-                    key={o.contractCode}
-                    className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50"
-                  >
+              {(() => {
+                const q = roomSearch.trim().toLowerCase();
+                const filtered = q
+                  ? occupied.filter((o) => o.roomCode.toLowerCase().includes(q) || o.tenantName.toLowerCase().includes(q))
+                  : occupied;
+                const allVisibleSelected =
+                  filtered.length > 0 && filtered.every((o) => selected.has(o.contractCode));
+                return (
+                  <>
+                    <label className="mb-1.5 flex items-center justify-between text-sm text-gray-600">
+                      <span>{t("选房间 (可以多选)", "Select Rooms (multiple allowed)")}</span>
+                      {filtered.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleAll(filtered)}
+                          className="text-xs font-semibold text-brand hover:underline"
+                        >
+                          {allVisibleSelected ? t("取消全选", "Deselect All") : t("全选", "Select All")}
+                        </button>
+                      )}
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={selected.has(o.contractCode)}
-                      onChange={() => toggleRoom(o.contractCode)}
+                      className="input mb-1.5"
+                      placeholder={t("🔍 搜房间/租客...", "🔍 Search room/tenant...")}
+                      value={roomSearch}
+                      onChange={(e) => setRoomSearch(e.target.value)}
                     />
-                    <span className="font-semibold">{o.roomCode}</span>
-                    <span className="text-gray-500">— {o.tenantName}</span>
-                  </label>
-                ))}
-              </div>
+                    <div className="max-h-[260px] overflow-auto rounded-lg border border-gray-200">
+                      {occupied.length === 0 && (
+                        <div className="p-3 text-center text-xs text-gray-400">{t("载入中...", "Loading...")}</div>
+                      )}
+                      {occupied.length > 0 && filtered.length === 0 && (
+                        <div className="p-3 text-center text-xs text-gray-400">{t("没有符合的房间", "No matching rooms")}</div>
+                      )}
+                      {filtered.map((o) => (
+                        <label
+                          key={o.contractCode}
+                          className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected.has(o.contractCode)}
+                            onChange={() => toggleRoom(o.contractCode)}
+                          />
+                          <span className="font-semibold">
+                            {o.isCarpark && "🅿️ "}
+                            {o.roomCode}
+                          </span>
+                          <span className="text-gray-500">— {o.tenantName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
               <p className="mt-1 text-xs text-gray-400">
                 {t(`已选 ${selected.size} 间`, `${selected.size} room(s) selected`)}
               </p>
