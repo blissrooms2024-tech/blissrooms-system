@@ -74,8 +74,6 @@ export default function PaymentModal({
   const [lumpForm, setLumpForm] = useState({ amount: "", paidDate: "", method: "Bank Transfer" });
   const [lumpFile, setLumpFile] = useState<File | null>(null);
   const [lumpLoading, setLumpLoading] = useState(false);
-  const [voucherForm, setVoucherForm] = useState({ amount: "", reason: "" });
-  const [voucherLoading, setVoucherLoading] = useState(false);
   const lumpFileInputRef = useRef<HTMLInputElement>(null);
   const [billLoading, setBillLoading] = useState(false);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
@@ -162,38 +160,6 @@ export default function PaymentModal({
       toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setLumpLoading(false);
-    }
-  }
-
-  async function submitVoucher() {
-    if (!voucherForm.amount || Number(voucherForm.amount) <= 0) {
-      toast.warning(t("请填金额", "Please enter an amount"));
-      return;
-    }
-    if (!voucherForm.reason.trim()) {
-      toast.warning(t("请填发放原因", "Please enter a reason"));
-      return;
-    }
-    setVoucherLoading(true);
-    try {
-      const res = await fetch(`/api/contracts/${contractCode}/voucher`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(voucherForm.amount), reason: voucherForm.reason.trim() }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message);
-        setVoucherForm({ amount: "", reason: "" });
-        load();
-        onChanged();
-      } else {
-        toast.danger(data.message);
-      }
-    } catch {
-      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
-    } finally {
-      setVoucherLoading(false);
     }
   }
 
@@ -619,43 +585,10 @@ export default function PaymentModal({
       </div>
 
       {role === "ADMIN" && (
-      <div className="mt-3.5 rounded-lg bg-amber-50 p-3.5">
-        <b className="text-sm">
-          🎟️{" "}
-          {t(
-            "发放代金券 (公司给租客的奖励/补偿, 效果跟现金一样, 按 押金→水电押→Admin Fee→门卡押→车位→房租 顺序分配)",
-            "Issue a Voucher (a company reward/compensation for the tenant — spends exactly like cash, allocated in order: Deposit → Utilities Deposit → Admin Fee → Access Card Deposit → Carpark → Rent)"
-          )}
-        </b>
-        <div className="mt-2 flex flex-wrap items-end gap-2.5">
-          <div className="min-w-[130px] flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">{t("金额 RM", "Amount RM")}</label>
-            <input
-              type="number"
-              className="input"
-              value={voucherForm.amount}
-              onChange={(e) => setVoucherForm({ ...voucherForm, amount: e.target.value })}
-            />
-          </div>
-          <div className="min-w-[200px] flex-[2]">
-            <label className="mb-1.5 block text-sm text-gray-600">{t("发放原因", "Reason")}</label>
-            <input
-              className="input"
-              placeholder={t("例: 推荐新租客奖励 / 维修不便补偿", "e.g. Referral reward / Compensation for inconvenience")}
-              value={voucherForm.reason}
-              onChange={(e) => setVoucherForm({ ...voucherForm, reason: e.target.value })}
-            />
-          </div>
-          <button onClick={submitVoucher} disabled={voucherLoading} className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
-            {voucherLoading ? t("处理中...", "Processing...") : t("发放", "Issue")}
-          </button>
-        </div>
-        <p className="mt-1.5 text-xs text-gray-500">
-          {t(
-            "这笔钱不是租客交的, 公司自己承担成本, 系统会同时记一笔支出 (楼盘财务报表看得到)。",
-            "This money doesn't come from the tenant — the company bears the cost, and an Expense is recorded at the same time (visible on that property's finance report)."
-          )}
-        </p>
+      <div className="mt-3.5 rounded-lg bg-amber-50 p-3">
+        <Link href="/vouchers" className="text-sm font-semibold text-amber-800 hover:underline">
+          🎟️ {t("去「代金券」页面给这位租客发放代金券 →", "Go to the Vouchers page to issue this tenant a voucher →")}
+        </Link>
       </div>
       )}
 

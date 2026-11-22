@@ -159,6 +159,23 @@ export async function notifyTenantBillCreated(tenant: { name: string; email: str
   return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type)} RM${bill.amountDue.toFixed(2)}`, html, "BillCreated", bill.paymentCode, triggeredBy);
 }
 
+/** Admin issues a voucher ahead of time — tenant redeems it themselves later from 我的代金券. */
+export async function notifyTenantVoucherIssued(
+  tenant: { name: string; email: string },
+  voucher: { voucherCode: string; amount: number; reason: string; expiryDate: Date },
+  triggeredBy: string
+) {
+  const html = wrap(
+    "You've Got a Voucher!",
+    `<p>Hi ${tenant.name},</p>
+     <p>🎟️ Bliss Rooms has given you a voucher worth <b>RM${voucher.amount.toFixed(2)}</b>: ${voucher.reason}</p>
+     <p>It can be used to pay off your rent or other bills — just redeem it from "My Vouchers" before it expires.</p>
+     <p>Expires: ${fmtDate(voucher.expiryDate.toISOString())}</p>
+     <p><a href="${APP_URL}/my-vouchers" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View My Vouchers</a></p>`
+  );
+  return send(tenant.email, `Bliss Rooms — You've Got a RM${voucher.amount.toFixed(2)} Voucher!`, html, "VoucherIssued", voucher.voucherCode, triggeredBy);
+}
+
 /** Admin approves or rejects an uploaded slip — tenant gets told either way. */
 export async function notifyTenantBillReviewed(
   tenant: { name: string; email: string },

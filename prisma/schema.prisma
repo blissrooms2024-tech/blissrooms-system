@@ -315,6 +315,7 @@ model Contract {
   moveForms           MoveInOutForm[]
   maintenanceRequests MaintenanceRequest[]
   warningLetters      WarningLetter[]
+  vouchers            Voucher[]
 
   @@index([status])
   @@index([agentId])
@@ -355,6 +356,35 @@ model Payment {
   relatedPaymentId String?
 
   @@index([contractId])
+}
+
+/// A company-issued reward/goodwill voucher handed to a tenant ahead of time, with its own
+/// expiry date — distinct from the immediate, already-spent CREDIT ledger entries elsewhere in
+/// this schema. Nothing financial happens at issue time (no Payment row, no Expense): the
+/// voucher is just a standing offer until the tenant (or Admin on their behalf) redeems it,
+/// which is the moment it actually settles a bill and the company's cost is booked. One that's
+/// never redeemed before expiryDate simply lapses — nothing was ever spent, so nothing to
+/// unwind. status stays "ISSUED" through its own expiry; a voucher past expiryDate is treated
+/// as expired on the fly (same convention as Contract._expired) rather than needing a cron to
+/// flip it.
+model Voucher {
+  id          String    @id @default(cuid())
+  voucherCode String    @unique
+  contractId  String
+  contract    Contract  @relation(fields: [contractId], references: [id])
+  tenantId    String?
+  tenantName  String
+  amount      Decimal   @db.Decimal(10, 2)
+  reason      String
+  imageUrl    String?
+  expiryDate  DateTime
+  status      String    @default("ISSUED") // ISSUED | REDEEMED | CANCELLED
+  issuedBy    String
+  issuedAt    DateTime  @default(now())
+  redeemedAt  DateTime?
+
+  @@index([contractId])
+  @@index([tenantId])
 }
 
 model Commission {
