@@ -64,6 +64,12 @@ export async function GET() {
         contractPayments,
         c.room.isCarpark
       );
+      // Not a stored field — same live sum of CREDIT-type rows as the Payments modal's own
+      // "预收余额" box, so a contract that's been overpaid (or given a voucher) shows that here
+      // too instead of just looking like any other fully-settled contract.
+      const creditBalance = contractPayments
+        .filter((p) => p.type === "CREDIT" && p.status === "Paid")
+        .reduce((s, p) => s + Number(p.amountPaid), 0);
 
       const expiringSoon =
         c.status === "ACTIVE" && !!c.expiredDate && c.expiredDate >= startOfToday && c.expiredDate <= expiringSoonCutoff;
@@ -76,6 +82,7 @@ export async function GET() {
         _due: totalDue,
         _paid: paid,
         _outstanding: outstanding,
+        _creditBalance: creditBalance,
         _rentEscalated: escalatedSet.has(c.id),
         _expiringSoon: expiringSoon,
         _expired: expired,

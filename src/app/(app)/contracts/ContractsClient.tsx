@@ -12,13 +12,17 @@ interface Contract extends ActionableContract {
   roomCode?: string;
   expiredDate: string | null;
   remarks: string | null;
+  renewedFromContractId: string | null;
   _due: number;
   _paid: number;
   _outstanding: number;
+  _creditBalance: number;
   _expiringSoon?: boolean;
   _expired?: boolean;
   room?: { roomCode: string };
 }
+
+const NOT_SIGNED_STATUSES = ["DRAFT", "PENDING_APPROVE", "PENDING_SIGN"];
 
 
 export default function ContractsClient({ role }: { role: string }) {
@@ -84,6 +88,9 @@ export default function ContractsClient({ role }: { role: string }) {
         if (quickFilter === "EXPIRED" && !c._expired) return false;
         if (quickFilter === "RENT_ESCALATED" && !c._rentEscalated) return false;
         if (quickFilter === "LEGACY_IMPORT" && !c.remarks?.includes("旧合同导入")) return false;
+        if (quickFilter === "CREDIT_BALANCE" && !(c._creditBalance > 0)) return false;
+        if (quickFilter === "NOT_SIGNED" && !NOT_SIGNED_STATUSES.includes(c.status)) return false;
+        if (quickFilter === "RENEWAL" && !c.renewedFromContractId) return false;
         if (!q) return true;
         return (
           c.contractCode.toLowerCase().includes(q) ||
@@ -147,9 +154,12 @@ export default function ContractsClient({ role }: { role: string }) {
           <select value={quickFilter} onChange={(e) => setQuickFilter(e.target.value)} className="input max-w-[180px]">
             <option value="">{t("全部合同", "All Contracts")}</option>
             <option value="OUTSTANDING">{t("有欠款", "Has Outstanding")}</option>
+            <option value="CREDIT_BALANCE">{t("有预付/预收余额", "Has Prepaid Credit")}</option>
             <option value="EXPIRING_SOON">{t("快到期", "Expiring Soon")}</option>
             <option value="EXPIRED">{t("已过期", "Expired")}</option>
             <option value="RENT_ESCALATED">{t("租金逾期超10天", "Rent Overdue 10+ Days")}</option>
+            <option value="NOT_SIGNED">{t("合同还没签名", "Not Yet Signed")}</option>
+            <option value="RENEWAL">{t("续约建立的合同", "Renewal Contracts")}</option>
             <option value="LEGACY_IMPORT">{t("旧合同导入", "Legacy Import")}</option>
           </select>
         </div>
@@ -204,7 +214,12 @@ export default function ContractsClient({ role }: { role: string }) {
                       {c._outstanding > 0 ? (
                         <span className="font-semibold text-red-600">{fmt(c._outstanding)}</span>
                       ) : (
-                        <span className="text-green-700">✅{t("清", "Settled")}</span>
+                        <span className={c._creditBalance > 0 ? "text-green-700" : "text-gray-700"}>{fmt(0)}</span>
+                      )}
+                      {c._creditBalance > 0 && (
+                        <div className="whitespace-nowrap text-xs font-semibold text-green-700">
+                          +{fmt(c._creditBalance)} {t("预付", "prepaid")}
+                        </div>
                       )}
                     </Td>
                     <Td>
