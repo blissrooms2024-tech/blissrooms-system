@@ -377,6 +377,11 @@ model Voucher {
   amount      Decimal   @db.Decimal(10, 2)
   reason      String
   imageUrl    String?
+  /// Which of the 2 built-in card designs this voucher shows on 我的代金券 when it has no
+  /// imageUrl of its own — "blue" | "pink". Picked by Admin at issue time from a live preview,
+  /// not a file upload, so issuing a batch of vouchers never depends on Admin having a nice
+  /// picture on hand.
+  template    String    @default("blue")
   expiryDate  DateTime
   status      String    @default("ISSUED") // ISSUED | REDEEMED | CANCELLED
   issuedBy    String

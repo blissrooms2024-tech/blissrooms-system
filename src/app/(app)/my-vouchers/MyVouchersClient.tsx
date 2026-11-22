@@ -5,6 +5,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { voucherGradient } from "@/lib/voucherTemplates";
 
 interface Voucher {
   id: string;
@@ -14,27 +15,11 @@ interface Voucher {
   amount: number;
   reason: string;
   imageUrl: string | null;
+  template: string;
   expiryDate: string;
   status: string;
   issuedAt: string;
   redeemedAt: string | null;
-}
-
-// A handful of pleasant gradients so a voucher without its own image still looks like a
-// proper reward card instead of a blank box — cycled by voucherCode so the same voucher
-// always gets the same one.
-const GRADIENTS = [
-  "from-violet-500 to-fuchsia-500",
-  "from-amber-500 to-orange-500",
-  "from-teal-500 to-emerald-500",
-  "from-sky-500 to-indigo-500",
-  "from-rose-500 to-pink-500",
-];
-
-function gradientFor(code: string) {
-  let hash = 0;
-  for (let i = 0; i < code.length; i++) hash = (hash * 31 + code.charCodeAt(i)) >>> 0;
-  return GRADIENTS[hash % GRADIENTS.length];
 }
 
 export default function MyVouchersClient() {
@@ -112,7 +97,7 @@ export default function MyVouchersClient() {
                 <div key={v.id} className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
                   <div
                     className={`relative flex h-28 items-center justify-center bg-gradient-to-br p-4 text-white ${
-                      !v.imageUrl ? gradientFor(v.voucherCode) : ""
+                      !v.imageUrl ? voucherGradient(v.template) : ""
                     }`}
                     style={v.imageUrl ? { backgroundImage: `url(${v.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
                   >

@@ -26,6 +26,7 @@ export async function GET() {
         amount: v.amount,
         reason: v.reason,
         imageUrl: v.imageUrl,
+        template: v.template,
         expiryDate: v.expiryDate,
         status: v.status,
         issuedAt: v.issuedAt,
