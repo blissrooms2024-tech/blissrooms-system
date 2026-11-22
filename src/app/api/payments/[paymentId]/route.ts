@@ -12,7 +12,7 @@ const fixDateSchema = z.object({
 const editPeriodSchema = z.object({
   action: z.literal("edit-period"),
   periodMonth: z.string().trim().optional(),
-  dueDate: z.string().trim().min(1, "请填到期日"),
+  dueDate: z.string().trim().optional(),
 });
 const markPaidSchema = z.object({
   action: z.literal("mark-paid"),
@@ -30,11 +30,15 @@ const patchSchema = z.union([editPeriodSchema, markPaidSchema, editAmountSchema,
  *   edit-period existed): corrects a payment's recorded date/method after the fact, mainly
  *   for the placeholder dates the legacy-import/bulk-settle tools stamp on backfilled
  *   "already paid before this system existed" records. Only touches Paid payments.
- * - edit-period: relabels which month a still-open bill (PENDING/PENDING_REVIEW) belongs to
- *   — e.g. the monthly-rent job always opens the NEXT calendar month, so a tenant who was
- *   unverified and missed an earlier month's cron run gets a bill dated for the wrong month
- *   once they're verified; Admin corrects the periodMonth/dueDate here instead of deleting
- *   and losing an already-uploaded slip.
+ * - edit-period: relabels which month a bill belongs to — e.g. the monthly-rent job always
+ *   opens the NEXT calendar month, so a tenant who was unverified and missed an earlier
+ *   month's cron run gets a bill dated for the wrong month once they're verified; Admin
+ *   corrects the periodMonth/dueDate here instead of deleting and losing an already-uploaded
+ *   slip. Works on any status, including already-Paid rows in Payment History — those often
+ *   have no periodMonth at all (a lump-sum collection or legacy import never asked for one),
+ *   which makes several months of the same recurring charge indistinguishable from each other
+ *   in that list; dueDate is left untouched when not given, since it stops mattering once a
+ *   bill is settled.
  * - mark-paid: Admin confirms a bill as paid directly (e.g. tenant paid cash/offline), with
  *   a chosen paid date/method, skipping the usual tenant-uploads-slip-then-Admin-approves
  *   flow entirely. Works on any not-yet-Paid bill (PENDING/PENDING_REVIEW/REJECTED).
@@ -63,18 +67,18 @@ export async function PATCH(
   }
 
   if (parsed.data.action === "edit-period") {
-    if (payment.status !== "PENDING" && payment.status !== "PENDING_REVIEW") {
-      return NextResponse.json({ success: false, message: "这笔账单的状态不能改月份" }, { status: 400 });
-    }
-    const dueDate = new Date(parsed.data.dueDate);
-    if (isNaN(dueDate.getTime())) {
-      return NextResponse.json({ success: false, message: "日期格式不对" }, { status: 400 });
+    let dueDate: Date | undefined;
+    if (parsed.data.dueDate) {
+      dueDate = new Date(parsed.data.dueDate);
+      if (isNaN(dueDate.getTime())) {
+        return NextResponse.json({ success: false, message: "日期格式不对" }, { status: 400 });
+      }
     }
     await prisma.payment.update({
       where: { id: paymentId },
-      data: { dueDate, periodMonth: parsed.data.periodMonth || null },
+      data: { periodMonth: parsed.data.periodMonth || null, ...(dueDate ? { dueDate } : {}) },
     });
-    return NextResponse.json({ success: true, message: "✅ 账单月份已更新" });
+    return NextResponse.json({ success: true, message: "✅ 月份已更新" });
   }
 
   if (parsed.data.action === "mark-paid") {

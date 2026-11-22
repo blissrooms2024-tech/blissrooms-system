@@ -95,6 +95,9 @@ export default function PaymentModal({
   const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editAmountSaving, setEditAmountSaving] = useState(false);
+  const [editingMonthId, setEditingMonthId] = useState<string | null>(null);
+  const [editMonth, setEditMonth] = useState("");
+  const [editMonthSaving, setEditMonthSaving] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
   const [editingCredit, setEditingCredit] = useState(false);
   const [editCreditValue, setEditCreditValue] = useState("");
@@ -260,6 +263,34 @@ export default function PaymentModal({
       toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  function startEditMonth(p: PaymentRow) {
+    setEditingMonthId(p.id);
+    setEditMonth(p.periodMonth || "");
+  }
+
+  async function saveEditMonth(id: string) {
+    setEditMonthSaving(true);
+    try {
+      const res = await fetch(`/api/payments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "edit-period", periodMonth: editMonth }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setEditingMonthId(null);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setEditMonthSaving(false);
     }
   }
 
@@ -890,8 +921,44 @@ export default function PaymentModal({
           {paidHistory.map((p) => (
             <tr key={p.paymentCode} className="border-b border-gray-100">
               <td className="px-2.5 py-1.5">
-                {paymentTypeLabelLocale(p.type, p.customLabel, locale)}
-                {p.periodMonth && <span className="text-gray-400"> ({p.periodMonth})</span>}
+                {editingMonthId === p.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="month"
+                      value={editMonth}
+                      onChange={(e) => setEditMonth(e.target.value)}
+                      className="input h-7 py-0 text-xs"
+                    />
+                    <button
+                      onClick={() => saveEditMonth(p.id)}
+                      disabled={editMonthSaving}
+                      className="rounded-md bg-green-700 px-2 py-1 text-xs font-semibold text-white"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setEditingMonthId(null)}
+                      className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600"
+                    >
+                      ✗
+                    </button>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    {paymentTypeLabelLocale(p.type, p.customLabel, locale)}
+                    {p.periodMonth && <span className="text-gray-400"> ({p.periodMonth})</span>}
+                    {role === "ADMIN" && (
+                      <button
+                        type="button"
+                        onClick={() => startEditMonth(p)}
+                        className="text-xs text-gray-400 hover:text-brand"
+                        title={t("改月份", "Edit Month")}
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </span>
+                )}
               </td>
               <td className="px-2.5 py-1.5">
                 {editingAmountId === p.id ? (
