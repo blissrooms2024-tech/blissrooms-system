@@ -42,7 +42,7 @@ export default function VouchersClient({ role }: { role: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ amount: "", reason: "", expiryDate: "", template: "blue" as VoucherTemplate });
   const [saving, setSaving] = useState(false);
-  const [cancelling, setCancelling] = useState<Voucher | null>(null);
+  const [deleting, setDeleting] = useState<Voucher | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -157,14 +157,14 @@ export default function VouchersClient({ role }: { role: string }) {
     }
   }
 
-  async function confirmCancel() {
-    if (!cancelling) return;
+  async function confirmDelete() {
+    if (!deleting) return;
     try {
-      const res = await fetch(`/api/vouchers/${cancelling.id}/cancel`, { method: "POST" });
+      const res = await fetch(`/api/vouchers/${deleting.id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) toast.success(data.message);
       else toast.danger(data.message);
-      setCancelling(null);
+      setDeleting(null);
       load();
     } catch {
       toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
@@ -232,12 +232,12 @@ export default function VouchersClient({ role }: { role: string }) {
                       <Td>{v.issuedBy}</Td>
                       {role === "ADMIN" && (
                         <Td>
-                          {v.status === "ISSUED" && new Date(v.expiryDate) >= new Date() && (
+                          {v.status !== "REDEEMED" && (
                             <button
-                              onClick={() => setCancelling(v)}
+                              onClick={() => setDeleting(v)}
                               className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
                             >
-                              🗑️ {t("取消", "Cancel")}
+                              🗑️ {t("删除", "Delete")}
                             </button>
                           )}
                         </Td>
@@ -344,16 +344,16 @@ export default function VouchersClient({ role }: { role: string }) {
       )}
 
       <ConfirmDialog
-        open={!!cancelling}
+        open={!!deleting}
         danger
-        title={t("取消代金券", "Cancel Voucher")}
+        title={t("删除代金券", "Delete Voucher")}
         message={t(
-          `确定要取消这张代金券 (${cancelling?.voucherCode}, RM${cancelling?.amount.toFixed(2)}) 吗？取消后租客不能再兑换。`,
-          `Cancel this voucher (${cancelling?.voucherCode}, RM${cancelling?.amount.toFixed(2)})? The tenant won't be able to redeem it afterward.`
+          `确定要永久删除这张代金券 (${deleting?.voucherCode}, RM${deleting?.amount.toFixed(2)}) 吗？删除后不留记录，租客那边也会完全消失，不能撤销。`,
+          `Permanently delete this voucher (${deleting?.voucherCode}, RM${deleting?.amount.toFixed(2)})? It leaves no record — it will disappear from the tenant's side too. This can't be undone.`
         )}
-        confirmLabel={t("确定取消", "Confirm Cancel")}
-        onConfirm={confirmCancel}
-        onCancel={() => setCancelling(null)}
+        confirmLabel={t("确定删除", "Confirm Delete")}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
       />
     </div>
   );
