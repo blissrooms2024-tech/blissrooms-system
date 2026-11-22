@@ -37,6 +37,7 @@ export default function AppShell({
   const [mtceOpenCount, setMtceOpenCount] = useState(0);
   const [mtceHasUnseenCompleted, setMtceHasUnseenCompleted] = useState(false);
   const [warningCount, setWarningCount] = useState(0);
+  const [sidebarAlerts, setSidebarAlerts] = useState<Record<string, number>>({});
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -80,6 +81,20 @@ export default function AppShell({
       });
   }, [user.role, isAlsoTenant, pathname]);
 
+  useEffect(() => {
+    if (user.role !== "ADMIN" && user.role !== "BOSS") return;
+    fetch("/api/admin/sidebar-alerts")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return;
+        setSidebarAlerts({
+          "/contracts": data.pendingApprove,
+          "/payments/review": data.pendingReview,
+          "/users": data.pendingUsers,
+        });
+      });
+  }, [user.role, pathname]);
+
   const menu = MENUS[user.role] ?? [];
   const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT] : menu;
   const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料", labelEn: "👤 My Profile" }];
@@ -88,6 +103,7 @@ export default function AppShell({
     const active = pathname === m.href || pathname.startsWith(m.href + "/");
     const isMaintenance = m.href === mtceHref;
     const isWarnings = m.href === "/my-warnings";
+    const alertCount = sidebarAlerts[m.href] ?? 0;
     return (
       <Link
         key={m.href}
@@ -115,6 +131,7 @@ export default function AppShell({
             {warningCount}
           </span>
         )}
+        {alertCount > 0 && <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title={String(alertCount)} />}
       </Link>
     );
   });
