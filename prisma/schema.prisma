@@ -99,6 +99,10 @@ enum ExpenseCategory {
   CLEANING
   MAINTENANCE
   OTHER
+  /// The company's own cost of a voucher given to a tenant (reward/goodwill/compensation) —
+  /// only ever created alongside the matching CREDIT Payment row the voucher itself produces
+  /// (see Contract voucher-issuing route), never picked by hand from the general expense form.
+  VOUCHER
 }
 
 model Counter {

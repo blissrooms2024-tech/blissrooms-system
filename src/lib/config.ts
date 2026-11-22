@@ -256,12 +256,13 @@ export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   CLEANING: "清洁费",
   MAINTENANCE: "维修",
   OTHER: "其他",
+  VOUCHER: "代金券",
 };
 
 /** Shows Admin's own custom name for a category=OTHER expense (e.g. "灭虫费") instead of the
  * generic "其他" label, same idea as paymentTypeLabel. */
 export function expenseCategoryLabel(category: string, customLabel?: string | null): string {
-  if (category === "OTHER" && customLabel) return customLabel;
+  if ((category === "OTHER" || category === "VOUCHER") && customLabel) return customLabel;
   return EXPENSE_CATEGORY_LABELS[category] ?? category;
 }
 
@@ -272,10 +273,11 @@ export const EXPENSE_CATEGORY_LABELS_EN: Record<string, string> = {
   CLEANING: "Cleaning",
   MAINTENANCE: "Maintenance",
   OTHER: "Other",
+  VOUCHER: "Voucher",
 };
 
 export function expenseCategoryLabelEn(category: string, customLabel?: string | null): string {
-  if (category === "OTHER" && customLabel) return customLabel;
+  if ((category === "OTHER" || category === "VOUCHER") && customLabel) return customLabel;
   return EXPENSE_CATEGORY_LABELS_EN[category] ?? category;
 }
 
