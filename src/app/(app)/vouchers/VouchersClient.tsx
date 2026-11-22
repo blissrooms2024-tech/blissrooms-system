@@ -42,7 +42,14 @@ export default function VouchersClient({ role }: { role: string }) {
   const [occupied, setOccupied] = useState<OccupiedContract[]>([]);
   const [roomSearch, setRoomSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [form, setForm] = useState({ amount: "", reason: "", expiryDate: "", template: "blue" as VoucherTemplate });
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({
+    amount: "",
+    reason: "",
+    issuedDate: todayStr(),
+    expiryDate: "",
+    template: "blue" as VoucherTemplate,
+  });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Voucher | null>(null);
 
@@ -76,6 +83,7 @@ export default function VouchersClient({ role }: { role: string }) {
 
   async function openIssue() {
     setIssuing(true);
+    setForm((f) => ({ ...f, issuedDate: todayStr() }));
     try {
       const res = await fetch("/api/contracts/page-data");
       const data = await res.json();
@@ -139,8 +147,16 @@ export default function VouchersClient({ role }: { role: string }) {
       toast.warning(t("请填发放原因", "Please enter a reason"));
       return;
     }
+    if (!form.issuedDate) {
+      toast.warning(t("请选发放日期", "Please select an issue date"));
+      return;
+    }
     if (!form.expiryDate) {
       toast.warning(t("请选截至日期", "Please select an expiry date"));
+      return;
+    }
+    if (form.issuedDate > form.expiryDate) {
+      toast.warning(t("发放日期不能晚于截至日期", "Issue date can't be after the expiry date"));
       return;
     }
     setSaving(true);
@@ -152,6 +168,7 @@ export default function VouchersClient({ role }: { role: string }) {
           contractCodes: [...selected],
           amount: Number(form.amount),
           reason: form.reason.trim(),
+          issuedDate: form.issuedDate,
           expiryDate: form.expiryDate,
           template: form.template,
         }),
@@ -161,7 +178,7 @@ export default function VouchersClient({ role }: { role: string }) {
         toast.success(data.message);
         setIssuing(false);
         setSelected(new Set());
-        setForm({ amount: "", reason: "", expiryDate: "", template: "blue" });
+        setForm({ amount: "", reason: "", issuedDate: todayStr(), expiryDate: "", template: "blue" });
         load();
       } else {
         toast.danger(data.message);
@@ -220,6 +237,7 @@ export default function VouchersClient({ role }: { role: string }) {
                   <Th className="sticky top-0 z-10 bg-gray-50">{t("租客", "Tenant")}</Th>
                   <Th className="sticky top-0 z-10 bg-gray-50">{t("金额", "Amount")}</Th>
                   <Th className="sticky top-0 z-10 bg-gray-50">{t("原因", "Reason")}</Th>
+                  <Th className="sticky top-0 z-10 bg-gray-50">{t("发放日期", "Issued")}</Th>
                   <Th className="sticky top-0 z-10 bg-gray-50">{t("截至日期", "Expiry")}</Th>
                   <Th className="sticky top-0 z-10 bg-gray-50">{t("状态", "Status")}</Th>
                   <Th className="sticky top-0 z-10 bg-gray-50">{t("发放人", "Issued By")}</Th>
@@ -241,6 +259,7 @@ export default function VouchersClient({ role }: { role: string }) {
                       <Td>{v.tenantName}</Td>
                       <Td className="font-semibold">{fmt(v.amount)}</Td>
                       <Td className="max-w-[160px] whitespace-normal">{v.reason}</Td>
+                      <Td>{fmtDate(v.issuedAt)}</Td>
                       <Td>{fmtDate(v.expiryDate)}</Td>
                       <Td>
                         <span className={`rounded-full px-2 py-0.5 text-xs ${badge.cls}`}>{badge.label}</span>
@@ -341,6 +360,17 @@ export default function VouchersClient({ role }: { role: string }) {
                     className="input"
                     value={form.amount}
                     onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2.5">
+                <div className="flex-1">
+                  <label className="mb-1.5 block text-sm text-gray-600">{t("发放日期", "Issue Date")}</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={form.issuedDate}
+                    onChange={(e) => setForm({ ...form, issuedDate: e.target.value })}
                   />
                 </div>
                 <div className="flex-1">

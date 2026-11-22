@@ -45,6 +45,9 @@ const schema = z.object({
   contractCodes: z.array(z.string().trim().min(1)).min(1, "请至少选一间房"),
   amount: z.coerce.number().positive(),
   reason: z.string().trim().min(1, "请填发放原因"),
+  // Defaults to today — lets Admin backdate a voucher to when the reward was actually decided
+  // (e.g. entering it a few days after the fact) instead of always stamping "right now".
+  issuedDate: z.string().trim().optional(),
   expiryDate: z.string().trim().min(1, "请选截至日期"),
   template: z.enum(["blue", "pink"]).default("blue"),
 });
@@ -77,6 +80,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "截至日期不能是过去的日期" }, { status: 400 });
   }
 
+  let issuedAt = new Date();
+  if (d.issuedDate) {
+    const parsedIssuedAt = new Date(d.issuedDate);
+    if (isNaN(parsedIssuedAt.getTime())) {
+      return NextResponse.json({ success: false, message: "发放日期格式不对" }, { status: 400 });
+    }
+    issuedAt = parsedIssuedAt;
+  }
+  if (issuedAt > expiryDate) {
+    return NextResponse.json({ success: false, message: "发放日期不能晚于截至日期" }, { status: 400 });
+  }
+
   const contracts = await prisma.contract.findMany({
     where: { contractCode: { in: d.contractCodes } },
     include: { tenant: true },
@@ -97,6 +112,7 @@ export async function POST(req: NextRequest) {
         reason: d.reason,
         template: d.template,
         expiryDate,
+        issuedAt,
         issuedBy: user.name,
       },
     });
