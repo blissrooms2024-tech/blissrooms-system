@@ -75,13 +75,18 @@ export default function WarningLettersAdminClient({ role }: { role: string }) {
   return (
     <div className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-brand">{t(`⚠️ 警告信记录 (${letters!.length})`, `⚠️ Warning Letter Records (${letters!.length})`)}</h3>
+        <h3 className="text-base font-semibold text-brand">{t("⚠️ 警告信记录", "⚠️ Warning Letter Records")}</h3>
         <input
           className="input w-[220px] text-sm"
           placeholder={t("搜索租客 / 合同 / 房间...", "Search tenant / contract / room...")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+      </div>
+      <div className="mb-2 text-xs text-gray-500">
+        {filtered.length === letters!.length
+          ? t(`共 ${letters!.length} 封`, `${letters!.length} total`)
+          : t(`共 ${filtered.length} 封 (全部 ${letters!.length} 封中)`, `${filtered.length} shown (of ${letters!.length} total)`)}
       </div>
 
       {filtered.length === 0 && <div className="py-8 text-center text-sm text-gray-400">{t("还没有发过警告信", "No warning letters sent yet")}</div>}

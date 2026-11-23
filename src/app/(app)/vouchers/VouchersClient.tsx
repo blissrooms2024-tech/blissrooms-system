@@ -228,6 +228,9 @@ export default function VouchersClient({ role }: { role: string }) {
           <div className="py-6 text-center text-sm text-gray-400">{t("还没有发放过代金券", "No vouchers issued yet")}</div>
         )}
         {vouchers && vouchers.length > 0 && (
+          <div className="mb-2 text-xs text-gray-500">{t(`共 ${vouchers.length} 张`, `${vouchers.length} total`)}</div>
+        )}
+        {vouchers && vouchers.length > 0 && (
           <div className="max-h-[65vh] overflow-auto">
             <table className="w-full text-sm">
               <thead>

@@ -122,6 +122,11 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
               ))}
             </select>
           </div>
+          <div className="mb-2 text-xs text-gray-500">
+            {filteredItems && filteredItems.length === items.length
+              ? t(`共 ${items.length} 笔`, `${items.length} total`)
+              : t(`共 ${filteredItems?.length ?? 0} 笔 (全部 ${items.length} 笔中)`, `${filteredItems?.length ?? 0} shown (of ${items.length} total)`)}
+          </div>
           {filteredItems && filteredItems.length === 0 && (
             <div className="py-8 text-center text-gray-400">{t("没有符合条件的交易单", "No slips match your filters")}</div>
           )}

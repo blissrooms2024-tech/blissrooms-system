@@ -168,6 +168,12 @@ export default function OutstandingBillsClient() {
             </select>
           </div>
 
+          <div className="mb-2 text-xs text-gray-500">
+            {filtered.length === items.length
+              ? t(`共 ${items.length} 笔`, `${items.length} total`)
+              : t(`共 ${filtered.length} 笔 (全部 ${items.length} 笔中)`, `${filtered.length} shown (of ${items.length} total)`)}
+          </div>
+
           {selectedIds.size > 0 && (
             <div className="mb-3.5 flex items-center gap-2.5 rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
               <span className="font-semibold">

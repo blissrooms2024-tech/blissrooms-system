@@ -114,7 +114,9 @@ export default function UserDetailClient({ userId }: { userId: string }) {
 
       {agentStats && (user.role === "AGENT" || agentContracts.length > 0) && (
         <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3.5 text-base font-semibold text-brand">💼 {t("Agent 业绩", "Agent Performance")}</h3>
+          <h3 className="mb-3.5 text-base font-semibold text-brand">
+            💼 {t("Agent 业绩", "Agent Performance")} ({agentContracts.length})
+          </h3>
           <div className="mb-3.5 flex flex-wrap gap-2.5">
             <Box label={t("租客数", "Tenants")} value={String(agentStats.tenantCount)} />
             <Box label={t("房间数", "Rooms")} value={String(agentStats.roomCount)} />
@@ -169,7 +171,9 @@ export default function UserDetailClient({ userId }: { userId: string }) {
 
       {(contracts.length > 0 || user.role === "TENANT") && (
         <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3.5 text-base font-semibold text-brand">📄 {t("我的合同", "Contracts")}</h3>
+          <h3 className="mb-3.5 text-base font-semibold text-brand">
+            📄 {t("我的合同", "Contracts")} ({contracts.length})
+          </h3>
           {contracts.length === 0 ? (
             <div className="py-6 text-center text-sm text-gray-400">{t("还没有合同", "No contracts yet")}</div>
           ) : (
@@ -215,7 +219,9 @@ export default function UserDetailClient({ userId }: { userId: string }) {
 
       {(payments.length > 0 || user.role === "TENANT") && (
         <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3.5 text-base font-semibold text-brand">🧾 {t("账单记录 (费用 / 押金 / 房租)", "Billing History (Fees / Deposits / Rent)")}</h3>
+          <h3 className="mb-3.5 text-base font-semibold text-brand">
+            🧾 {t("账单记录 (费用 / 押金 / 房租)", "Billing History (Fees / Deposits / Rent)")} ({payments.length})
+          </h3>
           {payments.length === 0 ? (
             <div className="py-6 text-center text-sm text-gray-400">{t("还没有账单记录", "No billing history yet")}</div>
           ) : (
@@ -263,7 +269,9 @@ export default function UserDetailClient({ userId }: { userId: string }) {
 
       {(maintenanceRequests.length > 0 || user.role === "TENANT") && (
         <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3.5 text-base font-semibold text-brand">🔧 {t("报修记录", "Maintenance Reports")}</h3>
+          <h3 className="mb-3.5 text-base font-semibold text-brand">
+            🔧 {t("报修记录", "Maintenance Reports")} ({maintenanceRequests.length})
+          </h3>
           {maintenanceRequests.length === 0 ? (
             <div className="py-6 text-center text-sm text-gray-400">{t("还没有报修记录", "No maintenance reports yet")}</div>
           ) : (

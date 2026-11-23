@@ -184,6 +184,13 @@ export default function RoomsClient({ role }: { role: string }) {
         </div>
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!rooms && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
+        {rooms && filteredRooms && (
+          <div className="mb-2 text-xs text-gray-500">
+            {filteredRooms.length === rooms.length
+              ? t(`共 ${rooms.length} 间`, `${rooms.length} rooms total`)
+              : t(`共 ${filteredRooms.length} 间 (全部 ${rooms.length} 间中)`, `${filteredRooms.length} shown (of ${rooms.length} total)`)}
+          </div>
+        )}
         {rooms && (
           <div className="space-y-2.5 sm:hidden">
             {filteredRooms!.length === 0 && (

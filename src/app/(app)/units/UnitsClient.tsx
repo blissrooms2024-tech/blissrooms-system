@@ -151,6 +151,16 @@ export default function UnitsClient({ role }: { role: string }) {
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!properties && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
         {properties && (
+          <div className="mb-2 text-xs text-gray-500">
+            {filteredProperties.length === properties.length
+              ? t(`共 ${properties.length} 个楼盘`, `${properties.length} properties total`)
+              : t(
+                  `共 ${filteredProperties.length} 个楼盘 (全部 ${properties.length} 个中)`,
+                  `${filteredProperties.length} shown (of ${properties.length} total)`
+                )}
+          </div>
+        )}
+        {properties && (
           <div className="space-y-2.5 sm:hidden">
             {filteredProperties.length === 0 && (
               <div className="py-6 text-center text-sm text-gray-400">

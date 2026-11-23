@@ -190,7 +190,9 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
 
       {actionable.length > 0 && (
         <>
-          <b className="mb-1.5 block text-sm">{t("📋 待处理账单", "📋 Pending Bills")}</b>
+          <b className="mb-1.5 block text-sm">
+            {t("📋 待处理账单", "📋 Pending Bills")} ({actionable.length})
+          </b>
           <div className="space-y-2.5">
             {actionable.map((b) => {
               return (
@@ -243,7 +245,9 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
         </>
       )}
 
-      <b className="mt-3.5 block text-sm">{t("📜 已付款记录", "📜 Payment History")}</b>
+      <b className="mt-3.5 block text-sm">
+        {t("📜 已付款记录", "📜 Payment History")} ({paidHistory.length})
+      </b>
       <table className="mt-1.5 w-full text-sm">
         <thead>
           <tr className="bg-gray-50 text-left text-gray-600">

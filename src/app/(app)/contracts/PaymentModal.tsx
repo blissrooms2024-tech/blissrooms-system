@@ -662,7 +662,9 @@ export default function PaymentModal({
 
       {bills.length > 0 && (
         <>
-          <b className="mt-3.5 block text-sm">📋 {t("账单 (待处理)", "Bills (Pending)")}</b>
+          <b className="mt-3.5 block text-sm">
+            📋 {t("账单 (待处理)", "Bills (Pending)")} ({bills.length})
+          </b>
           <table className="mt-1.5 w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
@@ -906,7 +908,9 @@ export default function PaymentModal({
         </>
       )}
 
-      <b className="mt-3.5 block text-sm">📜 {t("收款历史", "Payment History")}</b>
+      <b className="mt-3.5 block text-sm">
+        📜 {t("收款历史", "Payment History")} ({paidHistory.length})
+      </b>
       <table className="mt-1.5 w-full text-sm">
         <thead>
           <tr className="bg-gray-50 text-left text-gray-600">

@@ -55,7 +55,9 @@ export default function AgentTenantsClient() {
       {pending.length === 0 ? (
         <div className="py-8 text-center text-sm text-gray-400">🎉 {t("全部都完成了", "Everything is completed")}</div>
       ) : (
-        <div className="max-h-[65vh] overflow-auto">
+        <>
+          <div className="mb-2 text-xs text-gray-500">{t(`共 ${pending.length} 份合同`, `${pending.length} contracts total`)}</div>
+          <div className="max-h-[65vh] overflow-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
@@ -99,7 +101,8 @@ export default function AgentTenantsClient() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

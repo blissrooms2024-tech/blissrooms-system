@@ -165,6 +165,9 @@ export default function RenewalClient() {
         )}
 
         {candidates && candidates.length > 0 && (
+          <div className="mb-2 text-xs text-gray-500">{t(`共 ${candidates.length} 份合同`, `${candidates.length} contracts total`)}</div>
+        )}
+        {candidates && candidates.length > 0 && (
           <div className="space-y-2.5">
             {candidates.map((c) => (
               <div key={c.contractCode} className="rounded-lg border border-gray-200 p-3.5">

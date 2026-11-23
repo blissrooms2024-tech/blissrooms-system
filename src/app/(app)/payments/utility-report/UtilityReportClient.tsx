@@ -184,7 +184,9 @@ export default function UtilityReportClient() {
           {report.rows.length === 0 ? (
             <div className="py-8 text-center text-gray-400">{t("这段时间没有收款记录", "No payment records for this period")}</div>
           ) : (
-            <table className="w-full text-sm">
+            <>
+              <div className="mb-2 text-xs text-gray-500">{t(`共 ${report.rows.length} 笔`, `${report.rows.length} total`)}</div>
+              <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-600">
                   <th className="px-2.5 py-1.5 font-semibold">{t("合同", "Contract")}</th>
@@ -208,7 +210,8 @@ export default function UtilityReportClient() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </>
           )}
         </>
       )}

@@ -73,6 +73,9 @@ export default function DuplicateCheckClient() {
         )}
 
         {duplicates && duplicates.length > 0 && (
+          <div className="mb-2 text-xs text-gray-500">{t(`共 ${duplicates.length} 组重复`, `${duplicates.length} groups total`)}</div>
+        )}
+        {duplicates && duplicates.length > 0 && (
           <div className="space-y-3">
             {duplicates.map((g, i) => (
               <div key={i} className="rounded-lg border border-red-200 bg-red-50/40 p-3.5">

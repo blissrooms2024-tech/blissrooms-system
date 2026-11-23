@@ -58,7 +58,9 @@ export default function AgentCommissionClient() {
         {rows.length === 0 ? (
           <div className="py-6 text-center text-sm text-gray-400">{t("Admin 还没有帮任何合同填佣金金额", "Admin hasn't filled in a commission amount for any contract yet")}</div>
         ) : (
-          <table className="w-full text-sm">
+          <>
+            <div className="mb-2 text-xs text-gray-500">{t(`共 ${rows.length} 份合同`, `${rows.length} contracts total`)}</div>
+            <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
                 <th className="px-2.5 py-1.5 font-semibold">{t("合同", "Contract")}</th>
@@ -85,7 +87,8 @@ export default function AgentCommissionClient() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </>
         )}
       </div>
     </div>

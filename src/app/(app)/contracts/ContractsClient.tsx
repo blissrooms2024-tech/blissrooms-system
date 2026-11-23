@@ -170,6 +170,16 @@ export default function ContractsClient({ role }: { role: string }) {
             👉 {t("表格可以左右滑动，查看「操作」按钮", "Scroll the table sideways to see the \"Actions\" buttons")}
           </div>
         )}
+        {contracts && filteredContracts && (
+          <div className="mb-2 text-xs text-gray-500">
+            {filteredContracts.length === contracts.length
+              ? t(`共 ${contracts.length} 份合同`, `${contracts.length} contracts total`)
+              : t(
+                  `共 ${filteredContracts.length} 份合同 (全部 ${contracts.length} 份中)`,
+                  `${filteredContracts.length} shown (of ${contracts.length} total)`
+                )}
+          </div>
+        )}
         {filteredContracts && (
           <div className="max-h-[65vh] overflow-auto">
             <table className="w-full text-sm">
