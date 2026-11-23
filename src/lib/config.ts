@@ -46,6 +46,15 @@ export const COMPANY = {
   ACC_NO: "15801018612",
 } as const;
 
+/** Sentinel stored in Contract.agentSignature for a contract whose "Agent" is the company
+ * itself (COMPANY.NAME) rather than a real external agent — Admin opened it directly, with no
+ * one entitled to commission, so there's nothing for anyone to actually sign: the approve/renew
+ * routes write this in automatically the moment the contract reaches PENDING_SIGN, letting the
+ * tenant sign right away instead of the flow sitting stuck waiting on an "Agent signature" that
+ * was never going to happen. Never a real upload URL, so any renderer of agentSignature must
+ * check for this value before treating it as an image. */
+export const COMPANY_AUTO_SIGNATURE = "COMPANY_AUTO_SIGNED";
+
 export const ROLE_LABELS: Record<string, string> = {
   BOSS: "老板 Boss",
   ADMIN: "Admin",

@@ -33,6 +33,7 @@ export default function ContractsClient({ role }: { role: string }) {
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState("");
   const [backfilling, setBackfilling] = useState(false);
+  const [backfillingAgent, setBackfillingAgent] = useState(false);
   const [showExpired, setShowExpired] = useState(false);
 
   async function runProrataBackfill() {
@@ -50,6 +51,24 @@ export default function ContractsClient({ role }: { role: string }) {
       toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
     } finally {
       setBackfilling(false);
+    }
+  }
+
+  async function runCompanyAgentBackfill() {
+    setBackfillingAgent(true);
+    try {
+      const res = await fetch("/api/contracts/backfill-company-agent", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    } finally {
+      setBackfillingAgent(false);
     }
   }
 
@@ -141,6 +160,19 @@ export default function ContractsClient({ role }: { role: string }) {
                 className="btn-soft text-sm disabled:opacity-50"
               >
                 🔧 {backfilling ? t("处理中...", "Processing...") : t("补回 Pro-rata 记录", "Backfill Pro-rata")}
+              </button>
+            )}
+            {role === "ADMIN" && (
+              <button
+                onClick={runCompanyAgentBackfill}
+                disabled={backfillingAgent}
+                title={t(
+                  "把 Admin 自己直接开的旧合同，Agent 显示改成公司名字，并解除卡在等 Agent 签名的旧合同 (可重复执行)",
+                  "Renames the Agent on older Admin-opened contracts to the company's own name, and unblocks any still stuck waiting on an Agent signature (safe to run more than once)"
+                )}
+                className="btn-soft text-sm disabled:opacity-50"
+              >
+                🏢 {backfillingAgent ? t("处理中...", "Processing...") : t("补正公司 Agent 合同", "Backfill Company Agent")}
               </button>
             )}
             {canCreate && (

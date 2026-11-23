@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
-import { FEES } from "@/lib/config";
+import { FEES, COMPANY, COMPANY_AUTO_SIGNATURE } from "@/lib/config";
 
 const schema = z.object({
   commencementDate: z.string().trim().min(1, "请选新合同的生效日期"),
@@ -76,6 +76,12 @@ export async function POST(
     1
   );
 
+  // Carried over from the old contract — if the company itself was the "Agent" there (no one
+  // entitled to commission), the new renewal contract goes straight to "Agent signed" too,
+  // same as a fresh contract going through /approve. A real Agent's renewal still needs their
+  // actual signature, same as before.
+  const isCompanyAgent = c.agentName === COMPANY.NAME;
+
   const newContractCode = await newId("CT");
   const newContract = await prisma.contract.create({
     data: {
@@ -88,6 +94,7 @@ export async function POST(
       tenantIc: c.tenantIc,
       agentId: c.agentId,
       agentName: c.agentName,
+      ...(isCompanyAgent ? { agentSignature: COMPANY_AUTO_SIGNATURE, agentSignDate: new Date() } : {}),
       moveInDate: c.moveInDate,
       commencementDate,
       expiredDate: newExpiredDate,
@@ -195,7 +202,7 @@ export async function POST(
 
   return NextResponse.json({
     success: true,
-    message: `✅ 续约新合同已建: ${newContractCode} (等 Agent 和租客签名)。押金已经带过去, 并开了 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单。`,
+    message: `✅ 续约新合同已建: ${newContractCode} (${isCompanyAgent ? "Agent 是公司本身, 已自动完成, 等租客签名" : "等 Agent 和租客签名"})。押金已经带过去, 并开了 RM${FEES.RENEWAL.toFixed(2)} 续约行政费账单。`,
     newContractCode,
   });
 }

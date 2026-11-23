@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { COMPANY, COMPANY_AUTO_SIGNATURE } from "@/lib/config";
 
 export async function POST(
   _req: NextRequest,
@@ -17,10 +18,23 @@ export async function POST(
     return NextResponse.json({ success: false, message: "这合同不在等批状态" }, { status: 409 });
   }
 
+  // The company itself is the "Agent" on this contract (Admin opened it directly, no one
+  // entitled to commission) — there's no one to actually sign that step, so it's marked done
+  // automatically right here instead of leaving the flow stuck waiting on it.
+  const isCompanyAgent = contract.agentName === COMPANY.NAME;
+
   await prisma.contract.update({
     where: { contractCode: contractId },
-    data: { status: "PENDING_SIGN", approvedBy: user.name, approvedAt: new Date() },
+    data: {
+      status: "PENDING_SIGN",
+      approvedBy: user.name,
+      approvedAt: new Date(),
+      ...(isCompanyAgent ? { agentSignature: COMPANY_AUTO_SIGNATURE, agentSignDate: new Date() } : {}),
+    },
   });
 
-  return NextResponse.json({ success: true, message: "✅ 已批准, 现在可以签名了" });
+  return NextResponse.json({
+    success: true,
+    message: isCompanyAgent ? "✅ 已批准, Agent 是公司本身, 已自动完成, 现在等租客签名" : "✅ 已批准, 现在可以签名了",
+  });
 }

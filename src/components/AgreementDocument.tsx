@@ -1,7 +1,7 @@
 "use client";
 
 import { TERMS, RULES, NOTICE_TITLES, utilExcludedItems } from "@/lib/contractContent";
-import { COMPANY, CONTRACT_IMAGES } from "@/lib/config";
+import { COMPANY, COMPANY_AUTO_SIGNATURE, CONTRACT_IMAGES } from "@/lib/config";
 import { fmtMoney, fmtDate } from "@/lib/format";
 
 export interface AgreementContract {
@@ -75,11 +75,21 @@ const DOC_STYLE = `
 `;
 
 function Sig({ name, ic, img, date, role }: { name: string; ic: string | null; img: string | null; date: string | null; role: string }) {
+  // The company itself (no real external Agent, nothing to actually sign) — see
+  // COMPANY_AUTO_SIGNATURE. It's a sentinel, never a real uploaded image, so it must never be
+  // handed to <img src>.
+  const isCompanyAuto = img === COMPANY_AUTO_SIGNATURE;
   return (
     <div className="sigbox">
       <div style={{ marginBottom: img ? 6 : 26 }}>
         Signature :{" "}
-        {img ? <img src={img} alt="signature" style={{ maxHeight: 50 }} /> : "______________________"}
+        {isCompanyAuto ? (
+          <i>(Authorized — {COMPANY.NAME})</i>
+        ) : img ? (
+          <img src={img} alt="signature" style={{ maxHeight: 50 }} />
+        ) : (
+          "______________________"
+        )}
       </div>
       <table>
         <tbody>

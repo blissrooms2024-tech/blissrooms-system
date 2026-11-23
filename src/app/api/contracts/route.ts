@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { serialize } from "@/lib/serialize";
 import { contractFormSchema } from "@/lib/schemas/contract";
-import { RULES } from "@/lib/config";
+import { RULES, COMPANY } from "@/lib/config";
 import { notifyTenantBillCreated } from "@/lib/mail";
 
 export async function GET() {
@@ -82,13 +82,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Admin opening a contract directly (no real external Agent picked) isn't entitled to a
+  // commission — the "Agent" on the contract is the company itself, not Admin personally, so
+  // it doesn't carry Admin's own name. A real Agent creating their own contract is unaffected
+  // (agentId/agentName stay theirs, since they're an actual party who gets commission and has
+  // to sign).
   let agentId = user.sub;
   let agentName = user.name;
-  if (user.role === "ADMIN" && d.agentId) {
-    const a = await prisma.user.findUnique({ where: { userCode: d.agentId } });
+  if (user.role === "ADMIN") {
+    const a = d.agentId ? await prisma.user.findUnique({ where: { userCode: d.agentId } }) : null;
     if (a) {
       agentId = a.id;
       agentName = a.name;
+    } else {
+      agentName = COMPANY.NAME;
     }
   }
 
