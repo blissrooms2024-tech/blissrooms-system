@@ -28,6 +28,7 @@ export default function UsersClient() {
   const [editing, setEditing] = useState<EditableUser | null>(null);
   const [deleting, setDeleting] = useState<UserRow | null>(null);
   const [q, setQ] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [confirmingDeactivate, setConfirmingDeactivate] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
 
@@ -133,16 +134,17 @@ export default function UsersClient() {
 
   const keyword = q.trim().toLowerCase();
   const filtered =
-    users && keyword
-      ? users.filter(
-          (u) =>
-            u.name.toLowerCase().includes(keyword) ||
-            u.email.toLowerCase().includes(keyword) ||
-            u.userCode.toLowerCase().includes(keyword) ||
-            (u.phone ?? "").toLowerCase().includes(keyword) ||
-            (u.roomCode ?? "").toLowerCase().includes(keyword)
-        )
-      : users;
+    users?.filter((u) => {
+      if (roleFilter && u.role !== roleFilter) return false;
+      if (!keyword) return true;
+      return (
+        u.name.toLowerCase().includes(keyword) ||
+        u.email.toLowerCase().includes(keyword) ||
+        u.userCode.toLowerCase().includes(keyword) ||
+        (u.phone ?? "").toLowerCase().includes(keyword) ||
+        (u.roomCode ?? "").toLowerCase().includes(keyword)
+      );
+    }) ?? null;
 
   return (
     <div className="space-y-4">
@@ -159,6 +161,18 @@ export default function UsersClient() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
+            <select
+              className="input w-[140px] text-sm"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="">{t("全部角色", "All Roles")}</option>
+              {Object.keys(ROLE_LABELS).map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
             <button
               onClick={() => setConfirmingDeactivate(true)}
               disabled={deactivating}
