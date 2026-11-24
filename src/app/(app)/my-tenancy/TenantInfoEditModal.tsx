@@ -104,7 +104,7 @@ export default function TenantInfoEditModal({
             <input value={occupation} onChange={(e) => setOccupation(e.target.value)} className="input" />
           </div>
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm text-gray-600">{t("公司/大学 Company", "Company")}</label>
+            <label className="mb-1.5 block text-sm text-gray-600">{t("学校/公司名称", "Uni/Company Name")}</label>
             <input value={company} onChange={(e) => setCompany(e.target.value)} className="input" />
           </div>
         </div>
