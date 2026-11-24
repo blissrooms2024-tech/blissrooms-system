@@ -266,6 +266,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   MAINTENANCE: "维修",
   OTHER: "其他",
   VOUCHER: "代金券",
+  COMMISSION: "Agent 佣金",
 };
 
 /** Shows Admin's own custom name for a category=OTHER expense (e.g. "灭虫费") instead of the
@@ -283,6 +284,7 @@ export const EXPENSE_CATEGORY_LABELS_EN: Record<string, string> = {
   MAINTENANCE: "Maintenance",
   OTHER: "Other",
   VOUCHER: "Voucher",
+  COMMISSION: "Agent Commission",
 };
 
 export function expenseCategoryLabelEn(category: string, customLabel?: string | null): string {

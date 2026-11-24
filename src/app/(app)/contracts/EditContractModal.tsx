@@ -30,6 +30,10 @@ export default function EditContractModal({
   // the backend only ever opens one per contract, so the field becomes read-only at that point
   // (correcting it afterward means editing that Payment record's own amount, in Payments).
   const [prorataAlreadyBilled, setProrataAlreadyBilled] = useState(false);
+  // Once commStatus is Paid, the matching Expense has already been booked on /agent-commissions
+  // — the amount is locked here to avoid drifting out of sync with it, and the status itself can
+  // only ever be flipped through that dedicated payout flow, never by resaving this form.
+  const [commAlreadyPaid, setCommAlreadyPaid] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -72,6 +76,7 @@ export default function EditContractModal({
       });
       setUtils({ electric: !!c.utilElectric, aircond: !!c.utilAircond, dryer: !!c.utilDryer });
       setProrataAlreadyBilled(Number(c.prorataAmount) > 0);
+      setCommAlreadyPaid(c.commStatus === "Paid");
 
       const carparks: { roomCode: string; propertyName: string }[] = pageData.success ? pageData.vacantCarparks : [];
       // The contract's own already-assigned carpark isn't globally "vacant" anymore, but it
@@ -283,16 +288,20 @@ export default function EditContractModal({
             <Field label={t("佣金金额 RM", "Commission Amount RM")}>
               <input
                 type="number"
-                className="input"
+                className="input disabled:bg-gray-100 disabled:text-gray-500"
+                disabled={commAlreadyPaid}
                 value={form.commAmount}
                 onChange={(e) => set("commAmount", e.target.value)}
               />
             </Field>
             <Field label={t("发放状态", "Payout Status")}>
-              <select className="input" value={form.commStatus} onChange={(e) => set("commStatus", e.target.value)}>
-                <option value="Pending">{t("待发", "Pending")}</option>
-                <option value="Paid">{t("已发", "Paid")}</option>
-              </select>
+              {commAlreadyPaid ? (
+                <div className="input flex items-center bg-gray-100 text-green-700">✅ {t("已发", "Paid")}</div>
+              ) : (
+                <div className="input flex items-center bg-gray-50 text-gray-500">
+                  {t("待发 (去「Agent 佣金」页面发放)", "Pending (pay it from the \"Agent Commissions\" page)")}
+                </div>
+              )}
             </Field>
           </Row>
 

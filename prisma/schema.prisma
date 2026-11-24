@@ -103,6 +103,10 @@ enum ExpenseCategory {
   /// only ever created alongside the matching CREDIT Payment row the voucher itself produces
   /// (see Contract voucher-issuing route), never picked by hand from the general expense form.
   VOUCHER
+  /// Agent referral commission actually paid out — only ever created by the dedicated
+  /// /agent-commissions payout action (see Contract.commAmount/commStatus), never picked by
+  /// hand from the general expense form.
+  COMMISSION
 }
 
 model Counter {

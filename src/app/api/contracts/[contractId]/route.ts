@@ -160,10 +160,11 @@ export async function PATCH(
   }
   const carparkRoomChanged = (newCarparkRoom?.id ?? null) !== (contract.carparkRoomId ?? null);
 
-  const commAmount = d.commAmount ?? null;
+  // Setting the commission to Paid (and booking the matching Expense) only ever happens
+  // through the dedicated /agent-commissions payout flow now — this generic edit can set the
+  // amount owed, but never flips Pending to Paid itself, and never touches the amount once
+  // paid (the Expense already booked for it would go stale with no trace).
   const wasPaid = contract.commStatus === "Paid";
-  const nowPaid = commAmount !== null && d.commStatus === "Paid";
-  const commPaidAt = nowPaid ? (wasPaid ? contract.commPaidAt : new Date()) : null;
 
   await prisma.contract.update({
     where: { contractCode: contractId },
@@ -197,9 +198,7 @@ export async function PATCH(
       utilDryer: d.utilDryer,
       utilAircond: d.utilAircond,
       utilElectric: d.utilElectric,
-      commAmount,
-      commStatus: commAmount !== null ? d.commStatus : "Pending",
-      commPaidAt,
+      ...(wasPaid ? {} : { commAmount: d.commAmount ?? null, commStatus: "Pending", commPaidAt: null }),
     },
   });
 
