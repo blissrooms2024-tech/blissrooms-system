@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import Modal from "@/components/Modal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
@@ -110,6 +111,11 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   const [createForm, setCreateForm] = useState({ selection: "", title: "", description: "" });
   const [createPhotos, setCreatePhotos] = useState<string[]>([]);
   const [createSaving, setCreateSaving] = useState(false);
+  const [deleting, setDeleting] = useState<MaintenanceRow | null>(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [editing, setEditing] = useState<MaintenanceRow | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", description: "", cost: "" });
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -298,6 +304,61 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
 
   async function payWorker(r: MaintenanceRow) {
     await patchRequest(r.requestCode, { markCostPaid: true });
+  }
+
+  function openEdit(r: MaintenanceRow) {
+    setEditForm({ title: r.title, description: r.description ?? "", cost: r.cost != null ? String(r.cost) : "" });
+    setEditing(r);
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    if (!editForm.title.trim()) {
+      toast.warning(t("标题不能空白", "Title can't be empty"));
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const costChanged = editForm.cost !== (editing.cost != null ? String(editing.cost) : "");
+      const res = await fetch(`/api/maintenance/${editing.requestCode}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editForm.title.trim(),
+          description: editForm.description.trim(),
+          ...(costChanged && editForm.cost.trim() ? { cost: Number(editForm.cost) } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setEditing(null);
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    setDeleteSaving(true);
+    try {
+      const res = await fetch(`/api/maintenance/${deleting.requestCode}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) toast.success(data.message);
+      else toast.danger(data.message);
+      setDeleting(null);
+      load();
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    } finally {
+      setDeleteSaving(false);
+    }
   }
 
   if (!items && !error) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
@@ -507,6 +568,18 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                       >
                         {t("取消", "Cancel")}
                       </button>
+                      <button
+                        onClick={() => openEdit(r)}
+                        className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600"
+                      >
+                        ✏️ {t("编辑", "Edit")}
+                      </button>
+                      <button
+                        onClick={() => setDeleting(r)}
+                        className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        🗑️ {t("删除", "Delete")}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -543,6 +616,22 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                         className="rounded-md bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
                       >
                         💰 {t("出工钱", "Pay Worker")}
+                      </button>
+                    )}
+                    {canAct && (
+                      <button
+                        onClick={() => openEdit(r)}
+                        className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                      >
+                        ✏️ {t("编辑", "Edit")}
+                      </button>
+                    )}
+                    {canAct && (
+                      <button
+                        onClick={() => setDeleting(r)}
+                        className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        🗑️ {t("删除", "Delete")}
                       </button>
                     )}
                     <span
@@ -680,6 +769,66 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
           </div>
         </Modal>
       )}
+
+      {editing && (
+        <Modal onClose={() => setEditing(null)}>
+          <h3 className="mb-3.5 text-lg font-bold text-brand">✏️ {t("编辑报修单", "Edit Maintenance Request")}</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("标题", "Title")}</label>
+              <input
+                className="input"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("详细说明", "Details")}</label>
+              <textarea
+                className="input"
+                rows={2}
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("费用 RM", "Cost RM")}</label>
+              <input
+                type="number"
+                className="input"
+                disabled={!!editing.costPaidAt}
+                value={editForm.cost}
+                onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })}
+              />
+              {editing.costPaidAt && (
+                <p className="mt-1 text-xs text-gray-400">
+                  {t("已经出过钱了，费用不能再改 (已经登记了对应的支出)", "Already paid out — cost can't be changed (a matching Expense is already booked)")}
+                </p>
+              )}
+            </div>
+            <button onClick={saveEdit} disabled={editSaving} className="btn-primary w-full">
+              {editSaving ? t("保存中...", "Saving...") : t("保存", "Save")}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      <ConfirmDialog
+        open={!!deleting}
+        danger
+        title={t("删除报修单", "Delete Maintenance Request")}
+        message={t(
+          `确定要删除报修单 ${deleting?.requestCode} (${deleting?.title}) 吗？此操作不能撤销。${
+            deleting?.cost != null && deleting?.costPaidAt ? "这张已经出过钱了，已登记的支出不会被删除。" : ""
+          }`,
+          `Delete maintenance request ${deleting?.requestCode} (${deleting?.title})? This can't be undone.${
+            deleting?.cost != null && deleting?.costPaidAt ? " This one was already paid out — the Expense it booked won't be removed." : ""
+          }`
+        )}
+        confirmLabel={deleteSaving ? t("删除中...", "Deleting...") : t("确定删除", "Confirm Delete")}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

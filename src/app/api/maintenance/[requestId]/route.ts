@@ -7,6 +7,8 @@ import { newId } from "@/lib/id";
 import { notifyTenantMaintenanceUpdated, notifyTenantMaintenanceNoteAdded } from "@/lib/mail";
 
 const schema = z.object({
+  title: z.string().trim().min(1).optional(),
+  description: z.string().trim().optional(),
   status: z.enum(["ACKNOWLEDGED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
   assignedTo: z.string().trim().optional(),
   adminNote: z.string().trim().optional(),
@@ -43,6 +45,13 @@ export async function PATCH(
   }
   const d = parsed.data;
 
+  // Once a job's cost has actually been paid out, the Expense it booked is already fixed in
+  // the books — silently changing the figure here would leave that Expense wrong with no
+  // trace. Correcting a mistake at that point means editing the Expense directly, not this.
+  if (d.cost !== undefined && reqRow.costPaidAt) {
+    return NextResponse.json({ success: false, message: "已经出过钱了, 不能再改费用 (会跟已登记的支出对不上)" }, { status: 409 });
+  }
+
   let invoiceUrl: string | undefined;
   if (d.invoiceDataUrl) {
     try {
@@ -58,6 +67,8 @@ export async function PATCH(
   await prisma.maintenanceRequest.update({
     where: { requestCode: requestId },
     data: {
+      ...(d.title !== undefined ? { title: d.title } : {}),
+      ...(d.description !== undefined ? { description: d.description } : {}),
       ...(d.status ? { status: d.status, resolvedAt: d.status === "COMPLETED" ? new Date() : reqRow.resolvedAt } : {}),
       ...(d.assignedTo !== undefined ? { assignedTo: d.assignedTo } : {}),
       ...(d.adminNote !== undefined ? { adminNote: d.adminNote } : {}),
@@ -113,4 +124,25 @@ export async function PATCH(
   }
 
   return NextResponse.json({ success: true, message: `✅ 报修单已更新${expenseWarning}` });
+}
+
+/** Admin-only: remove a maintenance request outright (e.g. a duplicate or test entry). If the
+ * job's cost was already paid out, the Expense it booked is left untouched — same convention
+ * as deleting a Payment record elsewhere in the app, which never un-books anything either. */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ requestId: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") {
+    return NextResponse.json({ success: false, message: "只有 Admin 可以删除报修单" }, { status: 403 });
+  }
+
+  const { requestId } = await params;
+  const reqRow = await prisma.maintenanceRequest.findUnique({ where: { requestCode: requestId } });
+  if (!reqRow) return NextResponse.json({ success: false, message: "找不到这个报修单" }, { status: 404 });
+
+  await prisma.maintenanceRequest.delete({ where: { requestCode: requestId } });
+
+  return NextResponse.json({ success: true, message: `✅ 报修单 ${requestId} 已删除` });
 }
