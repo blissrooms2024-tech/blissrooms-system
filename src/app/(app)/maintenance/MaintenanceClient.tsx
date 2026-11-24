@@ -286,10 +286,18 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   async function complete(r: MaintenanceRow) {
     const d = draftFor(r);
     const cost = d.cost.trim() ? Number(d.cost) : undefined;
+    // Completing the job records what's owed (the wage/invoice amount) — it does NOT pay it
+    // out. The company might settle it days later (e.g. on payday), so "出钱" is its own
+    // separate action below (payWorker), which is also the only place the matching Expense
+    // actually gets booked.
     await patchRequest(r.requestCode, {
       status: "COMPLETED",
-      ...(cost !== undefined ? { cost, markCostPaid: true } : {}),
+      ...(cost !== undefined ? { cost } : {}),
     });
+  }
+
+  async function payWorker(r: MaintenanceRow) {
+    await patchRequest(r.requestCode, { markCostPaid: true });
   }
 
   if (!items && !error) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
@@ -490,7 +498,6 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                             className="rounded-md bg-green-700 px-3 py-1.5 text-xs font-semibold text-white"
                           >
                             {t("✅ 标记完成", "✅ Mark Complete")}
-                            {d.cost.trim() ? t(" + 出工钱", " + Pay Worker") : ""}
                           </button>
                         </>
                       )}
@@ -513,24 +520,42 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         <div className="rounded-xl bg-white p-5 shadow-sm">
           <h3 className="mb-3.5 text-base font-semibold text-gray-500">{t(`📁 已结束 (${closed.length})`, `📁 Closed (${closed.length})`)}</h3>
           <div className="space-y-2">
-            {closed.map((r) => (
-              <div key={r.requestCode} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-50 py-2 text-sm last:border-none">
-                <div>
-                  <span className="text-gray-400">{r.requestCode} · </span>
-                  <b>{r.contractCode}</b> · {r.roomCode} · {r.title}
-                  {r.assignedTo && <span className="text-gray-400"> · {r.assignedTo}</span>}
-                  {r.cost != null && <span className="text-gray-500"> · {fmt(r.cost)}</span>}
-                  <span className="text-gray-400"> · {fmtDate(r.resolvedAt ?? r.createdAt)}</span>
+            {closed.map((r) => {
+              const costUnpaid = r.cost != null && !r.costPaidAt;
+              return (
+                <div key={r.requestCode} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-50 py-2 text-sm last:border-none">
+                  <div>
+                    <span className="text-gray-400">{r.requestCode} · </span>
+                    <b>{r.contractCode}</b> · {r.roomCode} · {r.title}
+                    {r.assignedTo && <span className="text-gray-400"> · {r.assignedTo}</span>}
+                    {r.cost != null && (
+                      <span className={costUnpaid ? "font-semibold text-amber-600" : "text-gray-500"}>
+                        {" "}
+                        · {fmt(r.cost)} ({costUnpaid ? t("待出钱", "Unpaid") : t("已出钱", "Paid")})
+                      </span>
+                    )}
+                    <span className="text-gray-400"> · {fmtDate(r.resolvedAt ?? r.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {canAct && costUnpaid && (
+                      <button
+                        onClick={() => payWorker(r)}
+                        className="rounded-md bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
+                      >
+                        💰 {t("出工钱", "Pay Worker")}
+                      </button>
+                    )}
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        r.status === "COMPLETED" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {maintenanceStatusLabel(r.status, locale)}
+                    </span>
+                  </div>
                 </div>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                    r.status === "COMPLETED" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {maintenanceStatusLabel(r.status, locale)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

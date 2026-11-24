@@ -1,34 +1,52 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { fmtMoney as fmt } from "@/lib/format";
+import { useEffect, useRef, useState, useCallback } from "react";
+import PayslipDocument, { type PayslipData } from "@/components/PayslipDocument";
+import { useToast } from "@/components/Toast";
+import { useLanguage } from "@/components/LanguageProvider";
 
-interface Job {
-  requestCode: string;
-  roomCode: string;
-  title: string;
-  cost: number | null;
-  costPaidAt: string | null;
+interface Line {
+  label: string;
+  amount: number;
+}
+interface ApiData {
+  months: string[];
+  month: string;
+  worker: { name: string; userCode: string; ic: string | null; bankName: string | null; bankAccountNumber: string | null };
+  lines: Line[];
+}
+
+function monthLabel(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-MY", { month: "long", year: "numeric" });
 }
 
 export default function PayslipClient() {
-  const [jobs, setJobs] = useState<Job[] | null>(null);
+  const toast = useToast();
+  const { t } = useLanguage();
+  const [data, setData] = useState<ApiData | null>(null);
+  const [month, setMonth] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const printAreaRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async () => {
-    setError("");
-    try {
-      const res = await fetch("/api/worker/maintenance");
-      const data = await res.json();
-      if (!data.success) {
-        setError(data.message);
-        return;
+  const load = useCallback(
+    async (m?: string) => {
+      setError("");
+      try {
+        const res = await fetch(`/api/worker/payslip${m ? `?month=${m}` : ""}`);
+        const d = await res.json();
+        if (!d.success) {
+          setError(d.message);
+          return;
+        }
+        setData(d);
+        setMonth(d.month);
+      } catch {
+        setError(t("出错，请稍后再试", "Something went wrong, please try again later"));
       }
-      setJobs(data.requests);
-    } catch {
-      setError("出错，请稍后再试");
-    }
-  }, []);
+    },
+    [t]
+  );
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -36,63 +54,73 @@ export default function PayslipClient() {
     load();
   }, [load]);
 
-  if (!jobs && !error) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">载入中...</div>;
-  if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-
-  const paidJobs = jobs!.filter((j) => j.costPaidAt && j.cost != null);
-  const totalEarned = paidJobs.reduce((sum, j) => sum + Number(j.cost), 0);
-  const thisMonth = new Date().toISOString().slice(0, 7);
-  const thisMonthEarned = paidJobs
-    .filter((j) => j.costPaidAt!.slice(0, 7) === thisMonth)
-    .reduce((sum, j) => sum + Number(j.cost), 0);
-
-  const byMonth = new Map<string, Job[]>();
-  for (const j of paidJobs) {
-    const month = j.costPaidAt!.slice(0, 7);
-    if (!byMonth.has(month)) byMonth.set(month, []);
-    byMonth.get(month)!.push(j);
+  function print() {
+    if (!printAreaRef.current) return;
+    const html = printAreaRef.current.innerHTML;
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast.warning(t("浏览器拦截了弹出式窗口，请允许弹窗后再试一次", "Your browser blocked the pop-up window — please allow pop-ups and try again"));
+      return;
+    }
+    w.document.write(
+      `<html><head><title>Payslip - Bliss Rooms</title><meta charset="utf-8">` +
+        `<style>body{margin:0;padding:34px;max-width:820px;margin:auto;}@media print{@page{margin:14mm;}}</style>` +
+        `</head><body>${html}</body></html>`
+    );
+    w.document.close();
+    setTimeout(() => w.print(), 400);
   }
-  const months = [...byMonth.keys()].sort((a, b) => b.localeCompare(a));
+
+  if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
+  if (!data || !month) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
+
+  const payslip: PayslipData = {
+    payPeriod: monthLabel(month),
+    issuedDate: new Date().toISOString(),
+    name: data.worker.name,
+    staffId: data.worker.userCode,
+    bankName: data.worker.bankName,
+    position: "Maintenance Worker",
+    icPassport: data.worker.ic,
+    accountNo: data.worker.bankAccountNumber,
+    earnings: data.lines,
+    deductions: [],
+  };
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="mb-3.5 text-base font-semibold text-brand">💰 我的薪水单</h3>
-      <div className="mb-3.5 flex flex-wrap gap-3">
-        <div className="rounded-lg bg-brand/5 px-4 py-2.5">
-          <div className="text-xs text-gray-500">本月已领</div>
-          <div className="text-lg font-semibold text-brand">{fmt(thisMonthEarned)}</div>
+    <div className="space-y-4">
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold text-brand">📑 {t("我的 Payslip", "My Payslip")}</h3>
+          {data.months.length > 0 && (
+            <select
+              className="input w-auto"
+              value={month}
+              onChange={(e) => load(e.target.value)}
+            >
+              {data.months.map((m) => (
+                <option key={m} value={m}>
+                  {monthLabel(m)}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
-        <div className="rounded-lg bg-gray-50 px-4 py-2.5">
-          <div className="text-xs text-gray-500">累计已领</div>
-          <div className="text-lg font-semibold text-gray-700">{fmt(totalEarned)}</div>
-        </div>
+        {data.months.length === 0 ? (
+          <div className="py-6 text-center text-sm text-gray-400">{t("还没有已发放的工钱记录", "No paid wage records yet")}</div>
+        ) : (
+          <>
+            <div className="mb-3 text-right">
+              <button onClick={print} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+                🖨️ {t("打印 / 存 PDF", "Print / Save PDF")}
+              </button>
+            </div>
+            <div ref={printAreaRef}>
+              <PayslipDocument p={payslip} />
+            </div>
+          </>
+        )}
       </div>
-      {months.length === 0 ? (
-        <div className="py-6 text-center text-sm text-gray-400">还没有工钱记录</div>
-      ) : (
-        <div className="space-y-3">
-          {months.map((month) => {
-            const rows = byMonth.get(month)!;
-            const subtotal = rows.reduce((sum, j) => sum + Number(j.cost), 0);
-            return (
-              <div key={month}>
-                <div className="mb-1 flex items-baseline justify-between">
-                  <b className="text-sm">{month}</b>
-                  <span className="text-sm font-semibold text-brand">{fmt(subtotal)}</span>
-                </div>
-                <div className="space-y-1 rounded-lg border border-gray-100 p-2">
-                  {rows.map((j) => (
-                    <div key={j.requestCode} className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
-                      <span>🏠 {j.roomCode} · {j.title} · {j.costPaidAt}</span>
-                      <span className="font-semibold text-gray-800">{fmt(j.cost)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
