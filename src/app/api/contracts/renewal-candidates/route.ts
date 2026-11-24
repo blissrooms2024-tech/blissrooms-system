@@ -31,26 +31,37 @@ export async function GET() {
     include: { room: { select: { roomCode: true } } },
   });
 
-  const list = contracts.map((c) => ({
-    contractCode: c.contractCode,
-    tenantName: c.tenantName,
-    roomCode: c.room.roomCode,
-    agentName: c.agentName,
-    contactNumber: c.contactNumber,
-    expiredDate: c.expiredDate,
-    daysToExpiry: c.expiredDate
-      ? Math.ceil((c.expiredDate.getTime() - startOfToday.getTime()) / (24 * 3600 * 1000))
-      : null,
-    renewalRequestedAt: c.renewalRequestedAt,
-    renewalRequestedMonths: c.renewalRequestedMonths,
-    // Prefills for the "续约开新合同" form — Admin usually keeps these the same, just adjusts
-    // the ones that changed (e.g. a rent increase).
-    roomRental: Number(c.roomRental),
-    carparkRental: Number(c.carparkRental),
-    securityDeposit: Number(c.securityDeposit),
-    utilitiesDeposit: Number(c.utilitiesDeposit),
-    accessCardDeposit: Number(c.accessCardDeposit),
-  }));
+  // A renewal contract already exists for these — the old one stays ACTIVE (and would
+  // otherwise keep showing up here) until the new one is actually signed, but Admin has
+  // nothing left to action until then, so it'd just be clutter to still list it.
+  const alreadyRenewed = await prisma.contract.findMany({
+    where: { renewedFromContractId: { in: contracts.map((c) => c.contractCode) } },
+    select: { renewedFromContractId: true },
+  });
+  const alreadyRenewedSet = new Set(alreadyRenewed.map((c) => c.renewedFromContractId));
+
+  const list = contracts
+    .filter((c) => !alreadyRenewedSet.has(c.contractCode))
+    .map((c) => ({
+      contractCode: c.contractCode,
+      tenantName: c.tenantName,
+      roomCode: c.room.roomCode,
+      agentName: c.agentName,
+      contactNumber: c.contactNumber,
+      expiredDate: c.expiredDate,
+      daysToExpiry: c.expiredDate
+        ? Math.ceil((c.expiredDate.getTime() - startOfToday.getTime()) / (24 * 3600 * 1000))
+        : null,
+      renewalRequestedAt: c.renewalRequestedAt,
+      renewalRequestedMonths: c.renewalRequestedMonths,
+      // Prefills for the "续约开新合同" form — Admin usually keeps these the same, just adjusts
+      // the ones that changed (e.g. a rent increase).
+      roomRental: Number(c.roomRental),
+      carparkRental: Number(c.carparkRental),
+      securityDeposit: Number(c.securityDeposit),
+      utilitiesDeposit: Number(c.utilitiesDeposit),
+      accessCardDeposit: Number(c.accessCardDeposit),
+    }));
 
   return NextResponse.json({ success: true, contracts: list });
 }
