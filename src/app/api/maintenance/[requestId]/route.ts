@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
+import { newId } from "@/lib/id";
 import { notifyTenantMaintenanceUpdated, notifyTenantMaintenanceNoteAdded } from "@/lib/mail";
 
 const schema = z.object({
@@ -32,7 +33,7 @@ export async function PATCH(
   const { requestId } = await params;
   const reqRow = await prisma.maintenanceRequest.findUnique({
     where: { requestCode: requestId },
-    include: { contract: { select: { contractCode: true } } },
+    include: { contract: { select: { contractCode: true, room: { select: { propertyId: true } } } } },
   });
   if (!reqRow) return NextResponse.json({ success: false, message: "找不到这个报修单" }, { status: 404 });
 
@@ -68,6 +69,37 @@ export async function PATCH(
     },
   });
 
+  // Paying a maintenance job out (in-house wage or outsourced invoice) is real money leaving
+  // the company — book it as an actual MAINTENANCE Expense the moment it's first marked paid,
+  // same principle as the voucher-redemption Expense: a cost only ever recorded on the request
+  // itself (never here) would make the property's finance report silently understate what the
+  // company actually spent. Only fires once (reqRow.costPaidAt is still null the first time).
+  let expenseWarning = "";
+  if (d.markCostPaid && !reqRow.costPaidAt) {
+    const finalCost = d.cost ?? (reqRow.cost ? Number(reqRow.cost) : null);
+    const propertyId = reqRow.contract.room.propertyId;
+    if (finalCost && finalCost > 0 && propertyId) {
+      const workerType = d.workerType ?? reqRow.workerType;
+      const assignedTo = d.assignedTo !== undefined ? d.assignedTo : reqRow.assignedTo;
+      const now = new Date();
+      await prisma.expense.create({
+        data: {
+          expenseCode: await newId("EX"),
+          propertyId,
+          category: "MAINTENANCE",
+          customLabel: reqRow.title,
+          amount: finalCost,
+          periodMonth: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+          expenseDate: now,
+          notes: `报修单 ${reqRow.requestCode} (${reqRow.roomCode}) — ${workerType === "OUTSOURCED" ? "外包" : "员工"}: ${assignedTo ?? "-"}`,
+          recordedBy: user.name,
+        },
+      });
+    } else if (finalCost && finalCost > 0 && !propertyId) {
+      expenseWarning = " | ⚠️ 这间房没有关联楼盘，没有登记支出";
+    }
+  }
+
   if (reqRow.tenantId && (d.status || (d.adminNote !== undefined && d.adminNote && d.adminNote !== reqRow.adminNote))) {
     const tenant = await prisma.user.findUnique({ where: { id: reqRow.tenantId } });
     if (tenant) {
@@ -80,5 +112,5 @@ export async function PATCH(
     }
   }
 
-  return NextResponse.json({ success: true, message: "✅ 报修单已更新" });
+  return NextResponse.json({ success: true, message: `✅ 报修单已更新${expenseWarning}` });
 }
