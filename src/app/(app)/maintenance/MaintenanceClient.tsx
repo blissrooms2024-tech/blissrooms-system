@@ -67,6 +67,15 @@ function buildSteps(r: MaintenanceRow, locale: "zh" | "en", t: (zh: string, en: 
 }
 
 
+// Room codes follow a "{unit}-{room number}" convention (e.g. "TLA-A0616-01" is room 01 of
+// unit TLA-A0616) — grouping by that prefix lets Admin spot every room sharing a unit at a
+// glance, needed when the issue is actually for a shared area (e.g. the living room) rather
+// than one specific tenant's own room.
+function unitCodeOf(roomCode: string): string {
+  const i = roomCode.lastIndexOf("-");
+  return i > 0 ? roomCode.slice(0, i) : roomCode;
+}
+
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -517,38 +526,62 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
             {(() => {
               const q = roomSearch.trim().toLowerCase();
               const filtered = q
-                ? occupied.filter((o) => o.roomCode.toLowerCase().includes(q) || o.tenantName.toLowerCase().includes(q))
+                ? occupied.filter(
+                    (o) =>
+                      o.roomCode.toLowerCase().includes(q) ||
+                      o.tenantName.toLowerCase().includes(q) ||
+                      unitCodeOf(o.roomCode).toLowerCase().includes(q)
+                  )
                 : occupied;
+              const groups = new Map<string, OccupiedContract[]>();
+              for (const o of filtered) {
+                const unit = unitCodeOf(o.roomCode);
+                if (!groups.has(unit)) groups.set(unit, []);
+                groups.get(unit)!.push(o);
+              }
               return (
                 <div>
                   <label className="mb-1.5 block text-sm text-gray-600">{t("选房间", "Select Room")}</label>
+                  <p className="mb-1.5 text-xs text-gray-400">
+                    {t(
+                      "按单位分组 — 修客厅等共用区域时，选同一单位底下任一间房都可以",
+                      "Grouped by unit — for a shared area like the living room, pick any room under that same unit"
+                    )}
+                  </p>
                   <input
                     className="input mb-1.5"
-                    placeholder={t("🔍 搜房间/租客...", "🔍 Search room/tenant...")}
+                    placeholder={t("🔍 搜单位/房间/租客...", "🔍 Search unit/room/tenant...")}
                     value={roomSearch}
                     onChange={(e) => setRoomSearch(e.target.value)}
                   />
-                  <div className="max-h-[220px] overflow-auto rounded-lg border border-gray-200">
+                  <div className="max-h-[260px] overflow-auto rounded-lg border border-gray-200">
                     {occupied.length === 0 && (
                       <div className="p-3 text-center text-xs text-gray-400">{t("载入中...", "Loading...")}</div>
                     )}
                     {occupied.length > 0 && filtered.length === 0 && (
                       <div className="p-3 text-center text-xs text-gray-400">{t("没有符合的房间", "No matching rooms")}</div>
                     )}
-                    {filtered.map((o) => (
-                      <label
-                        key={o.contractCode}
-                        className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50"
-                      >
-                        <input
-                          type="radio"
-                          name="maintenance-room"
-                          checked={createForm.contractCode === o.contractCode}
-                          onChange={() => setCreateForm({ ...createForm, contractCode: o.contractCode })}
-                        />
-                        <span className="font-semibold">{o.roomCode}</span>
-                        <span className="text-gray-500">— {o.tenantName}</span>
-                      </label>
+                    {[...groups.entries()].map(([unit, rooms]) => (
+                      <div key={unit}>
+                        <div className="sticky top-0 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                          🏠 {unit} ({rooms.length})
+                        </div>
+                        {rooms.map((o) => (
+                          <label
+                            key={o.contractCode}
+                            className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50"
+                          >
+                            <input
+                              type="radio"
+                              name="maintenance-room"
+                              checked={createForm.contractCode === o.contractCode}
+                              onChange={() => setCreateForm({ ...createForm, contractCode: o.contractCode })}
+                            />
+                            <span className="font-semibold">{o.roomCode}</span>
+                            <span className="text-gray-500">— {o.tenantName}</span>
+                          </label>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 </div>
