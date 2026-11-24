@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
+import Modal from "@/components/Modal";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
@@ -35,6 +36,12 @@ interface Worker {
   id: string;
   userCode: string;
   name: string;
+}
+
+interface OccupiedContract {
+  contractCode: string;
+  roomCode: string;
+  tenantName: string;
 }
 
 const FLOW = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING_REVIEW", "COMPLETED"];
@@ -85,6 +92,12 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   const [error, setError] = useState("");
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, AssignDraft>>({});
+  const [creating, setCreating] = useState(false);
+  const [occupied, setOccupied] = useState<OccupiedContract[]>([]);
+  const [roomSearch, setRoomSearch] = useState("");
+  const [createForm, setCreateForm] = useState({ contractCode: "", title: "", description: "" });
+  const [createPhotos, setCreatePhotos] = useState<string[]>([]);
+  const [createSaving, setCreateSaving] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -116,6 +129,76 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         .then((data) => data.success && setWorkers(data.workers));
     }
   }, [load, canAct]);
+
+  async function openCreate() {
+    setCreating(true);
+    try {
+      const res = await fetch("/api/contracts/page-data");
+      const data = await res.json();
+      if (!data.success) {
+        toast.danger(data.message);
+        return;
+      }
+      const list: OccupiedContract[] = data.contracts
+        .filter((c: { status: string }) => c.status === "ACTIVE")
+        .map((c: { contractCode: string; tenantName: string; room?: { roomCode: string } }) => ({
+          contractCode: c.contractCode,
+          roomCode: c.room?.roomCode ?? "",
+          tenantName: c.tenantName,
+        }))
+        .sort((a: OccupiedContract, b: OccupiedContract) => a.roomCode.localeCompare(b.roomCode));
+      setOccupied(list);
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    }
+  }
+
+  async function addCreatePhoto(file: File) {
+    if (file.size > 3 * 1024 * 1024) {
+      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      return;
+    }
+    if (createPhotos.length >= 3) {
+      toast.warning(t("最多传 3 张照片", "Max 3 photos"));
+      return;
+    }
+    const dataUrl = await readAsDataURL(file);
+    setCreatePhotos((p) => [...p, dataUrl]);
+  }
+
+  async function submitCreate() {
+    if (!createForm.contractCode) {
+      toast.warning(t("请选房间", "Please select a room"));
+      return;
+    }
+    if (!createForm.title.trim()) {
+      toast.warning(t("请填标题, 简单说一下什么坏了", "Please enter a title — briefly describe what's broken"));
+      return;
+    }
+    setCreateSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${createForm.contractCode}/maintenance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: createForm.title.trim(), description: createForm.description.trim(), photos: createPhotos }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setCreating(false);
+        setCreateForm({ contractCode: "", title: "", description: "" });
+        setCreatePhotos([]);
+        setRoomSearch("");
+        load();
+      } else {
+        toast.danger(data.message);
+      }
+    } catch {
+      toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
+    } finally {
+      setCreateSaving(false);
+    }
+  }
 
   function draftFor(r: MaintenanceRow): AssignDraft {
     return (
@@ -191,9 +274,16 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3.5 text-base font-semibold text-brand">
-          {t(`🔧 报修管理 — 处理中 (${open.length})`, `🔧 Maintenance Management — In Progress (${open.length})`)}
-        </h3>
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
+          <h3 className="text-base font-semibold text-brand">
+            {t(`🔧 报修管理 — 处理中 (${open.length})`, `🔧 Maintenance Management — In Progress (${open.length})`)}
+          </h3>
+          {canAct && (
+            <button onClick={openCreate} className="btn-primary text-sm">
+              ➕ {t("开报修", "New Request")}
+            </button>
+          )}
+        </div>
         {open.length === 0 && (
           <div className="py-8 text-center text-gray-400">{t("🎉 没有待处理的报修", "🎉 No pending maintenance requests")}</div>
         )}
@@ -419,6 +509,92 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
       )}
 
       {zoomUrl && <Lightbox src={zoomUrl} alt={t("报修照片", "Maintenance Photo")} onClose={() => setZoomUrl(null)} />}
+
+      {creating && (
+        <Modal onClose={() => setCreating(false)}>
+          <h3 className="mb-3.5 text-lg font-bold text-brand">🔧 {t("开报修", "New Maintenance Request")}</h3>
+          <div className="space-y-3">
+            {(() => {
+              const q = roomSearch.trim().toLowerCase();
+              const filtered = q
+                ? occupied.filter((o) => o.roomCode.toLowerCase().includes(q) || o.tenantName.toLowerCase().includes(q))
+                : occupied;
+              return (
+                <div>
+                  <label className="mb-1.5 block text-sm text-gray-600">{t("选房间", "Select Room")}</label>
+                  <input
+                    className="input mb-1.5"
+                    placeholder={t("🔍 搜房间/租客...", "🔍 Search room/tenant...")}
+                    value={roomSearch}
+                    onChange={(e) => setRoomSearch(e.target.value)}
+                  />
+                  <div className="max-h-[220px] overflow-auto rounded-lg border border-gray-200">
+                    {occupied.length === 0 && (
+                      <div className="p-3 text-center text-xs text-gray-400">{t("载入中...", "Loading...")}</div>
+                    )}
+                    {occupied.length > 0 && filtered.length === 0 && (
+                      <div className="p-3 text-center text-xs text-gray-400">{t("没有符合的房间", "No matching rooms")}</div>
+                    )}
+                    {filtered.map((o) => (
+                      <label
+                        key={o.contractCode}
+                        className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50"
+                      >
+                        <input
+                          type="radio"
+                          name="maintenance-room"
+                          checked={createForm.contractCode === o.contractCode}
+                          onChange={() => setCreateForm({ ...createForm, contractCode: o.contractCode })}
+                        />
+                        <span className="font-semibold">{o.roomCode}</span>
+                        <span className="text-gray-500">— {o.tenantName}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("标题", "Title")}</label>
+              <input
+                className="input"
+                placeholder={t("标题，例如: 冷气不制冷", "Title, e.g.: Air-cond not cooling")}
+                value={createForm.title}
+                onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("详细说明 (可选)", "Details (optional)")}</label>
+              <textarea
+                className="input"
+                rows={2}
+                value={createForm.description}
+                onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">{t("照片 (可选，最多3张)", "Photos (optional, up to 3)")}</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => e.target.files?.[0] && addCreatePhoto(e.target.files[0])}
+                className="block w-full text-xs text-gray-500 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark"
+              />
+              {createPhotos.length > 0 && (
+                <div className="mt-2 flex gap-2">
+                  {createPhotos.map((p, i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={i} src={p} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={submitCreate} disabled={createSaving} className="btn-primary w-full">
+              {createSaving ? t("提交中...", "Submitting...") : t("提交报修", "Submit Request")}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

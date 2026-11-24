@@ -52,8 +52,9 @@ export async function POST(
   const { contractId } = await params;
   const c = await prisma.contract.findUnique({ where: { contractCode: contractId } });
   if (!c) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
-  if (c.tenantId !== user.sub) {
-    return NextResponse.json({ success: false, message: "只有这张合同的租客本人可以提交报修" }, { status: 403 });
+  const isAdmin = user.role === "ADMIN";
+  if (c.tenantId !== user.sub && !isAdmin) {
+    return NextResponse.json({ success: false, message: "只有这张合同的租客本人或 Admin 可以提交报修" }, { status: 403 });
   }
   if (c.status !== "ACTIVE") {
     return NextResponse.json({ success: false, message: "合同不是生效状态, 不能报修" }, { status: 409 });
