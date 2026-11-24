@@ -116,6 +116,10 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   const [editing, setEditing] = useState<MaintenanceRow | null>(null);
   const [editForm, setEditForm] = useState({ title: "", description: "", cost: "" });
   const [editSaving, setEditSaving] = useState(false);
+  const [closedPeriod, setClosedPeriod] = useState<"month" | "year" | "all">("month");
+  const [closedMonth, setClosedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [closedYear, setClosedYear] = useState(new Date().getFullYear());
+  const [closedSearch, setClosedSearch] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -367,6 +371,23 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   const open = items!.filter((r) => r.status !== "COMPLETED" && r.status !== "CANCELLED");
   const closed = items!.filter((r) => r.status === "COMPLETED" || r.status === "CANCELLED");
 
+  const closedQ = closedSearch.trim().toLowerCase();
+  const filteredClosed = closed.filter((r) => {
+    const ymd = (r.resolvedAt ?? r.createdAt).slice(0, 10);
+    if (closedPeriod === "month" && ymd.slice(0, 7) !== closedMonth) return false;
+    if (closedPeriod === "year" && ymd.slice(0, 4) !== String(closedYear)) return false;
+    if (!closedQ) return true;
+    return (
+      r.requestCode.toLowerCase().includes(closedQ) ||
+      r.contractCode.toLowerCase().includes(closedQ) ||
+      r.roomCode.toLowerCase().includes(closedQ) ||
+      r.title.toLowerCase().includes(closedQ) ||
+      (r.assignedTo ?? "").toLowerCase().includes(closedQ) ||
+      (r.tenantName ?? "").toLowerCase().includes(closedQ)
+    );
+  });
+  const closedYears = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-5 shadow-sm">
@@ -591,9 +612,61 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
 
       {closed.length > 0 && (
         <div className="rounded-xl bg-white p-5 shadow-sm">
-          <h3 className="mb-3.5 text-base font-semibold text-gray-500">{t(`📁 已结束 (${closed.length})`, `📁 Closed (${closed.length})`)}</h3>
+          <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
+            <h3 className="text-base font-semibold text-gray-500">📁 {t("已结束", "Closed")}</h3>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex gap-1.5">
+                {(["month", "year", "all"] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setClosedPeriod(p)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      closedPeriod === p ? "bg-brand text-white" : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {p === "month" ? t("本月", "This Month") : p === "year" ? t("本年", "This Year") : t("全部", "All Time")}
+                  </button>
+                ))}
+              </div>
+              {closedPeriod === "month" && (
+                <input
+                  type="month"
+                  value={closedMonth}
+                  onChange={(e) => setClosedMonth(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                />
+              )}
+              {closedPeriod === "year" && (
+                <select
+                  value={closedYear}
+                  onChange={(e) => setClosedYear(Number(e.target.value))}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                >
+                  {closedYears.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <input
+                value={closedSearch}
+                onChange={(e) => setClosedSearch(e.target.value)}
+                placeholder={t("🔍 搜合同/房间/标题/员工...", "🔍 Search contract/room/title/worker...")}
+                className="input w-[220px] text-sm"
+              />
+            </div>
+          </div>
+          <div className="mb-2 text-xs text-gray-500">
+            {filteredClosed.length === closed.length
+              ? t(`共 ${closed.length} 笔`, `${closed.length} total`)
+              : t(`共 ${filteredClosed.length} 笔 (全部 ${closed.length} 笔中)`, `${filteredClosed.length} shown (of ${closed.length} total)`)}
+          </div>
+          {filteredClosed.length === 0 && (
+            <div className="py-6 text-center text-sm text-gray-400">{t("没有符合条件的记录", "No records match your filters")}</div>
+          )}
           <div className="space-y-2">
-            {closed.map((r) => {
+            {filteredClosed.map((r) => {
               const costUnpaid = r.cost != null && !r.costPaidAt;
               return (
                 <div key={r.requestCode} className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-50 py-2 text-sm last:border-none">
