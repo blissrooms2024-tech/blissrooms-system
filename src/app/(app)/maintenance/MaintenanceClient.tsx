@@ -104,7 +104,10 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   const [creating, setCreating] = useState(false);
   const [occupied, setOccupied] = useState<OccupiedContract[]>([]);
   const [roomSearch, setRoomSearch] = useState("");
-  const [createForm, setCreateForm] = useState({ contractCode: "", title: "", description: "" });
+  // "room:{contractCode}" for a specific room, or "unit:{unitCode}" for a shared-area issue
+  // (e.g. the living room) — resolved to an actual contractCode only at submit time, since the
+  // API still needs one room to attach the request to even when Admin picked the whole unit.
+  const [createForm, setCreateForm] = useState({ selection: "", title: "", description: "" });
   const [createPhotos, setCreatePhotos] = useState<string[]>([]);
   const [createSaving, setCreateSaving] = useState(false);
 
@@ -176,17 +179,32 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   }
 
   async function submitCreate() {
-    if (!createForm.contractCode) {
-      toast.warning(t("请选房间", "Please select a room"));
+    if (!createForm.selection) {
+      toast.warning(t("请选单位或房间", "Please select a unit or room"));
       return;
     }
     if (!createForm.title.trim()) {
       toast.warning(t("请填标题, 简单说一下什么坏了", "Please enter a title — briefly describe what's broken"));
       return;
     }
+    let contractCode: string | undefined;
+    if (createForm.selection.startsWith("room:")) {
+      contractCode = createForm.selection.slice("room:".length);
+    } else {
+      // Whole-unit selection — attach to that unit's first room (sorted by roomCode), since
+      // the API still needs one actual contract to hang the request off.
+      const unit = createForm.selection.slice("unit:".length);
+      contractCode = occupied
+        .filter((o) => unitCodeOf(o.roomCode) === unit)
+        .sort((a, b) => a.roomCode.localeCompare(b.roomCode))[0]?.contractCode;
+    }
+    if (!contractCode) {
+      toast.danger(t("找不到这个单位底下的房间", "Couldn't find a room under that unit"));
+      return;
+    }
     setCreateSaving(true);
     try {
-      const res = await fetch(`/api/contracts/${createForm.contractCode}/maintenance`, {
+      const res = await fetch(`/api/contracts/${contractCode}/maintenance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: createForm.title.trim(), description: createForm.description.trim(), photos: createPhotos }),
@@ -195,7 +213,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
       if (data.success) {
         toast.success(data.message);
         setCreating(false);
-        setCreateForm({ contractCode: "", title: "", description: "" });
+        setCreateForm({ selection: "", title: "", description: "" });
         setCreatePhotos([]);
         setRoomSearch("");
         load();
@@ -541,11 +559,11 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
               }
               return (
                 <div>
-                  <label className="mb-1.5 block text-sm text-gray-600">{t("选房间", "Select Room")}</label>
+                  <label className="mb-1.5 block text-sm text-gray-600">{t("选单位或房间", "Select Unit or Room")}</label>
                   <p className="mb-1.5 text-xs text-gray-400">
                     {t(
-                      "按单位分组 — 修客厅等共用区域时，选同一单位底下任一间房都可以",
-                      "Grouped by unit — for a shared area like the living room, pick any room under that same unit"
+                      "修客厅等共用区域就直接选单位；修某间房自己的问题就选那间房",
+                      "Pick the unit directly for a shared area like the living room; pick a specific room for an issue in that room itself"
                     )}
                   </p>
                   <input
@@ -554,7 +572,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     value={roomSearch}
                     onChange={(e) => setRoomSearch(e.target.value)}
                   />
-                  <div className="max-h-[260px] overflow-auto rounded-lg border border-gray-200">
+                  <div className="max-h-[280px] overflow-auto rounded-lg border border-gray-200">
                     {occupied.length === 0 && (
                       <div className="p-3 text-center text-xs text-gray-400">{t("载入中...", "Loading...")}</div>
                     )}
@@ -563,9 +581,18 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     )}
                     {[...groups.entries()].map(([unit, rooms]) => (
                       <div key={unit}>
-                        <div className="sticky top-0 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                        <div className="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
                           🏠 {unit} ({rooms.length})
                         </div>
+                        <label className="flex cursor-pointer items-center gap-2 border-b border-gray-100 bg-amber-50/50 px-3 py-2 text-sm hover:bg-amber-50">
+                          <input
+                            type="radio"
+                            name="maintenance-room"
+                            checked={createForm.selection === `unit:${unit}`}
+                            onChange={() => setCreateForm({ ...createForm, selection: `unit:${unit}` })}
+                          />
+                          <span className="font-semibold text-amber-700">{t(`${unit} — 整个单位/公共区域`, `${unit} — Whole Unit / Common Area`)}</span>
+                        </label>
                         {rooms.map((o) => (
                           <label
                             key={o.contractCode}
@@ -574,8 +601,8 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                             <input
                               type="radio"
                               name="maintenance-room"
-                              checked={createForm.contractCode === o.contractCode}
-                              onChange={() => setCreateForm({ ...createForm, contractCode: o.contractCode })}
+                              checked={createForm.selection === `room:${o.contractCode}`}
+                              onChange={() => setCreateForm({ ...createForm, selection: `room:${o.contractCode}` })}
                             />
                             <span className="font-semibold">{o.roomCode}</span>
                             <span className="text-gray-500">— {o.tenantName}</span>
