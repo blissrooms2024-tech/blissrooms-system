@@ -198,10 +198,10 @@ export default function EditContractModal({
                 ))}
               </select>
             </Field>
-            <Field label={t("押金 Security", "Security Deposit")}>
+            <Field label={t("押金 Security RM", "Security Deposit RM")}>
               <input type="number" className="input" value={form.securityDeposit} onChange={(e) => set("securityDeposit", e.target.value)} />
             </Field>
-            <Field label={t("水电押", "Utilities Deposit")}>
+            <Field label={t("水电押 Utilities RM", "Utilities Deposit RM")}>
               <input type="number" className="input" value={form.utilitiesDeposit} onChange={(e) => set("utilitiesDeposit", e.target.value)} />
             </Field>
           </Row>
