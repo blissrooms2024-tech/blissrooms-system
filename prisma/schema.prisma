@@ -188,6 +188,9 @@ model Property {
   rooms        Room[]
   expenses     Expense[]
   claims       ExpenseClaim[]
+  info         PropertyInfo?
+  accessCards  AccessCard[]
+  utilities    UtilityAccount[]
 
   createdAt DateTime @default(now())
 }
@@ -228,6 +231,7 @@ model Room {
   carparkContracts Contract[] @relation("ContractCarparkRoom")
   expenses         Expense[]
   claims           ExpenseClaim[]
+  accessCards      AccessCard[]
 
   createdAt DateTime @default(now())
 
@@ -589,4 +593,107 @@ model Log {
   status      String?
   relatedId   String?
   triggeredBy String?
+}
+
+/// Day-to-day unit details for Boss/Admin (one row per Property, created on first save). Kept
+/// out of Property itself so existing Property queries never pick up the passwords below.
+/// Passwords are only ever sent to the browser through the reveal endpoint, which logs who
+/// looked; the tenant-facing WiFi endpoint only returns wifiName/wifiPassword.
+model PropertyInfo {
+  id                     String    @id @default(cuid())
+  propertyId             String    @unique
+  property               Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  // Unit basics
+  unitNo                 String?
+  sizeSqft               Int?
+  bathrooms              Int?
+  parkingBays            Int?
+  /// Parking bay numbers as painted in the building, e.g. "B2-118, B2-119".
+  parkingLotNos          String?
+  airconCount            Int?
+  waterHeaterCount       Int?
+  furnishing             String?
+  /// Unit / floor-plan photos (Vercel Blob URLs via /api/blob).
+  photos                 String[]  @default([])
+
+  // Passwords (masked; reveal is logged)
+  wifiName               String?
+  wifiPassword           String?
+  routerLogin            String?
+  smartLockPassword      String?
+  mailboxNo              String?
+  mailboxPassword        String?
+
+  // Management office / building
+  mgmtContactName        String?
+  mgmtOfficePhone        String?
+  guardhousePhone        String?
+  visitorApp             String?
+  buildingRules          String?
+
+  // Owner lease (owner pays maintenance fee, sinking fund, quit rent, assessment, insurance)
+  ownerPhone             String?
+  ownerBank              String?
+  ownerLeaseStart        DateTime?
+  ownerLeaseEnd          DateTime?
+  ownerRentDueDay        Int?
+  renewalNoticeDays      Int?
+
+  // Equipment
+  appliances             String?
+  airconLastServiced     DateTime?
+  fireExtinguisherExpiry DateTime?
+
+  updatedAt              DateTime  @updatedAt
+  updatedBy              String?
+}
+
+/// One physical access item: access card, RFID tag, carpark remote, door key, mailbox key.
+model AccessCard {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  /// ACCESS_CARD | RFID | REMOTE | KEY | MAILBOX_KEY | OTHER
+  cardType   String
+  serialNo   String?
+  /// ROOM (held by whoever rents roomId) | OFFICE | OWNER | OTHER
+  holder     String   @default("OFFICE")
+  roomId     String?
+  room       Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  /// IN_USE | SPARE | LOST
+  status     String   @default("SPARE")
+  deposit    Decimal? @db.Decimal(10, 2)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([propertyId])
+}
+
+/// A recurring bill account for a unit (electric, water, sewerage, WiFi, gas…).
+model UtilityAccount {
+  id            String    @id @default(cuid())
+  propertyId    String
+  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  /// ELECTRIC | WATER | SEWERAGE | WIFI | GAS | OTHER
+  utilityType   String
+  provider      String?
+  accountNo     String?
+  accountHolder String?
+  /// GOVERNMENT | MANAGEMENT | PROVIDER | OWNER — who the bill is paid to.
+  payTo         String    @default("PROVIDER")
+  /// Fixed monthly amount (e.g. WiFi plan); null = varies month to month.
+  fixedAmount   Decimal?  @db.Decimal(10, 2)
+  /// Day of month the bill is due (1–31).
+  dueDay        Int?
+  autoDebit     Boolean   @default(false)
+  meterNo       String?
+  /// Contract end (e.g. WiFi 24-month plan).
+  contractEnd   DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([propertyId])
 }
