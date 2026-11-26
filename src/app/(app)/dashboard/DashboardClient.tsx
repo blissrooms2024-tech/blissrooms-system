@@ -10,6 +10,8 @@ import { fmtDate, fmtMoney } from "@/lib/format";
 import { contractStatusLabel, maintenanceStatusLabel, ROLE_LABELS } from "@/lib/config";
 import { label, UTILITY_TYPE_LABELS } from "@/lib/unitInfo";
 import type { DashboardData } from "@/lib/dashboard";
+import type { QuoteOptions } from "@/lib/quoteOptions";
+import QuickQuote from "./QuickQuote";
 
 type Bill = DashboardData["todo"]["bills"][number];
 
@@ -52,7 +54,17 @@ function Stat({ n, l, href, tone = "text-brand" }: { n: ReactNode; l: string; hr
   );
 }
 
-export default function DashboardClient({ data, role, name }: { data: DashboardData; role: string; name: string }) {
+export default function DashboardClient({
+  data,
+  quoteOptions,
+  role,
+  name,
+}: {
+  data: DashboardData;
+  quoteOptions: QuoteOptions;
+  role: string;
+  name: string;
+}) {
   const { t, locale } = useLanguage();
   const router = useRouter();
   const toast = useToast();
@@ -143,6 +155,8 @@ export default function DashboardClient({ data, role, name }: { data: DashboardD
         </div>
         <div className="text-xs text-gray-500">{fmtDate(data.today)}</div>
       </div>
+
+      <QuickQuote options={quoteOptions} today={data.today} />
 
       {/* ---------------- Reports ---------------- */}
       <Card
@@ -408,6 +422,13 @@ export default function DashboardClient({ data, role, name }: { data: DashboardD
       {/* ---------------- Shortcuts ---------------- */}
       <Card title={`⚡ ${t("快捷键", "Shortcuts")}`}>
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-7">
+          <button
+            onClick={() => window.dispatchEvent(new Event("open-quick-quote"))}
+            className="flex flex-col items-center gap-1 rounded-xl bg-gray-50 px-1 py-3 text-center text-xs hover:bg-brand-light"
+          >
+            <span className="text-xl">🧮</span>
+            <span className="leading-tight text-gray-700">{t("快速报价", "Quick quote")}</span>
+          </button>
           {shortcuts.map((s) => (
             <Link key={s.href} href={s.href} className="flex flex-col items-center gap-1 rounded-xl bg-gray-50 px-1 py-3 text-center text-xs hover:bg-brand-light">
               <span className="text-xl">{s.icon}</span>
