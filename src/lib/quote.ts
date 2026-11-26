@@ -262,7 +262,19 @@ export function buildQuoteText(
   if (q.payBy) L.push(en ? `Please pay by: *${dateText(q.payBy, "en")}*` : `请在 *${dateText(q.payBy, "zh")}* 前付清`);
   if (opts.bank) {
     L.push("");
-    L.push(en ? `Payment to: ${opts.bank.name} ${opts.bank.accNo} (${opts.bank.holder})` : `付款户口：${opts.bank.name} ${opts.bank.accNo}（${opts.bank.holder}）`);
+    if (en) {
+      L.push("*Payment details*");
+      L.push(`Bank: ${opts.bank.name}`);
+      L.push(`Account no: ${opts.bank.accNo}`);
+      L.push(`Account name: ${opts.bank.holder}`);
+      L.push(`Reference: *${q.roomCode}* (please put the room code so we can verify the payment)`);
+    } else {
+      L.push("*付款户口*");
+      L.push(`银行：${opts.bank.name}`);
+      L.push(`户口号码：${opts.bank.accNo}`);
+      L.push(`户口名字：${opts.bank.holder}`);
+      L.push(`转账备注：*${q.roomCode}*（请写上房号，方便我们核对）`);
+    }
   }
   L.push("");
   L.push(en ? `_Quoted on ${dateText(opts.today, "en")}. Subject to room availability._` : `_报价日期 ${dateText(opts.today, "zh")}，以房间实际空置为准。_`);

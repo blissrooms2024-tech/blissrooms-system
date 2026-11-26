@@ -53,7 +53,6 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
   const [f, setF] = useState(fresh);
   const [showFees, setShowFees] = useState(false);
   const [lang, setLang] = useState<"en" | "zh">("en");
-  const [withBank, setWithBank] = useState(true);
   const [agentIdx, setAgentIdx] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -118,7 +117,8 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
           lang,
           companyName: COMPANY.NAME,
           today,
-          bank: withBank ? { name: COMPANY.BANK, accNo: COMPANY.ACC_NO, holder: COMPANY.NAME } : null,
+          // Always attached, with the room code as the transfer reference so payments can be matched.
+          bank: { name: COMPANY.BANK, accNo: COMPANY.ACC_NO, holder: COMPANY.NAME },
         })
       : "";
 
@@ -323,10 +323,6 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
                     </button>
                   ))}
                 </div>
-                <label className="flex items-center gap-1">
-                  <input type="checkbox" checked={withBank} onChange={(e) => setWithBank(e.target.checked)} />
-                  {t("附银行户口", "Bank details")}
-                </label>
               </div>
             </div>
             <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-3 font-sans text-[13px] leading-relaxed text-gray-800">{text}</pre>

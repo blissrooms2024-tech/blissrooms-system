@@ -175,6 +175,15 @@ export async function computePnl(fromMonth: string, toMonth: string) {
     if (!c) byMonth.set(month, (c = emptyCell()));
     return c;
   };
+  // Company-wide cost per month, by kind — for the "每月支出" breakdown. OTHER expenses are
+  // split by their own name (e.g. 排污费, 煤气费) so the breakdown says what they actually were.
+  const monthCosts = new Map<string, Record<string, number>>();
+  const addCost = (month: string, key: string, amount: number) => {
+    if (!amount) return;
+    const m = monthCosts.get(month) ?? {};
+    m[key] = (m[key] ?? 0) + amount;
+    monthCosts.set(month, m);
+  };
   const lines = new Map<string, PnlLine[]>();
   const addLine = (unit: string, line: PnlLine) => {
     if (!lines.has(unit)) lines.set(unit, []);
@@ -200,6 +209,7 @@ export async function computePnl(fromMonth: string, toMonth: string) {
     for (const m of months) {
       if (m < start || m > end || m > nowMonth) continue;
       cell(p.id, m).ownerRent += Number(p.ownerRentalAmount);
+      addCost(m, "OWNER_RENT", Number(p.ownerRentalAmount));
     }
   }
 
@@ -208,6 +218,7 @@ export async function computePnl(fromMonth: string, toMonth: string) {
     const unit = e.propertyId ?? COMPANY;
     const c = cell(unit, e.periodMonth);
     c.expenses[e.category] = (c.expenses[e.category] ?? 0) + Number(e.amount);
+    addCost(e.periodMonth, e.category === "OTHER" && e.customLabel ? `OTHER:${e.customLabel}` : e.category, Number(e.amount));
     addLine(unit, {
       key: e.category,
       label: e.customLabel ?? "",
@@ -223,6 +234,7 @@ export async function computePnl(fromMonth: string, toMonth: string) {
     if (!m.costPaidAt || booked.maintenance.has(m.requestCode)) continue;
     const unit = roomInfo.get(m.roomCode)?.propertyId ?? UNASSIGNED;
     cell(unit, monthOf(m.costPaidAt)).legacyMaintenance += Number(m.cost);
+    addCost(monthOf(m.costPaidAt), "LEGACY_MAINTENANCE", Number(m.cost));
     addLine(unit, {
       key: "LEGACY_MAINTENANCE",
       label: m.title,
@@ -238,6 +250,7 @@ export async function computePnl(fromMonth: string, toMonth: string) {
     if (!c.commPaidAt || booked.commission.has(c.contractCode)) continue;
     const unit = c.room.propertyId ?? UNASSIGNED;
     cell(unit, monthOf(c.commPaidAt)).legacyCommission += Number(c.commAmount);
+    addCost(monthOf(c.commPaidAt), "LEGACY_COMMISSION", Number(c.commAmount));
     addLine(unit, {
       key: "LEGACY_COMMISSION",
       label: c.agentName,
@@ -253,9 +266,10 @@ export async function computePnl(fromMonth: string, toMonth: string) {
     if (p.ownerRentalAmount !== null || p.managementFeeRate === null) continue;
     const byMonth = cells.get(p.id);
     if (!byMonth) continue;
-    for (const c of byMonth.values()) {
+    for (const [m, c] of byMonth.entries()) {
       const rev = c.revenue.RENTAL + c.revenue.CARPARK + c.revenue.OTHER;
       c.landlordShare = rev * (1 - Number(p.managementFeeRate));
+      addCost(m, "LANDLORD_SHARE", c.landlordShare);
     }
   }
 
@@ -301,7 +315,14 @@ export async function computePnl(fromMonth: string, toMonth: string) {
       if (c) addInto(t, c);
     }
     finish(t);
-    return { month: m, revenue: t.revenueTotal, cost: t.costTotal, net: t.net };
+    return {
+      month: m,
+      revenue: t.revenueTotal,
+      cost: t.costTotal,
+      net: t.net,
+      revenueBy: { ...t.revenue },
+      costs: monthCosts.get(m) ?? {},
+    };
   });
 
   return {

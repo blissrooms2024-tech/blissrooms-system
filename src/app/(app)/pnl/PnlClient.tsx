@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
 import { fmtDate, fmtMoney } from "@/lib/format";
 import { expenseCategoryLabelLocale } from "@/lib/config";
@@ -59,9 +60,14 @@ function NetText({ v, className = "" }: { v: number; className?: string }) {
 export default function PnlClient() {
   const { t, locale } = useLanguage();
   const now = new Date();
-  const [period, setPeriod] = useState<Period>("month");
-  const [month, setMonth] = useState(thisMonth());
-  const [year, setYear] = useState(now.getFullYear());
+  // The home page links here with ?period=month&month=YYYY-MM or ?period=year&year=YYYY.
+  const sp = useSearchParams();
+  const spPeriod = sp.get("period");
+  const spMonth = sp.get("month");
+  const spYear = Number(sp.get("year"));
+  const [period, setPeriod] = useState<Period>(spPeriod === "year" || spPeriod === "quarter" ? spPeriod : "month");
+  const [month, setMonth] = useState(spMonth && /^\d{4}-\d{2}$/.test(spMonth) ? spMonth : thisMonth());
+  const [year, setYear] = useState(spYear >= 2000 && spYear <= 2100 ? spYear : now.getFullYear());
   const [quarter, setQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
   const [data, setData] = useState<PnlData | null>(null);
   const [loading, setLoading] = useState(true);

@@ -12,10 +12,10 @@ import { label, UTILITY_TYPE_LABELS } from "@/lib/unitInfo";
 import type { DashboardData } from "@/lib/dashboard";
 import type { QuoteOptions } from "@/lib/quoteOptions";
 import QuickQuote from "./QuickQuote";
+import ReportsCard from "./ReportsCard";
 
 type Bill = DashboardData["todo"]["bills"][number];
 
-const signed = (v: number) => (v < 0 ? `-${fmtMoney(-v)}` : fmtMoney(v));
 
 function Card({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -143,9 +143,6 @@ export default function DashboardClient({
     { href: "/activity", icon: "🕘", l: t("活动记录", "Activity") },
   ];
 
-  const pct = (v: number, base: number) => (base ? Math.round(((v - base) / Math.abs(base)) * 100) : null);
-  const revChange = pct(reports.thisMonth.revenue, reports.lastMonth.revenue);
-  const MEDAL = ["🥇", "🥈", "🥉"];
 
   return (
     <div className="space-y-4">
@@ -158,77 +155,7 @@ export default function DashboardClient({
 
       <QuickQuote options={quoteOptions} today={data.today} />
 
-      {/* ---------------- Reports ---------------- */}
-      <Card
-        title={`📊 ${t("报告", "Reports")}`}
-        action={
-          <Link href="/pnl" className="text-xs text-brand underline">
-            {t("损益表 →", "P&L →")}
-          </Link>
-        }
-      >
-        <div className="grid gap-2.5 sm:grid-cols-3">
-          {(
-            [
-              [t("本月", "This month"), reports.thisMonth, `/pnl`],
-              [t("上月", "Last month"), reports.lastMonth, `/pnl`],
-              [t(`${reports.year} 年至今`, `${reports.year} to date`), reports.ytd, `/pnl`],
-            ] as const
-          ).map(([lbl, r, href], i) => (
-            <Link key={lbl} href={href} className="rounded-xl bg-gray-50 p-3.5 transition hover:bg-brand-light">
-              <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
-                <span className="font-semibold">{lbl}</span>
-                {i === 0 && revChange !== null && (
-                  <span className={revChange >= 0 ? "text-green-700" : "text-red-600"}>
-                    {t("营业额", "Revenue")} {revChange >= 0 ? "▲" : "▼"} {Math.abs(revChange)}%
-                  </span>
-                )}
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">{t("营业额", "Revenue")}</span>
-                <b>{fmtMoney(r.revenue)}</b>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">{t("成本", "Costs")}</span>
-                <span>{fmtMoney(r.cost)}</span>
-              </div>
-              <div className="mt-1 flex justify-between border-t border-gray-200 pt-1 text-sm">
-                <span className="text-gray-500">{t("净利润", "Net profit")}</span>
-                <b className={r.net < 0 ? "text-red-600" : "text-green-700"}>{signed(r.net)}</b>
-              </div>
-            </Link>
-          ))}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-          <Link href="/finance" className="text-brand underline">
-            {t("财务总览（现金、押金）", "Finance overview (cash, deposits)")}
-          </Link>
-          <Link href="/revenue-report?period=year" className="text-brand underline">
-            {t("营业额报告", "Revenue report")}
-          </Link>
-        </div>
-
-        <SubHead>
-          💼 {t("销售", "Sales")}：{t("本月新签", "this month")} <b className="text-brand">{reports.sales.thisMonth}</b> {t("份", "")} ·{" "}
-          {t("今年", "this year")} <b className="text-brand">{reports.sales.thisYear}</b> {t("份合同", "contracts")}
-        </SubHead>
-        {reports.sales.leaderboard.length === 0 ? (
-          <div className="py-3 text-center text-sm text-gray-400">{t("还没有成交记录", "No deals yet")}</div>
-        ) : (
-          <div className="divide-y divide-gray-100 rounded-lg border border-gray-100 text-sm">
-            {reports.sales.leaderboard.map((a, i) => (
-              <div key={a.name} className="flex items-center justify-between gap-2 px-3 py-2">
-                <span>
-                  {MEDAL[i] ?? `${i + 1}.`} <b>{a.name}</b>
-                </span>
-                <span className="text-xs text-gray-500">
-                  {t("本月", "Month")} <b className="text-gray-800">{a.thisMonth}</b> · {t("今年", "Year")} {a.thisYear} · {t("累计", "Total")} {a.total}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <ReportsCard initial={reports} />
 
       {/* ---------------- Rooms ---------------- */}
       <Card

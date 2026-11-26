@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { computePnl } from "@/lib/pnl";
-import { addMonths, getBillReminders, myDay, periodOf } from "@/lib/bills";
+import { getReports } from "@/lib/reports";
+import { getBillReminders, myDay, periodOf } from "@/lib/bills";
 import { RULES } from "@/lib/config";
 
 /** Everything the Boss/Admin home page shows, in one call. */
@@ -15,27 +15,19 @@ const daysBetween = (from: Date, to: Date) => Math.round((myDay(to).getTime() - 
 export async function getDashboardData(viewer: { id: string; role: string }) {
   const today = myDay();
   const curP = periodOf(today);
-  const prevP = addMonths(curP, -1);
   const year = curP.slice(0, 4);
-  const fromP = prevP < `${year}-01` ? prevP : `${year}-01`;
-  const startOfMonth = new Date(`${curP}-01T00:00:00.000Z`);
-  const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
   // Date.UTC rolls an impossible day (e.g. 31 Feb) into the next month instead of failing.
   const expiryCutoff = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + RULES.NOTICE_MONTHS, today.getUTCDate()));
   const expiryHideBefore = new Date(today.getTime() - RULES.RENEWAL_LIST_HIDE_AFTER_DAYS * DAY_MS);
 
   const [
-    pnl,
+    reports,
     roomGroups,
     activeTenantRows,
     expiring,
     moveInCandidates,
     openMaintenance,
     bills,
-    agents,
-    salesTotal,
-    salesYear,
-    salesMonth,
     pendingReview,
     pendingApprove,
     pendingUsers,
@@ -43,7 +35,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     claimGroups,
     activity,
   ] = await Promise.all([
-    computePnl(fromP, curP),
+    getReports(curP, Number(year)),
     prisma.room.groupBy({ by: ["status", "isCarpark"], _count: true }),
     prisma.contract.findMany({
       where: { status: { in: ["ACTIVE", "EXPIRING"] } },
@@ -101,11 +93,6 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
       orderBy: { createdAt: "asc" },
     }),
     getBillReminders(),
-    prisma.user.findMany({ where: { role: "AGENT" }, select: { id: true, name: true } }),
-    // Same definition as the old leaderboard: every non-draft contract counts as a deal.
-    prisma.contract.groupBy({ by: ["agentId"], where: { status: { not: "DRAFT" } }, _count: true }),
-    prisma.contract.groupBy({ by: ["agentId"], where: { status: { not: "DRAFT" }, createdAt: { gte: startOfYear } }, _count: true }),
-    prisma.contract.groupBy({ by: ["agentId"], where: { status: { not: "DRAFT" }, createdAt: { gte: startOfMonth } }, _count: true }),
     prisma.payment.count({ where: { status: "PENDING_REVIEW" } }),
     prisma.contract.count({ where: { status: "PENDING_APPROVE" } }),
     prisma.user.count({ where: { status: "PENDING" } }),
@@ -122,27 +109,6 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     }),
     prisma.activityLog.findMany({ orderBy: { createdAt: "desc" }, take: 12 }),
   ]);
-
-  // --- Reports -----------------------------------------------------------------------------
-  const pick = (p: string) => pnl.trend.find((t) => t.month === p) ?? { month: p, revenue: 0, cost: 0, net: 0 };
-  const ytd = pnl.trend
-    .filter((t) => t.month.startsWith(year))
-    .reduce((s, t) => ({ revenue: s.revenue + t.revenue, cost: s.cost + t.cost, net: s.net + t.net }), { revenue: 0, cost: 0, net: 0 });
-
-  const agentName = new Map(agents.map((a) => [a.id, a.name]));
-  const yearMap = new Map(salesYear.map((g) => [g.agentId, g._count]));
-  const monthMap = new Map(salesMonth.map((g) => [g.agentId, g._count]));
-  const leaderboard = salesTotal
-    .filter((g) => agentName.has(g.agentId))
-    .map((g) => ({
-      name: agentName.get(g.agentId)!,
-      total: g._count,
-      thisYear: yearMap.get(g.agentId) ?? 0,
-      thisMonth: monthMap.get(g.agentId) ?? 0,
-    }))
-    .sort((a, b) => b.thisMonth - a.thisMonth || b.thisYear - a.thisYear || b.total - a.total)
-    .slice(0, 5);
-  const sumCounts = (gs: { _count: number }[]) => gs.reduce((s, g) => s + g._count, 0);
 
   // --- Rooms -------------------------------------------------------------------------------
   const blank = () => ({ VACANT: 0, OCCUPIED: 0, RESERVED: 0, MAINTENANCE: 0, STORE: 0 } as Record<string, number>);
@@ -219,13 +185,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
 
   return {
     today: today.toISOString().slice(0, 10),
-    reports: {
-      thisMonth: pick(curP),
-      lastMonth: pick(prevP),
-      ytd,
-      year,
-      sales: { thisMonth: sumCounts(salesMonth), thisYear: sumCounts(salesYear), leaderboard },
-    },
+    reports,
     rooms: {
       total: rentable(rc),
       occupied: rc.OCCUPIED,
