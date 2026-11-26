@@ -3,7 +3,7 @@
  * masking) and the UI (forms, labels) so the two can't drift apart.
  */
 
-export type InfoFieldType = "text" | "int" | "date" | "textarea";
+export type InfoFieldType = "text" | "int" | "date" | "month" | "textarea";
 
 export interface InfoField {
   key: string;
@@ -73,6 +73,7 @@ export const INFO_GROUPS: InfoGroup[] = [
       { key: "ownerLeaseStart", zh: "租约开始", en: "Lease start", type: "date" },
       { key: "ownerLeaseEnd", zh: "租约结束", en: "Lease end", type: "date" },
       { key: "ownerRentDueDay", zh: "每月几号付屋主租金", en: "Owner rent due (day of month)", type: "int" },
+      { key: "ownerRentPaidPeriod", zh: "屋主租金已付到（月份）", en: "Owner rent paid up to (month)", type: "month" },
       { key: "renewalNoticeDays", zh: "续约通知期（天）", en: "Renewal notice (days)", type: "int" },
     ],
   },

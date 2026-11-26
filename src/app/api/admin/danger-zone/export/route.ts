@@ -11,7 +11,7 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "只有 Admin 可以看" }, { status: 403 });
   }
 
-  const [users, properties, rooms, contracts, payments, commissions, moveForms, maintenance, warningLetters, logs, expenses, claims, vouchers, unitInfo, accessCards, utilityAccounts] =
+  const [users, properties, rooms, contracts, payments, commissions, moveForms, maintenance, warningLetters, logs, expenses, claims, vouchers, unitInfo, accessCards, utilityAccounts, activity] =
     await Promise.all([
       prisma.user.findMany({ where: { role: { not: "ADMIN" } } }),
       prisma.property.findMany(),
@@ -29,6 +29,7 @@ export async function GET() {
       prisma.propertyInfo.findMany(),
       prisma.accessCard.findMany(),
       prisma.utilityAccount.findMany(),
+      prisma.activityLog.findMany({ orderBy: { createdAt: "asc" } }),
     ]);
 
   return NextResponse.json(
@@ -50,6 +51,7 @@ export async function GET() {
       unitInfo,
       accessCards,
       utilityAccounts,
+      activity,
     })
   );
 }

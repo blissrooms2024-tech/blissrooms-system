@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ expenseId: string }> }
 ) {
@@ -27,3 +28,5 @@ export async function DELETE(
   await prisma.expense.delete({ where: { id: expense.id } });
   return NextResponse.json({ success: true, message: "✅ 支出记录已删除" });
 }
+
+export const DELETE = withActivity(handleDELETE);

@@ -65,6 +65,18 @@ export const utilitySchema = z.object({
   meterNo: optText(80),
   contractEnd: optDate,
   notes: optText(300),
+  /** Latest billing month marked paid (YYYY-MM) — editable in case someone marked it by mistake. */
+  lastPaidPeriod: z
+    .union([z.string(), z.null()])
+    .optional()
+    .transform((v, ctx) => {
+      if (!v) return null;
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(v)) {
+        ctx.addIssue({ code: "custom", message: "已付月份格式不对" });
+        return z.NEVER;
+      }
+      return v;
+    }),
 });
 
 export function firstIssue(err: z.ZodError): string {

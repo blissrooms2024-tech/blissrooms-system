@@ -7,6 +7,7 @@ import { RENT_ARREARS } from "@/lib/config";
 import { computeBillBreakdown } from "@/lib/billBreakdown";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const PRORATA_NOTE = "Pro-rata 租金 (提前入住)";
 
@@ -91,7 +92,7 @@ export async function GET(
   });
 }
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -263,7 +264,7 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: `✅ 合同已更新: ${contractId}${prorataMsg}` });
 }
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -308,3 +309,6 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: "✅ 合同已删, 房间放回空房" });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);

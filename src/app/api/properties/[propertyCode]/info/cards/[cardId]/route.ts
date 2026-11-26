@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUnitInfoAccess, resolveRoom } from "@/lib/unitInfoServer";
 import { cardSchema, firstIssue } from "@/lib/unitInfoSchemas";
+import { withActivity } from "@/lib/activity";
 
 type Ctx = { params: Promise<{ propertyCode: string; cardId: string }> };
 
@@ -16,7 +17,7 @@ async function load(ctx: Ctx) {
   return { ...auth, card };
 }
 
-export async function PUT(req: NextRequest, ctx: Ctx) {
+async function handlePUT(req: NextRequest, ctx: Ctx) {
   const r = await load(ctx);
   if (r instanceof NextResponse) return r;
   const parsed = cardSchema.safeParse(await req.json().catch(() => null));
@@ -28,9 +29,12 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ success: true, message: "✅ 已更新" });
 }
 
-export async function DELETE(_req: NextRequest, ctx: Ctx) {
+async function handleDELETE(_req: NextRequest, ctx: Ctx) {
   const r = await load(ctx);
   if (r instanceof NextResponse) return r;
   await prisma.accessCard.delete({ where: { id: r.card.id } });
   return NextResponse.json({ success: true, message: "✅ 已删除" });
 }
+
+export const PUT = withActivity(handlePUT);
+export const DELETE = withActivity(handleDELETE);

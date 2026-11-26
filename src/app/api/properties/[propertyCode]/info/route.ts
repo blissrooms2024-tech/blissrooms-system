@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
 import { nextDueDate } from "@/lib/unitInfo";
 import { maskInfo, parseInfoUpdate, requireUnitInfoAccess } from "@/lib/unitInfoServer";
+import { withActivity } from "@/lib/activity";
 
 type Ctx = { params: Promise<{ propertyCode: string }> };
 
@@ -70,6 +71,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
         dueDay: u.dueDay,
         nextDue: u.dueDay ? nextDueDate(u.dueDay) : null,
         autoDebit: u.autoDebit,
+        lastPaidPeriod: u.lastPaidPeriod,
         meterNo: u.meterNo,
         contractEnd: u.contractEnd,
         notes: u.notes,
@@ -80,7 +82,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 }
 
 /** Partial update — only the fields sent are changed. */
-export async function PUT(req: NextRequest, { params }: Ctx) {
+async function handlePUT(req: NextRequest, { params }: Ctx) {
   const auth = await requireUnitInfoAccess((await params).propertyCode);
   if (auth instanceof NextResponse) return auth;
   const { user, property } = auth;
@@ -96,3 +98,5 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   });
   return NextResponse.json({ success: true, message: "✅ 已保存" });
 }
+
+export const PUT = withActivity(handlePUT);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { notifyTenantBillReviewed } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const fixDateSchema = z.object({
   action: z.literal("fix-paid-date").optional(),
@@ -49,7 +50,7 @@ const patchSchema = z.union([editPeriodSchema, markPaidSchema, editAmountSchema,
  *   amountDue still counts. Works on any status; a Paid record's amountPaid is kept in sync
  *   with the corrected amountDue (a Paid row always represents a fully-settled amount, not a
  *   partial one). */
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
 ) {
@@ -159,7 +160,7 @@ export async function PATCH(
  * already-Paid records in the Payment History (deleting one reduces "已收" and correspondingly
  * increases "还欠" for that contract). Admin confirmed they want this for cleaning up mistakes —
  * there's no undo either way. */
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
 ) {
@@ -183,3 +184,6 @@ export async function DELETE(
           : "✅ 账单已删除",
   });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);

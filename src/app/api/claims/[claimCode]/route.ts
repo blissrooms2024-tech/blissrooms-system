@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { canReviewClaims, isOwnUploadUrl } from "@/lib/claims";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("approve") }),
@@ -32,7 +33,7 @@ function fail(message: string, status = 400) {
  * Every transition is a conditional update on the current status, so two reviewers clicking
  * at the same time can't both succeed (e.g. booking the expense twice).
  */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ claimCode: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ claimCode: string }> }) {
   const user = await getCurrentUser();
   if (!user || !canReviewClaims(user)) return fail("只有 Boss / Admin 可以审批报销", 403);
 
@@ -121,7 +122,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ cl
 }
 
 /** Withdraw a claim that hasn't been approved: the submitter themselves, or Boss. */
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ claimCode: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ claimCode: string }> }) {
   const user = await getCurrentUser();
   if (!user) return fail("请重新登录", 401);
 
@@ -136,3 +137,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (deleted.count !== 1) return fail("已批准或已付款的报销不能删除", 409);
   return NextResponse.json({ success: true, message: `已删除 ${claimCode}` });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);

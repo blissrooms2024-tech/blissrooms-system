@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 const CONFIRM_PHRASE = "DELETE ALL";
 
@@ -11,7 +12,7 @@ const schema = z.object({ confirmText: z.string() });
  * forms/maintenance/warning letters/logs/id counters) and every non-ADMIN user, keeping ADMIN
  * accounts untouched so whoever runs this can still log in afterward. Requires the exact
  * confirmation phrase to guard against a stray click — this cannot be undone. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以执行这个操作" }, { status: 403 });
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
   const result = await prisma.$transaction(async (tx) => {
     // Children before parents: claims point at expenses, expenses/vouchers at units/rooms/contracts.
     const claims = await tx.expenseClaim.deleteMany({});
+    // The reset itself is recorded straight after (by withActivity), so the fresh log starts
+    // with who wiped everything and when.
+    const activity = await tx.activityLog.deleteMany({});
     const expenses = await tx.expense.deleteMany({});
     const vouchers = await tx.voucher.deleteMany({});
     const payments = await tx.payment.deleteMany({});
@@ -53,8 +57,11 @@ export async function POST(req: NextRequest) {
       claims: claims.count,
       expenses: expenses.count,
       vouchers: vouchers.count,
+      activity: activity.count,
     };
   });
 
   return NextResponse.json({ success: true, message: "✅ 已清空所有资料，只留 Admin 账号", result });
 }
+
+export const POST = withActivity(handlePOST);

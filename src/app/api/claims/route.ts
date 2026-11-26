@@ -12,6 +12,7 @@ import {
   isOwnUploadUrl,
   MAX_RECEIPTS_PER_CLAIM,
 } from "@/lib/claims";
+import { withActivity } from "@/lib/activity";
 
 const claimInclude = {
   property: { select: { propertyCode: true, name: true } },
@@ -113,7 +114,7 @@ const schema = z.object({
   receipts: z.array(z.string().min(1)).min(1).max(MAX_RECEIPTS_PER_CLAIM),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || !canSubmitClaims(user)) {
     return NextResponse.json({ success: false, message: "只有 Admin 和 Worker 可以提交报销" }, { status: 403 });
@@ -176,3 +177,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, claimCode, message: `✅ 报销已提交: ${claimCode}，等待审批` });
 }
+
+export const POST = withActivity(handlePOST);

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
 import { FEES, COMPANY, COMPANY_AUTO_SIGNATURE } from "@/lib/config";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   commencementDate: z.string().trim().min(1, "请选新合同的生效日期"),
@@ -20,7 +21,7 @@ const schema = z.object({
  * and a RM200 renewal admin fee bill is opened on the new contract. The old contract stays
  * ACTIVE until the new one is actually signed (see the sign endpoint), so nothing changes for
  * the tenant mid-process if the renewal is abandoned before signing. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -206,3 +207,5 @@ export async function POST(
     newContractCode,
   });
 }
+
+export const POST = withActivity(handlePOST);

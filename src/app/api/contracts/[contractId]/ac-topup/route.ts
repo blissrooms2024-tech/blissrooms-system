@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
 import { newId } from "@/lib/id";
 import { notifyAdminsSlipUploaded } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   amount: z.coerce.number().positive(),
@@ -15,7 +16,7 @@ const schema = z.object({
  * themselves, then reports the amount + uploads proof here — unlike the other bill types,
  * there's no Admin-issued bill to upload against first. Feeds straight into the same
  * PENDING_REVIEW approve/reject queue Admin already uses for slip review. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -75,3 +76,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withActivity(handlePOST);

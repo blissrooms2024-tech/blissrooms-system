@@ -20,6 +20,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/maintenance", label: "🔧 报修", labelEn: "🔧 Maintenance" },
     { href: "/agent-commissions", label: "💰 Agent 佣金", labelEn: "💰 Agent Commissions" },
     { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
+    { href: "/activity", label: "🕘 活动记录", labelEn: "🕘 Activity Log" },
   ],
   ADMIN: [
     { href: "/dashboard", label: "📊 总览", labelEn: "📊 Overview" },
@@ -37,6 +38,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/maintenance", label: "🔧 报修", labelEn: "🔧 Maintenance" },
     { href: "/agent-commissions", label: "💰 Agent 佣金", labelEn: "💰 Agent Commissions" },
     { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
+    { href: "/activity", label: "🕘 活动记录", labelEn: "🕘 Activity Log" },
     { href: "/users", label: "👥 用户", labelEn: "👥 Users" },
   ],
   AGENT: [

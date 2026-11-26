@@ -46,6 +46,7 @@ interface Utility {
   dueDay: number | null;
   nextDue: string | null;
   autoDebit: boolean;
+  lastPaidPeriod: string | null;
   meterNo: string | null;
   contractEnd: string | null;
   notes: string | null;
@@ -74,6 +75,7 @@ const emptyUtility = {
   fixedAmount: "",
   dueDay: "",
   autoDebit: false,
+  lastPaidPeriod: "",
   meterNo: "",
   contractEnd: "",
   notes: "",
@@ -480,6 +482,7 @@ export default function UnitInfoClient({ propertyCode }: { propertyCode: string 
                     fixedAmount: u.fixedAmount === null ? "" : String(u.fixedAmount),
                     dueDay: u.dueDay === null ? "" : String(u.dueDay),
                     autoDebit: u.autoDebit,
+                    lastPaidPeriod: u.lastPaidPeriod ?? "",
                     meterNo: u.meterNo ?? "",
                     contractEnd: u.contractEnd ?? "",
                     notes: u.notes ?? "",
@@ -503,6 +506,11 @@ export default function UnitInfoClient({ propertyCode }: { propertyCode: string 
                     </span>
                   )}
                   {u.autoDebit && <span className="text-green-700">✓ {t("自动扣款", "Auto-debit")}</span>}
+                  {u.lastPaidPeriod && (
+                    <span className="text-green-700">
+                      ✓ {t("已付到", "Paid up to")} {u.lastPaidPeriod}
+                    </span>
+                  )}
                 </div>
                 {(u.meterNo || u.contractEnd) && (
                   <div className="text-xs text-gray-500">
@@ -538,7 +546,7 @@ export default function UnitInfoClient({ propertyCode }: { propertyCode: string 
                 ) : (
                   <input
                     className="input"
-                    type={f.type === "int" ? "number" : f.type === "date" ? "date" : "text"}
+                    type={f.type === "int" ? "number" : f.type === "date" ? "date" : f.type === "month" ? "month" : "text"}
                     inputMode={f.type === "int" ? "numeric" : undefined}
                     autoComplete="off"
                     value={form[f.key] ?? ""}
@@ -686,6 +694,9 @@ export default function UnitInfoClient({ propertyCode }: { propertyCode: string 
             </Field>
             <Field label={t("合约到期（例如 WiFi 24 个月）", "Contract end (e.g. 24-month WiFi)")}>
               <input className="input" type="date" value={utilForm.contractEnd} onChange={(e) => setUtilForm({ ...utilForm, contractEnd: e.target.value })} />
+            </Field>
+            <Field label={t("已付到（月份）", "Paid up to (month)")}>
+              <input className="input" type="month" value={utilForm.lastPaidPeriod} onChange={(e) => setUtilForm({ ...utilForm, lastPaidPeriod: e.target.value })} />
             </Field>
             <label className="flex items-center gap-2 text-sm sm:pt-6">
               <input type="checkbox" checked={utilForm.autoDebit} onChange={(e) => setUtilForm({ ...utilForm, autoDebit: e.target.checked })} />

@@ -59,6 +59,9 @@ export function parseInfoUpdate(input: unknown): { data: Record<string, string |
       const min = key === "ownerRentDueDay" ? 1 : 0;
       if (!Number.isInteger(n) || n < min || n > max) return { error: `${f.zh} 要填 ${min}–${max} 的整数` };
       data[key] = n;
+    } else if (f.type === "month") {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(s)) return { error: `${f.zh} 月份格式不对` };
+      data[key] = s;
     } else if (f.type === "date") {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(new Date(`${s}T00:00:00Z`).getTime())) return { error: `${f.zh} 日期格式不对` };
       data[key] = new Date(`${s}T00:00:00.000Z`);

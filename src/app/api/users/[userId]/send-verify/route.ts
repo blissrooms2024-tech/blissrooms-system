@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { sendVerifyEmail } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
@@ -51,3 +52,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: `✅ 验证邮件已发去 ${user.email}（登录密码: ${password}）` });
 }
+
+export const POST = withActivity(handlePOST);

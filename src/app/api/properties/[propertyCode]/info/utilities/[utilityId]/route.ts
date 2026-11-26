@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUnitInfoAccess } from "@/lib/unitInfoServer";
 import { firstIssue, utilitySchema } from "@/lib/unitInfoSchemas";
+import { withActivity } from "@/lib/activity";
 
 type Ctx = { params: Promise<{ propertyCode: string; utilityId: string }> };
 
@@ -16,7 +17,7 @@ async function load(ctx: Ctx) {
   return { ...auth, acc };
 }
 
-export async function PUT(req: NextRequest, ctx: Ctx) {
+async function handlePUT(req: NextRequest, ctx: Ctx) {
   const r = await load(ctx);
   if (r instanceof NextResponse) return r;
   const parsed = utilitySchema.safeParse(await req.json().catch(() => null));
@@ -25,9 +26,12 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ success: true, message: "✅ 已更新" });
 }
 
-export async function DELETE(_req: NextRequest, ctx: Ctx) {
+async function handleDELETE(_req: NextRequest, ctx: Ctx) {
   const r = await load(ctx);
   if (r instanceof NextResponse) return r;
   await prisma.utilityAccount.delete({ where: { id: r.acc.id } });
   return NextResponse.json({ success: true, message: "✅ 已删除" });
 }
+
+export const PUT = withActivity(handlePUT);
+export const DELETE = withActivity(handleDELETE);

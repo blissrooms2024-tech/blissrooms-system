@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { serialize } from "@/lib/serialize";
 import { MANUAL_EXPENSE_CATEGORIES } from "@/lib/config";
+import { withActivity } from "@/lib/activity";
 
 /** Property running costs — water/electric/wifi/cleaning/maintenance/other, booked to a
  * periodMonth so the property monthly report can deduct them from net profit / landlord
@@ -43,7 +44,7 @@ const schema = z.object({
   notes: z.string().trim().optional().default(""),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以登记支出" }, { status: 403 });
@@ -78,3 +79,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: `✅ 支出已登记: ${expenseCode}` });
 }
+
+export const POST = withActivity(handlePOST);

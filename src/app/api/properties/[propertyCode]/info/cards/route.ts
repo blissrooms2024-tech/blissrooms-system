@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUnitInfoAccess, resolveRoom } from "@/lib/unitInfoServer";
 import { cardSchema, firstIssue } from "@/lib/unitInfoSchemas";
+import { withActivity } from "@/lib/activity";
 
 /** Add an access card / key / remote to a unit. */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ propertyCode: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ propertyCode: string }> }) {
   const auth = await requireUnitInfoAccess((await params).propertyCode);
   if (auth instanceof NextResponse) return auth;
   const { property } = auth;
@@ -19,3 +20,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
   await prisma.accessCard.create({ data: { ...d, propertyId: property.id, roomId } });
   return NextResponse.json({ success: true, message: "✅ 已添加" });
 }
+
+export const POST = withActivity(handlePOST);

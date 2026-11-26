@@ -3,11 +3,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { uploadDataUrl } from "@/lib/storage";
 import { requireUnitInfoAccess } from "@/lib/unitInfoServer";
+import { withActivity } from "@/lib/activity";
 
 type Ctx = { params: Promise<{ propertyCode: string }> };
 const MAX_PHOTOS = 20;
 
-export async function POST(req: NextRequest, { params }: Ctx) {
+async function handlePOST(req: NextRequest, { params }: Ctx) {
   const auth = await requireUnitInfoAccess((await params).propertyCode);
   if (auth instanceof NextResponse) return auth;
   const { user, property } = auth;
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: Ctx) {
+async function handleDELETE(req: NextRequest, { params }: Ctx) {
   const auth = await requireUnitInfoAccess((await params).propertyCode);
   if (auth instanceof NextResponse) return auth;
   const { property } = auth;
@@ -45,3 +46,6 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   if (info) await prisma.propertyInfo.update({ where: { propertyId: property.id }, data: { photos } });
   return NextResponse.json({ success: true, message: "✅ 照片已删除", photos });
 }
+
+export const POST = withActivity(handlePOST);
+export const DELETE = withActivity(handleDELETE);

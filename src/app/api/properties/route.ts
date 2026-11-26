@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -59,7 +60,7 @@ const createSchema = z.object({
   carparkCount: z.coerce.number().int().min(0).max(200).optional().default(0),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以建楼盘" }, { status: 403 });
@@ -124,3 +125,5 @@ export async function POST(req: NextRequest) {
       : "";
   return NextResponse.json({ success: true, message: `✅ 楼盘已建: ${d.propertyCode} (${d.name})${extra}` });
 }
+
+export const POST = withActivity(handlePOST);
