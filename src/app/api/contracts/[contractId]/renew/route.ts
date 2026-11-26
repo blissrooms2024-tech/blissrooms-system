@@ -77,11 +77,13 @@ async function handlePOST(
     1
   );
 
-  // Carried over from the old contract — if the company itself was the "Agent" there (no one
-  // entitled to commission), the new renewal contract goes straight to "Agent signed" too,
-  // same as a fresh contract going through /approve. A real Agent's renewal still needs their
-  // actual signature, same as before.
-  const isCompanyAgent = c.agentName === COMPANY.NAME;
+  // Every renewal is company-signed, with no commission — Admin processes renewals directly
+  // (not the original referring Agent, who already earned their commission on the first
+  // signing), so unlike a brand-new contract this is unconditional, regardless of who the
+  // Agent on the old contract was. The new contract's agentName becomes the company's own
+  // name and its "Agent signed" step is auto-completed right here, same as a fresh
+  // company-agent contract going through /approve.
+  const isCompanyAgent = true;
 
   const newContractCode = await newId("CT");
   const newContract = await prisma.contract.create({
@@ -94,7 +96,7 @@ async function handlePOST(
       tenantName: c.tenantName,
       tenantIc: c.tenantIc,
       agentId: c.agentId,
-      agentName: c.agentName,
+      agentName: isCompanyAgent ? COMPANY.NAME : c.agentName,
       ...(isCompanyAgent ? { agentSignature: COMPANY_AUTO_SIGNATURE, agentSignDate: new Date() } : {}),
       moveInDate: c.moveInDate,
       commencementDate,
