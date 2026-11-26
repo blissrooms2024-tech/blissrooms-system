@@ -23,6 +23,10 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    // Children before parents: claims point at expenses, expenses/vouchers at units/rooms/contracts.
+    const claims = await tx.expenseClaim.deleteMany({});
+    const expenses = await tx.expense.deleteMany({});
+    const vouchers = await tx.voucher.deleteMany({});
     const payments = await tx.payment.deleteMany({});
     const commissions = await tx.commission.deleteMany({});
     const moveForms = await tx.moveInOutForm.deleteMany({});
@@ -46,6 +50,9 @@ export async function POST(req: NextRequest) {
       maintenance: maintenance.count,
       warningLetters: warningLetters.count,
       logs: logs.count,
+      claims: claims.count,
+      expenses: expenses.count,
+      vouchers: vouchers.count,
     };
   });
 

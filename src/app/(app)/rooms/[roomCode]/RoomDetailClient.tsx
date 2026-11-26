@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface RoomDetail {
   roomCode: string;
@@ -26,14 +27,6 @@ interface RoomDetail {
   currentTenant: { name: string; email: string; phone: string | null } | null;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 interface ContractRow {
   contractCode: string;
   tenantName: string;
@@ -75,7 +68,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
   }, [load]);
 
   async function uploadPhoto(file: File) {
-    if (file.size > 3 * 1024 * 1024) {
+    if (isOversized(file)) {
       toast.warning(t("图片太大(超过3MB)，请压缩", "Image is too large (over 3MB) — please compress it"));
       return;
     }
