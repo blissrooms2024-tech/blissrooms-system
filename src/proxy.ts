@@ -36,6 +36,8 @@ const ROLE_GUARDS: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/my-movein", roles: ["TENANT", "AGENT"] },
   { prefix: "/my-moveout", roles: ["TENANT", "AGENT"] },
   { prefix: "/worker", roles: ["WORKER"] },
+  { prefix: "/claims", roles: ["BOSS", "ADMIN", "WORKER"] },
+  { prefix: "/pnl", roles: ["BOSS", "ADMIN"] },
   { prefix: "/rooms", roles: ["BOSS", "ADMIN", "AGENT"] },
   { prefix: "/contracts", roles: ["BOSS", "ADMIN", "AGENT"] },
 ];

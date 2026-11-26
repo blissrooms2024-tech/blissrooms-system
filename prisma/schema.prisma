@@ -98,6 +98,16 @@ enum ExpenseCategory {
   WIFI
   CLEANING
   MAINTENANCE
+  /// Household/repair supplies bought for a unit — light bulbs, cleaning products, tools.
+  SUPPLIES
+  /// Furniture and appliances bought for a unit (mattress, fridge, washing machine…).
+  FURNITURE
+  /// Petrol, toll, parking, Grab — usually company overhead rather than one unit.
+  TRANSPORT
+  /// Listing ads, Facebook boosts, signage.
+  ADVERTISING
+  /// Stationery, printing, phone bills and other office running costs.
+  OFFICE
   OTHER
   /// The company's own cost of a voucher given to a tenant (reward/goodwill/compensation) —
   /// only ever created alongside the matching CREDIT Payment row the voucher itself produces
@@ -107,6 +117,15 @@ enum ExpenseCategory {
   /// /agent-commissions payout action (see Contract.commAmount/commStatus), never picked by
   /// hand from the general expense form.
   COMMISSION
+}
+
+/// Lifecycle of a staff expense claim: submitted → approved (booked as an Expense) or rejected →
+/// paid back to the staff member (transfer date recorded for audit).
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
 }
 
 model Counter {
@@ -140,6 +159,7 @@ model User {
   currentRooms      Room[]            @relation("RoomCurrentTenant")
   commissions       Commission[]
   moveInOutForms    MoveInOutForm[]
+  expenseClaims     ExpenseClaim[]    @relation("ClaimSubmitter")
 
   @@index([role])
 }
@@ -167,6 +187,10 @@ model Property {
   notes        String?
   rooms        Room[]
   expenses     Expense[]
+  claims       ExpenseClaim[]
+  info         PropertyInfo?
+  accessCards  AccessCard[]
+  utilities    UtilityAccount[]
 
   createdAt DateTime @default(now())
 }
@@ -205,6 +229,9 @@ model Room {
 
   contracts        Contract[] @relation("ContractMainRoom")
   carparkContracts Contract[] @relation("ContractCarparkRoom")
+  expenses         Expense[]
+  claims           ExpenseClaim[]
+  accessCards      AccessCard[]
 
   createdAt DateTime @default(now())
 
@@ -477,8 +504,12 @@ model MaintenanceRequest {
 model Expense {
   id           String          @id @default(cuid())
   expenseCode  String          @unique
-  propertyId   String
-  property     Property        @relation(fields: [propertyId], references: [id])
+  /// Null = company overhead (not tied to any unit), e.g. office or advertising costs.
+  propertyId   String?
+  property     Property?       @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  /// Optional: the specific room this cost was spent on.
+  roomId       String?
+  room         Room?           @relation(fields: [roomId], references: [id])
   category     ExpenseCategory
   customLabel  String?
   amount       Decimal         @db.Decimal(10, 2)
@@ -489,9 +520,54 @@ model Expense {
   notes        String?
   recordedBy   String
   createdAt    DateTime        @default(now())
+  /// Set when this expense was booked by approving a staff claim.
+  claim        ExpenseClaim?
 
   @@index([propertyId])
   @@index([periodMonth])
+}
+
+/// A staff member (Admin/Worker) asking to be paid back for money they spent. Boss/Admin review
+/// it (never their own); approving books a matching Expense so unit reports and the P&L pick it
+/// up straight away. Paying the staff member back is a separate step with its transfer date.
+model ExpenseClaim {
+  id              String          @id @default(cuid())
+  claimCode       String          @unique
+  submittedById   String
+  submittedBy     User            @relation("ClaimSubmitter", fields: [submittedById], references: [id])
+  submittedByName String
+  /// Null = company overhead (not tied to any unit).
+  propertyId      String?
+  property        Property?       @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  roomId          String?
+  room            Room?           @relation(fields: [roomId], references: [id])
+  category        ExpenseCategory
+  customLabel     String?
+  amount          Decimal         @db.Decimal(10, 2)
+  expenseDate     DateTime
+  periodMonth     String
+  notes           String?
+  /// Receipt photos / PDFs (Vercel Blob URLs via /api/blob).
+  receipts        String[]        @default([])
+  status          ClaimStatus     @default(PENDING)
+  reviewedById    String?
+  reviewedByName  String?
+  reviewedAt      DateTime?
+  rejectReason    String?
+  /// Expense row booked on approval.
+  expenseId       String?         @unique
+  expense         Expense?        @relation(fields: [expenseId], references: [id])
+  /// Pay-back to the staff member.
+  paidAt          DateTime?
+  paidRef         String?
+  paidSlip        String?
+  paidById        String?
+  paidByName      String?
+  createdAt       DateTime        @default(now())
+
+  @@index([status])
+  @@index([submittedById])
+  @@index([propertyId])
 }
 
 model WarningLetter {
@@ -517,4 +593,107 @@ model Log {
   status      String?
   relatedId   String?
   triggeredBy String?
+}
+
+/// Day-to-day unit details for Boss/Admin (one row per Property, created on first save). Kept
+/// out of Property itself so existing Property queries never pick up the passwords below.
+/// Passwords are only ever sent to the browser through the reveal endpoint, which logs who
+/// looked; the tenant-facing WiFi endpoint only returns wifiName/wifiPassword.
+model PropertyInfo {
+  id                     String    @id @default(cuid())
+  propertyId             String    @unique
+  property               Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  // Unit basics
+  unitNo                 String?
+  sizeSqft               Int?
+  bathrooms              Int?
+  parkingBays            Int?
+  /// Parking bay numbers as painted in the building, e.g. "B2-118, B2-119".
+  parkingLotNos          String?
+  airconCount            Int?
+  waterHeaterCount       Int?
+  furnishing             String?
+  /// Unit / floor-plan photos (Vercel Blob URLs via /api/blob).
+  photos                 String[]  @default([])
+
+  // Passwords (masked; reveal is logged)
+  wifiName               String?
+  wifiPassword           String?
+  routerLogin            String?
+  smartLockPassword      String?
+  mailboxNo              String?
+  mailboxPassword        String?
+
+  // Management office / building
+  mgmtContactName        String?
+  mgmtOfficePhone        String?
+  guardhousePhone        String?
+  visitorApp             String?
+  buildingRules          String?
+
+  // Owner lease (owner pays maintenance fee, sinking fund, quit rent, assessment, insurance)
+  ownerPhone             String?
+  ownerBank              String?
+  ownerLeaseStart        DateTime?
+  ownerLeaseEnd          DateTime?
+  ownerRentDueDay        Int?
+  renewalNoticeDays      Int?
+
+  // Equipment
+  appliances             String?
+  airconLastServiced     DateTime?
+  fireExtinguisherExpiry DateTime?
+
+  updatedAt              DateTime  @updatedAt
+  updatedBy              String?
+}
+
+/// One physical access item: access card, RFID tag, carpark remote, door key, mailbox key.
+model AccessCard {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  /// ACCESS_CARD | RFID | REMOTE | KEY | MAILBOX_KEY | OTHER
+  cardType   String
+  serialNo   String?
+  /// ROOM (held by whoever rents roomId) | OFFICE | OWNER | OTHER
+  holder     String   @default("OFFICE")
+  roomId     String?
+  room       Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  /// IN_USE | SPARE | LOST
+  status     String   @default("SPARE")
+  deposit    Decimal? @db.Decimal(10, 2)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([propertyId])
+}
+
+/// A recurring bill account for a unit (electric, water, sewerage, WiFi, gas…).
+model UtilityAccount {
+  id            String    @id @default(cuid())
+  propertyId    String
+  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  /// ELECTRIC | WATER | SEWERAGE | WIFI | GAS | OTHER
+  utilityType   String
+  provider      String?
+  accountNo     String?
+  accountHolder String?
+  /// GOVERNMENT | MANAGEMENT | PROVIDER | OWNER — who the bill is paid to.
+  payTo         String    @default("PROVIDER")
+  /// Fixed monthly amount (e.g. WiFi plan); null = varies month to month.
+  fixedAmount   Decimal?  @db.Decimal(10, 2)
+  /// Day of month the bill is due (1–31).
+  dueDay        Int?
+  autoDebit     Boolean   @default(false)
+  meterNo       String?
+  /// Contract end (e.g. WiFi 24-month plan).
+  contractEnd   DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([propertyId])
 }
