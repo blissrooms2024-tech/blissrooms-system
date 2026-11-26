@@ -4,15 +4,8 @@ import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function ContractPdfModal({
   contractCode,
@@ -43,8 +36,8 @@ export default function ContractPdfModal({
       toast.warning(t("请上传 PDF 文件", "Please upload a PDF file"));
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.warning(t("文件太大(超过10MB)，请压缩", "File too large (over 10MB) — please compress it"));
+    if (isOversized(file)) {
+      toast.warning(t("文件太大(超过3MB)，请压缩 PDF 后再上传", "File too large (over 3MB) — please compress the PDF and try again"));
       return;
     }
     setUploading(true);

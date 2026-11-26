@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface BreakdownRow {
   item: string;
@@ -32,14 +33,6 @@ interface PaymentRow {
   customLabel: string | null;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 const BILL_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
 
@@ -93,7 +86,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   }, [load]);
 
   async function uploadSlip(paymentId: string, file: File) {
-    if (file.size > 3 * 1024 * 1024) {
+    if (isOversized(file)) {
       toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }
