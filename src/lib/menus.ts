@@ -8,6 +8,7 @@ export const MENUS: Record<string, MenuItem[]> = {
   BOSS: [
     { href: "/dashboard", label: "📊 总览", labelEn: "📊 Overview" },
     { href: "/finance", label: "💰 财务总览", labelEn: "💰 Finance Overview" },
+    { href: "/pnl", label: "📈 损益表 P&L", labelEn: "📈 Profit & Loss" },
     { href: "/units", label: "🏢 楼盘", labelEn: "🏢 Properties" },
     { href: "/rooms", label: "🏠 房间", labelEn: "🏠 Rooms" },
     { href: "/contracts", label: "📄 合同", labelEn: "📄 Contracts" },
@@ -23,6 +24,7 @@ export const MENUS: Record<string, MenuItem[]> = {
   ADMIN: [
     { href: "/dashboard", label: "📊 总览", labelEn: "📊 Overview" },
     { href: "/finance", label: "💰 财务总览", labelEn: "💰 Finance Overview" },
+    { href: "/pnl", label: "📈 损益表 P&L", labelEn: "📈 Profit & Loss" },
     { href: "/units", label: "🏢 楼盘", labelEn: "🏢 Properties" },
     { href: "/rooms", label: "🏠 房间", labelEn: "🏠 Rooms" },
     { href: "/contracts", label: "📄 合同", labelEn: "📄 Contracts" },
