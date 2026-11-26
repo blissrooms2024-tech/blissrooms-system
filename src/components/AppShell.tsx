@@ -91,6 +91,7 @@ export default function AppShell({
           "/contracts": data.pendingApprove,
           "/payments/review": data.pendingReview,
           "/users": data.pendingUsers,
+          "/claims": data.pendingClaims,
         });
       });
   }, [user.role, pathname]);

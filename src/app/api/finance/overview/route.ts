@@ -160,8 +160,9 @@ export async function GET(req: NextRequest) {
 
   const expenseTransactions = expenses.map((e) => ({
     expenseDate: e.expenseDate,
-    propertyCode: e.property.propertyCode,
-    propertyName: e.property.name,
+    // Null property = company overhead (e.g. an approved office/transport claim).
+    propertyCode: e.property?.propertyCode ?? null,
+    propertyName: e.property?.name ?? "公司开销",
     category: e.category,
     label: expenseCategoryLabel(e.category, e.customLabel),
     amount: Number(e.amount),
