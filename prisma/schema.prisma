@@ -164,6 +164,8 @@ model User {
   meetingNotes          MeetingNote[]
   meetingIssuesOwned    MeetingIssue[]    @relation("IssueOwner")
   meetingIssuesFollowed MeetingIssue[]    @relation("IssueFollowUp")
+  todosOwned            Todo[]            @relation("TodoOwner")
+  todosCreated          Todo[]            @relation("TodoCreator")
 
   @@index([role])
 }
@@ -953,4 +955,31 @@ model MeetingIssue {
   @@index([ownerId])
   @@index([followUpId])
   @@index([status])
+}
+
+/// 待办 — a staff member's own to-do, or one Boss / Admin gave them. Emailed to its owner at
+/// 8am (Malaysia) on the day it's due and every morning after while it's still open.
+model Todo {
+  id            String    @id @default(cuid())
+  todoCode      String    @unique
+  title         String
+  note          String?
+  /// Who has to do it.
+  ownerId       String
+  owner         User      @relation("TodoOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /// The Malaysian day it's due, stored as UTC midnight like every other date-only field.
+  dueDate       DateTime?
+  /// OPEN | DONE
+  status        String    @default("OPEN")
+  doneAt        DateTime?
+  doneByName    String?
+  /// Who wrote it: the owner, or the Boss / Admin who gave it to them.
+  createdById   String?
+  createdBy     User?     @relation("TodoCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdByName String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([ownerId, status])
+  @@index([status, dueDate])
 }

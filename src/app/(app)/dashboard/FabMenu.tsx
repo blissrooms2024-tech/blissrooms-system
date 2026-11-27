@@ -28,6 +28,7 @@ export default function FabMenu({ role, onQuote }: { role: string; onQuote: () =
           { key: "unit", zh: "新增楼盘", en: "Add a property", descZh: "登记新租下的单位", descEn: "Register a newly leased unit", meta: "/units", href: "/units/new" },
         ]
       : []),
+    { key: "todo", zh: "新待办", en: "New to-do", descZh: "给自己或同事加一项，到期那天早上 email 提醒", descEn: "For you or a teammate; emailed the morning it's due", meta: "/todos", href: "/todos?new=1" },
     { key: "meeting", zh: "新会议", en: "New meeting", descZh: "开会时记录，每个人用自己的账号写备注", descEn: "Record a meeting; everyone writes their own notes", meta: "/meetings", href: "/meetings?new=1" },
   ];
 

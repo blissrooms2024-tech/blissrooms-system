@@ -263,6 +263,15 @@ export const IconCheck = (p: P) => (
     <path d="M5 12.5 10 17.5 19 7" />
   </Svg>
 );
+/** 待办: a list with two items ticked */
+export const IconListCheck = (p: P) => (
+  <Svg {...p}>
+    <path d="m3.5 6.5 1.6 1.6 3.1-3.2" />
+    <path d="m3.5 12.5 1.6 1.6 3.1-3.2" />
+    <rect x="4" y="16.8" width="3.8" height="3.8" rx="1" />
+    <path d="M11 7h9.5M11 13h9.5M11 18.7h9.5" />
+  </Svg>
+);
 export const IconEye = (p: P) => (
   <Svg {...p}>
     <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />

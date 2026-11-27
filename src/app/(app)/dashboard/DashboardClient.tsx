@@ -10,6 +10,7 @@ import {
   IconAlert,
   IconBed,
   IconBolt,
+  IconListCheck,
   IconNotes,
   IconCar,
   IconCash,
@@ -181,6 +182,22 @@ export default function DashboardClient({
       href: "/meetings?tab=mine",
       icon: IconNotes,
       tone: (todo.meetingIssues.overdue ? "rose" : "slate") as Tone,
+    },
+    {
+      n: todo.todos.count,
+      l: todo.todos.overdue
+        ? t(`我的待办 · ${todo.todos.overdue} 项过期`, `My to-dos · ${todo.todos.overdue} late`)
+        : t("我的待办", "My to-dos"),
+      href: "/todos",
+      icon: IconListCheck,
+      tone: (todo.todos.overdue ? "rose" : "slate") as Tone,
+    },
+    {
+      n: todo.todos.teamOverdue,
+      l: t("同事的待办过了期限", "Team to-dos past their date"),
+      href: "/todos?tab=team",
+      icon: IconListCheck,
+      tone: "rose" as Tone,
     },
   ].filter((a) => a.n > 0);
 

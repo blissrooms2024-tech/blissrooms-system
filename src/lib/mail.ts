@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
 import { fmtDate } from "@/lib/format";
+import { longDateZh, type Digest } from "@/lib/todoText";
 
 // English labels for email content — the in-app UI stays Chinese (see lib/config.ts), but
 // all outbound email is English-only.
@@ -548,3 +549,97 @@ export async function notifyMeetingIssue(
   );
   return send(person.email, `Bliss Rooms — 会议事项（${role}）：${issue.title}`, html, "MeetingIssue", issue.issueCode, triggeredBy);
 }
+
+// --- 待办 -----------------------------------------------------------------------------------------
+
+const TODO_BTN = (href: string, label: string) =>
+  `<p><a href="${APP_URL}${href}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">${label}</a></p>`;
+
+/** Boss / Admin gave someone a to-do. Staff email, in Chinese. */
+export async function notifyTodoAssigned(
+  person: { name: string; email: string },
+  todo: { todoCode: string; title: string; note: string | null; dueDate: string | null },
+  givenBy: string
+) {
+  const html = wrap(
+    "新待办",
+    `<p>${esc(person.name)} 你好，</p>
+     <p>${esc(givenBy)} 给你一项待办：</p>
+     <p style="border-left:3px solid #7c3aed;padding:6px 12px;background:#f6f3ff;"><b>${esc(todo.title)}</b>${todo.note ? `<br><span style="color:#555;">${esc(todo.note)}</span>` : ""}</p>
+     <p>${todo.dueDate ? `期限：<b>${longDateZh(todo.dueDate)}</b>` : "没有期限"}</p>
+     <p>做好之后请在系统里打勾。${todo.dueDate ? "到期那天早上还没打勾的话，系统会再寄 email 提醒你。" : ""}</p>
+     ${TODO_BTN("/todos", "打开我的待办")}`,
+    "#7c3aed"
+  );
+  return send(person.email, `Bliss Rooms — 新待办：${todo.title}`, html, "TodoAssigned", todo.todoCode, givenBy);
+}
+
+/** The 8am email: what's due today or late, for one person. `key` stops a second send that day. */
+export async function sendTodoDigest(person: { name: string; email: string }, d: Digest, key: string) {
+  const li = (title: string, extra: string, color = "#555") => `<li style="margin:4px 0;"><b>${esc(title)}</b> <span style="color:${color};">${extra}</span></li>`;
+  const block = (heading: string, color: string, items: string[]) =>
+    items.length ? `<p style="margin:14px 0 4px;color:${color};font-weight:bold;">${heading}</p><ul style="margin:0;padding-left:20px;">${items.join("")}</ul>` : "";
+  const late = d.overdue.length + d.issues.filter((i) => i.daysLate > 0).length;
+  const html = wrap(
+    "今天的待办",
+    `<p>${esc(person.name)} 早安，</p>
+     <p>这些事情今天到期，或者已经过了期限：</p>
+     ${block(
+       `已经过期（${d.overdue.length}）`,
+       "#e11d48",
+       d.overdue.map((t) => li(t.title, `— 迟了 ${t.daysLate} 天（期限 ${fmtDate(t.dueDate)}）${t.givenBy ? ` · ${esc(t.givenBy)} 给的` : ""}`, "#e11d48"))
+     )}
+     ${block(
+       `今天到期（${d.dueToday.length}）`,
+       "#b45309",
+       d.dueToday.map((t) => li(t.title, t.givenBy ? `— ${esc(t.givenBy)} 给的` : ""))
+     )}
+     ${block(
+       `会议事项（${d.issues.length}）`,
+       "#7c3aed",
+       d.issues.map((i) =>
+         li(
+           i.title,
+           `— 你${i.as === "OWNER" ? "处理" : "跟进"} · 会议「${esc(i.meetingTitle)}」 · ${i.daysLate > 0 ? `迟了 ${i.daysLate} 天` : "今天到期"}`,
+           i.daysLate > 0 ? "#e11d48" : "#555"
+         )
+       )
+     )}
+     <p style="margin-top:16px;">做好了就在系统里打勾，明天就不会再提醒。还没办法做的，可以在系统里改期限。</p>
+     ${TODO_BTN("/todos", "打开我的待办")}`,
+    "#7c3aed"
+  );
+  const subject = `Bliss Rooms — 今天的待办：${d.total} 项${late ? `（${late} 项已过期）` : ""}`;
+  return send(person.email, subject, html, "TodoDigest", key, "system");
+}
+
+/** Monday's email to the Boss: everyone's late to-dos and meeting items, one block per person. */
+export async function sendTodoTeamWeekly(
+  boss: { name: string; email: string },
+  groups: { name: string; role: string; items: { title: string; dueDate: string; daysLate: number; kind: "TODO" | "MEETING" }[] }[],
+  key: string
+) {
+  const ROLE: Record<string, string> = { BOSS: "Boss", ADMIN: "Admin", AGENT: "Agent", WORKER: "师傅" };
+  const total = groups.reduce((n, g) => n + g.items.length, 0);
+  const body = groups
+    .map(
+      (g) => `<p style="margin:14px 0 4px;font-weight:bold;">${esc(g.name)}（${ROLE[g.role] ?? g.role}）· ${g.items.length} 项</p>
+       <ul style="margin:0;padding-left:20px;">${g.items
+         .map(
+           (i) =>
+             `<li style="margin:4px 0;">${esc(i.title)} <span style="color:#e11d48;">— 迟了 ${i.daysLate} 天</span> <span style="color:#888;">（期限 ${fmtDate(i.dueDate)}）</span></li>`
+         )
+         .join("")}</ul>`
+    )
+    .join("");
+  const html = wrap(
+    "团队逾期待办",
+    `<p>${esc(boss.name)} 早安，</p>
+     <p>到今天为止，团队还有 <b>${total}</b> 项待办过了期限还没完成：</p>
+     ${body}
+     ${TODO_BTN("/todos?tab=team", "打开团队待办")}`,
+    "#7c3aed"
+  );
+  return send(boss.email, `Bliss Rooms — 团队逾期待办：${total} 项`, html, "TodoTeamWeekly", key, "system");
+}
+

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { todoCounts } from "@/lib/todos";
 import { getReports } from "@/lib/reports";
 import { getBillReminders, myDay, periodOf } from "@/lib/bills";
 import { getCollection } from "@/lib/collection";
@@ -43,6 +44,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     propertyCount,
     meterUnits,
     myMeetingIssues,
+    todoNums,
   ] = await Promise.all([
     getReports(curP, Number(year)),
     prisma.room.groupBy({ by: ["status", "isCarpark"], _count: true }),
@@ -148,6 +150,8 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
       where: { status: "OPEN", OR: [{ ownerId: viewer.id }, { followUpId: viewer.id }] },
       select: { dueDate: true },
     }),
+    // 待办: mine, and (Boss / Admin) how many of the team's are late.
+    todoCounts(viewer),
   ]);
 
   // --- Rooms -------------------------------------------------------------------------------
@@ -282,6 +286,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
         count: myMeetingIssues.length,
         overdue: myMeetingIssues.filter((i) => i.dueDate && i.dueDate < today).length,
       },
+      todos: todoNums,
     },
     claims: { pending: claimSum("PENDING"), toPay: claimSum("APPROVED") },
     activity: activity.map((a) => ({
