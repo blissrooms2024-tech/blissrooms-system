@@ -44,7 +44,9 @@ export async function POST(
     if (!c.agentSignature) {
       return NextResponse.json({ success: false, message: "请等 Agent 先签合同" }, { status: 409 });
     }
-    if (!c.icFront || !c.icBack) {
+    // A renewal reuses the same tenant/IC as the contract it replaces — never require a
+    // (re-)upload before they can sign the new one, same as the Move-in form not being required.
+    if (!c.renewedFromContractId && (!c.icFront || !c.icBack)) {
       return NextResponse.json({ success: false, message: "请先上传 IC 正反面才能签名" }, { status: 409 });
     }
     if (c.tenantSignature) {

@@ -90,6 +90,9 @@ export async function GET() {
       // side — they were signed on paper before import, so the sign-in-app flow and the
       // original move-in form (already recorded in the old Google Form) don't apply.
       isLegacy: c.status === "ACTIVE" && !c.agentSignature && !c.tenantSignature,
+      // A renewal reuses the same tenant/IC as the contract it replaces — no new move-in form
+      // or IC (re-)upload is ever required before they can sign it, unlike a brand-new contract.
+      isRenewal: !!c.renewedFromContractId,
       hasICFront: !!c.icFront,
       hasICBack: !!c.icBack,
       moveInDone: moveSet.has(`${c.id}_MOVE_IN`),

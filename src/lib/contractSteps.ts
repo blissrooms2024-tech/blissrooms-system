@@ -9,6 +9,10 @@ export interface ContractStepInput {
   moveInDone: boolean;
   outstanding: number;
   isLegacy: boolean;
+  /** A renewal contract reuses the same tenant/room as the one it replaces — no new move-in is
+   * happening and the IC already on file carries over, so unlike a brand-new contract, neither
+   * the Move-in form nor a (re-)upload of IC is ever required before the tenant can sign. */
+  isRenewal?: boolean;
 }
 
 export interface NextAction {
@@ -64,15 +68,19 @@ export function buildContractSteps(c: ContractStepInput, t: T): { steps: Timelin
         who: "Agent",
         action: t("请签名", "Please sign"),
       },
-      {
-        label: t("Tenant 上传 IC", "Tenant Uploads IC"),
-        state: c.icDone ? "done" : c.agentSigned ? "active" : "pending",
-        who: "Tenant",
-        action: t("请上传 IC 正反面照片", "Please upload both sides of your IC"),
-      },
+      ...(c.isRenewal
+        ? []
+        : [
+            {
+              label: t("Tenant 上传 IC", "Tenant Uploads IC"),
+              state: c.icDone ? "done" : c.agentSigned ? "active" : "pending",
+              who: "Tenant",
+              action: t("请上传 IC 正反面照片", "Please upload both sides of your IC"),
+            } as StepDef,
+          ]),
       {
         label: t("Tenant 签名", "Tenant Signature"),
-        state: c.tenantSigned ? "done" : c.agentSigned && c.icDone ? "active" : "pending",
+        state: c.tenantSigned ? "done" : c.agentSigned && (c.isRenewal || c.icDone) ? "active" : "pending",
         who: "Tenant",
         action: t("请签名", "Please sign"),
       },
@@ -82,12 +90,16 @@ export function buildContractSteps(c: ContractStepInput, t: T): { steps: Timelin
         who: "Tenant",
         action: `${t("请缴清还欠款项", "Please pay the outstanding balance")} ${money(c.outstanding)}`,
       },
-      {
-        label: t("Move-in 表格", "Move-in Form"),
-        state: c.moveInDone ? "done" : c.tenantSigned ? "active" : "pending",
-        who: "Tenant",
-        action: t("请填写 Move-in 表格", "Please fill in the Move-in form"),
-      },
+      ...(c.isRenewal
+        ? []
+        : [
+            {
+              label: t("Move-in 表格", "Move-in Form"),
+              state: c.moveInDone ? "done" : c.tenantSigned ? "active" : "pending",
+              who: "Tenant",
+              action: t("请填写 Move-in 表格", "Please fill in the Move-in form"),
+            } as StepDef,
+          ]),
     ];
   }
 

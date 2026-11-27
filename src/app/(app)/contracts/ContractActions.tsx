@@ -22,6 +22,7 @@ export interface ActionableContract {
   status: string;
   agentSignature: string | null;
   tenantSignature: string | null;
+  renewedFromContractId?: string | null;
   _rentEscalated?: boolean;
 }
 
@@ -229,7 +230,7 @@ export default function ContractActions({
     items.push({ key: "ic", label: `🪪 ${t("查看IC", "View IC")}`, color: "bg-violet-600", onClick: () => setIcUploading(true) });
     items.push({ key: "pdf", label: `📎 ${t("旧合同 PDF", "Legacy Contract PDF")}`, color: "bg-teal-600", onClick: () => setUploadingPdf(true) });
   }
-  if (role === "ADMIN" && c.status === "ACTIVE") {
+  if (role === "ADMIN" && c.status === "ACTIVE" && !c.renewedFromContractId) {
     items.push({ key: "movein", label: "📋 Move-in", color: "bg-cyan-600", onClick: () => setMoveForm(true) });
   }
   if (role === "ADMIN" && notClosed) {
