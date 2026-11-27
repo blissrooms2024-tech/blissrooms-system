@@ -163,24 +163,14 @@ export default function OutstandingBillsClient({ initialShow }: { initialShow?: 
     { k: "REJECTED", zh: "被拒绝", en: "Rejected" },
   ];
 
-  const dueLine = (p: Bill) => {
-    const od = overdueDays(p, today);
-    const parts: string[] = [];
-    if (od > 0) parts.push(t(`逾期 ${od} 天`, `${od}d overdue`));
-    parts.push(p.dueDate ? t(`到期 ${fmtDate(p.dueDate)}`, `due ${fmtDate(p.dueDate)}`) : t("没有到期日", "no due date"));
-    if (p.submittedDate) parts.push(t(`上传 ${fmtDate(p.submittedDate).slice(0, 5)}`, `sent ${fmtDate(p.submittedDate).slice(0, 5)}`));
-    return parts.join(" · ");
-  };
-
   return (
     <div className="app-type mx-auto max-w-6xl space-y-3">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">
-          {t("未清账单", "Unpaid bills")}
-          {items && <span className="ml-1.5 text-sm font-normal text-gray-400">{items.length}</span>}
-        </h1>
+      {/* The 待审核 / 未清账单 switch doubles as the page title, so the list starts higher. */}
+      <h1 className="sr-only">{t("未清账单", "Unpaid bills")}</h1>
+      <div className="space-y-1.5">
+        <PaymentsTabs current="unpaid" reviewCount={items ? reviewCount : undefined} unpaidCount={items?.length} />
         {items && items.length > 0 && (
-          <p className="text-xs text-gray-500">
+          <p className="px-1 text-xs text-gray-500">
             {t(`合计 ${fmt(totalDue)}`, `${fmt(totalDue)} in total`)}
             {overdueBills.length > 0 && (
               <span className="font-medium text-rose-600">
@@ -190,8 +180,6 @@ export default function OutstandingBillsClient({ initialShow }: { initialShow?: 
           </p>
         )}
       </div>
-
-      <PaymentsTabs current="unpaid" reviewCount={items ? reviewCount : undefined} unpaidCount={items?.length} />
 
       {items && items.length > 0 && (
         <>
@@ -269,7 +257,7 @@ export default function OutstandingBillsClient({ initialShow }: { initialShow?: 
       {!items && !error && (
         <ul className="space-y-2" aria-label={t("载入中", "Loading")}>
           {[0, 1, 2, 3].map((i) => (
-            <li key={i} className="h-20 animate-pulse rounded-2xl bg-white/80 motion-reduce:animate-none" />
+            <li key={i} className="h-14 animate-pulse rounded-2xl bg-white/80 motion-reduce:animate-none" />
           ))}
         </ul>
       )}
@@ -322,7 +310,8 @@ export default function OutstandingBillsClient({ initialShow }: { initialShow?: 
             <p className="rounded-[20px] bg-white px-4 py-8 text-center text-sm text-gray-400">{t("没有符合条件的账单", "No bills match")}</p>
           ) : (
             <>
-              {/* Phones: one short card per bill — who, how much, what, and where it's stuck. */}
+              {/* Phones: two short lines per bill, like the contract and room cards — who and how
+                  much, then where it's stuck, how late, what it's for and when it was due. */}
               <ul className="space-y-2 md:hidden">
                 {filteredBills.map((p) => {
                   const badge = badgeOf(p);
@@ -331,14 +320,14 @@ export default function OutstandingBillsClient({ initialShow }: { initialShow?: 
                   return (
                     <li
                       key={p.id}
-                      className={`flex items-start gap-2.5 rounded-2xl bg-white py-2.5 pl-3 pr-1.5 shadow-[0_1px_2px_rgba(30,27,46,0.05)] ${picked ? "ring-2 ring-amber-300" : ""}`}
+                      className={`flex items-center gap-2.5 rounded-2xl bg-white py-2 pl-3 pr-1.5 shadow-[0_1px_2px_rgba(30,27,46,0.05)] ${picked ? "ring-2 ring-amber-300" : ""}`}
                     >
                       <input
                         type="checkbox"
                         checked={picked}
                         onChange={() => toggleSelected(p.id)}
                         aria-label={t(`选择 ${p.roomCode} ${label(p)}`, `Select ${p.roomCode} ${label(p)}`)}
-                        className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                        className="h-4 w-4 shrink-0 accent-brand"
                       />
                       <Link href={`/contracts/${p.contractCode}`} className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
@@ -348,14 +337,16 @@ export default function OutstandingBillsClient({ initialShow }: { initialShow?: 
                           </p>
                           <b className={`shrink-0 whitespace-nowrap text-[14px] font-semibold tabular-nums ${od > 0 ? "text-rose-600" : "text-gray-900"}`}>{fmt(p.amountDue)}</b>
                         </div>
-                        <p className="mt-0.5 truncate text-[11.5px] text-gray-400">
-                          <span className="font-medium text-gray-700">{label(p)}</span>
-                          {p.periodMonth && <span className="text-gray-500"> {p.periodMonth}</span>} · {p.contractCode}
-                        </p>
-                        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                        <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11.5px] text-gray-400">
                           <Pill tone={badge.tone}>{badge.label}</Pill>
-                          <span className={`truncate text-[11.5px] ${od > 0 ? "font-medium text-rose-600" : "text-gray-400"}`}>{dueLine(p)}</span>
-                        </div>
+                          <span className="truncate">
+                            {od > 0 && <span className="font-medium text-rose-600">{t(`逾期 ${od} 天 · `, `${od}d overdue · `)}</span>}
+                            <span className="font-medium text-gray-700">{label(p)}</span>
+                            {p.periodMonth && <span className="text-gray-500"> {p.periodMonth}</span>}
+                            {" · "}
+                            {p.dueDate ? t(`到期 ${fmtDate(p.dueDate).slice(0, 5)}`, `due ${fmtDate(p.dueDate).slice(0, 5)}`) : t("没有到期日", "no due date")}
+                          </span>
+                        </p>
                       </Link>
                       <button
                         type="button"

@@ -19,12 +19,12 @@ export default function PaymentsTabs({
     { key: "unpaid", href: "/payments/outstanding", l: t("未清账单", "Unpaid bills"), n: unpaidCount },
   ];
   return (
-    <nav className="grid max-w-sm grid-cols-2 rounded-xl bg-gray-200/60 p-1 text-[13px] font-medium">
+    <nav aria-label={t("收款", "Payments")} className="grid max-w-sm grid-cols-2 rounded-xl bg-gray-200/60 p-1 text-[14px] font-semibold">
       {tabs.map((tab) => {
         const body = (
           <>
             {tab.l}
-            {tab.n !== undefined && <span className="font-normal text-gray-400">{tab.n}</span>}
+            {tab.n !== undefined && <span className="text-[12px] font-normal text-gray-400">{tab.n}</span>}
           </>
         );
         return tab.key === current ? (

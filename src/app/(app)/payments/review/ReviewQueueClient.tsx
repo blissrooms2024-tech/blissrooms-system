@@ -5,7 +5,7 @@ import Link from "next/link";
 import Sheet from "@/components/Sheet";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
-import { IconAlert, IconCheck, IconClock, IconSearch, IconX } from "@/components/icons";
+import { IconAlert, IconCheck, IconClock, IconRefresh, IconSearch, IconX } from "@/components/icons";
 import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate, fmtMoney, isPdfUrl } from "@/lib/format";
 import PaymentsTabs from "../PaymentsTabs";
@@ -81,7 +81,12 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
     try {
       const res = await fetch(`/api/payments/${p.id}/approve`, { method: "POST" });
       const data = await res.json();
-      if (data.success) toast.success(data.message);
+      if (data.success)
+        toast.success(
+          p.type === "AC" && !p.periodMonth
+            ? `${data.message}${t(" · 记得 12 小时内更新 Smart Meter", " · top up the Smart Meter within 12 hours")}`
+            : data.message
+        );
       else toast.danger(data.message);
       setViewing(null);
       await load();
@@ -145,20 +150,17 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
 
   return (
     <div className="app-type mx-auto max-w-6xl space-y-3">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">
-          {t("交易单审核", "Payment slips")}
-          {items && <span className="ml-1.5 text-sm font-normal text-gray-400">{items.length}</span>}
-        </h1>
+      {/* The 待审核 / 未清账单 switch doubles as the page title, so the list starts higher. */}
+      <h1 className="sr-only">{t("交易单审核", "Payment slips")}</h1>
+      <div className="space-y-1.5">
+        <PaymentsTabs current="review" reviewCount={items?.length} />
         {items && items.length > 0 && (
-          <p className="text-xs text-gray-500">
+          <p className="px-1 text-xs text-gray-500">
             {t(`合计 ${fmtMoney(total)}`, `${fmtMoney(total)} in total`)}
             {oldestWait > 0 && <span className={oldestWait >= 2 ? "font-medium text-rose-600" : ""}>{t(` · 最早一张等了 ${oldestWait} 天`, ` · oldest waiting ${oldestWait} days`)}</span>}
           </p>
         )}
       </div>
-
-      <PaymentsTabs current="review" reviewCount={items?.length} />
 
       {items && items.length > 0 && (
         <>
@@ -207,7 +209,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
       {!items && !error && (
         <ul className="space-y-2">
           {[0, 1, 2].map((i) => (
-            <li key={i} className="h-24 animate-pulse rounded-2xl bg-white/80 motion-reduce:animate-none" />
+            <li key={i} className="h-[72px] animate-pulse rounded-2xl bg-white/80 motion-reduce:animate-none" />
           ))}
         </ul>
       )}
@@ -222,96 +224,92 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
       )}
       {items && items.length > 0 && shown.length === 0 && <p className="py-8 text-center text-sm text-gray-400">{t("没有符合条件的交易单", "No slips match")}</p>}
 
-      {/* Compact cards: a small slip to tap open full-screen, then who / what / how much and the
-          decision on three short lines, so a phone screen holds six or seven slips. */}
-      <ul className="grid gap-2 lg:grid-cols-2">
+      {/* Two short lines per slip, like the contract and room cards: who and how much, then
+          what it's for with the decision beside it. The small slip opens full-screen. */}
+      <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         {shown.map((p) => {
           const up = p.uploadedAt ? myTime(p.uploadedAt) : null;
           const late = up && p.dueDate ? dayDiff(up.day, p.dueDate) : 0;
           const topup = p.type === "AC" && !p.periodMonth;
           return (
-            <li key={p.id} className="rounded-2xl bg-white p-2.5 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
-              <div className="flex gap-2.5">
-                {p.receiptLink ? (
-                  <button
-                    type="button"
-                    onClick={() => setViewing(p)}
-                    aria-label={t("放大看交易单", "Open the slip")}
-                    className="relative h-[72px] w-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-black/5"
-                  >
-                    {isPdfUrl(p.receiptLink) ? (
-                      // Banking apps often give a PDF; browsers show those natively, full screen.
-                      <span className="grid h-full w-full place-items-center bg-rose-50 text-[13px] font-bold text-rose-700">PDF</span>
+            <li key={p.id} className="flex min-w-0 gap-2.5 rounded-2xl bg-white p-2 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
+              {p.receiptLink ? (
+                <button
+                  type="button"
+                  onClick={() => setViewing(p)}
+                  aria-label={t("放大看交易单", "Open the slip")}
+                  className="h-14 w-11 shrink-0 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-black/5"
+                >
+                  {isPdfUrl(p.receiptLink) ? (
+                    // Banking apps often give a PDF; browsers show those natively, full screen.
+                    <span className="grid h-full w-full place-items-center bg-rose-50 text-[11px] font-bold text-rose-700">PDF</span>
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.receiptLink} alt={t("交易单", "Payment slip")} className="h-full w-full object-cover object-top" />
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="grid h-14 w-11 shrink-0 place-items-center rounded-lg bg-gray-50 px-0.5 text-center text-[10px] leading-tight text-gray-400 ring-1 ring-black/5">
+                  {t("没有交易单", "No slip")}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <Link href={`/contracts/${p.contractCode}`} className="flex min-w-0 items-baseline gap-1.5">
+                    <b className="shrink-0 text-[15px] font-semibold text-gray-900">{p.roomCode}</b>
+                    <span className="truncate text-[13px] text-gray-700">{p.tenantName}</span>
+                  </Link>
+                  <b className="shrink-0 whitespace-nowrap text-[15px] font-semibold tabular-nums text-gray-900">{fmtMoney(p.amountPaid)}</b>
+                </div>
+                <div className="mt-0.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0 text-[11.5px] leading-4 text-gray-400">
+                    <p className={`truncate font-medium ${topup ? "text-sky-700" : "text-brand"}`}>
+                      {label(p)}
+                      {p.periodMonth && <span className="font-normal text-gray-500"> {p.periodMonth}</span>}
+                    </p>
+                    {topup ? (
+                      <p className="truncate font-medium text-amber-700">
+                        {t("12 小时内更新 Smart Meter", "Top up Smart Meter within 12h")}
+                      </p>
                     ) : (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={p.receiptLink} alt={t("交易单", "Payment slip")} className="h-full w-full object-cover object-top" />
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <div className="grid h-[72px] w-14 shrink-0 place-items-center rounded-lg bg-gray-50 px-1 text-center text-[10.5px] leading-tight text-gray-400 ring-1 ring-black/5">
-                    {t("没有交易单", "No slip")}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="flex min-w-0 items-baseline gap-1.5">
-                      <b className="shrink-0 text-[15px] font-semibold text-gray-900">{p.roomCode}</b>
-                      <span className="truncate text-[13px] text-gray-700">{p.tenantName}</span>
-                    </p>
-                    <b className="shrink-0 whitespace-nowrap text-[15px] font-semibold tabular-nums text-gray-900">{fmtMoney(p.amountPaid)}</b>
-                  </div>
-                  <p className="mt-0.5 truncate text-[11.5px] text-gray-400">
-                    <span className={`font-medium ${topup ? "text-sky-700" : "text-brand"}`}>{label(p)}</span>
-                    {p.periodMonth && <span className="text-gray-500"> {p.periodMonth}</span>}
-                    {" · "}
-                    <Link href={`/contracts/${p.contractCode}`} className="hover:text-brand hover:underline">
-                      {p.contractCode}
-                    </Link>
-                  </p>
-                  <div className="mt-1 flex items-center justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-1 text-[11px] leading-tight text-gray-400">
-                      <IconClock size={12} className="shrink-0" />
-                      <span>
+                      <p className="truncate">
+                        {late > 0 && <span className="font-medium text-rose-600">{t(`迟了 ${late} 天 · `, `${late}d late · `)}</span>}
                         <span className="sr-only">{t("上传 ", "Uploaded ")}</span>
-                        {up ? `${fmtDate(up.day).slice(0, 5)} ${up.hm}` : t("没有时间", "No time")}
-                        {late > 0 && <span className="font-medium text-rose-600">{t(` · 迟了 ${late} 天`, ` · ${late}d late`)}</span>}
-                      </span>
-                    </p>
-                    {canAct && (
-                      <div className="flex shrink-0 gap-1.5">
-                        <button
-                          type="button"
-                          disabled={busy !== null}
-                          onClick={() => setRejecting(p)}
-                          aria-label={t("拒绝", "Reject")}
-                          title={t("拒绝", "Reject")}
-                          className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                        >
-                          <IconX size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy !== null}
-                          onClick={() => approve(p)}
-                          className="flex h-8 items-center gap-1 rounded-lg bg-teal-600 px-3 text-[13px] font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
-                        >
-                          <IconCheck size={15} />
-                          {busy === p.id ? t("处理中…", "Working…") : t("批准", "Approve")}
-                        </button>
-                      </div>
+                        <IconClock size={11} className="-mt-0.5 mr-0.5 inline" />
+                        {up ? `${fmtDate(up.day).slice(0, 5)} ${up.hm}` : t("没有时间", "no time")} · {p.contractCode}
+                      </p>
                     )}
                   </div>
+                  {canAct && (
+                    <div className="flex shrink-0 gap-1.5">
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => setRejecting(p)}
+                        aria-label={t("拒绝", "Reject")}
+                        title={t("拒绝", "Reject")}
+                        className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                      >
+                        <IconX size={16} />
+                      </button>
+                      {/* Icons only, so what the slip is for keeps the room (the full-screen view
+                          spells both out). */}
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => approve(p)}
+                        aria-label={t(`批准 ${fmtMoney(p.amountPaid)}`, `Approve ${fmtMoney(p.amountPaid)}`)}
+                        title={t("批准", "Approve")}
+                        className="grid h-8 w-10 place-items-center rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+                      >
+                        {busy === p.id ? <IconRefresh size={16} className="animate-spin motion-reduce:animate-none" /> : <IconCheck size={18} />}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {topup && (
-                <p className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-amber-50 px-2 py-1 text-[11px] leading-snug text-amber-800">
-                  <IconAlert size={13} className="shrink-0" />
-                  {t("批准后 12 小时内更新到 Smart Meter（只在周一至五）", "Once approved, top up the Smart Meter within 12 hours (weekdays only)")}
-                </p>
-              )}
             </li>
           );
         })}
@@ -348,6 +346,12 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
               </>
             )}
           </div>
+          {viewing.type === "AC" && !viewing.periodMonth && (
+            <p className="mx-4 mt-3 flex items-center gap-1.5 rounded-lg bg-amber-400/15 px-3 py-2 text-xs text-amber-200">
+              <IconAlert size={14} className="shrink-0" />
+              {t("批准后 12 小时内更新到 Smart Meter（只在周一至五）", "Once approved, top up the Smart Meter within 12 hours (weekdays only)")}
+            </p>
+          )}
           {canAct && (
             <div className="grid grid-cols-2 gap-2 px-4 pt-3" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
               <button
