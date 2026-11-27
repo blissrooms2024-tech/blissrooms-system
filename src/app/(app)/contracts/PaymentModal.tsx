@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface Breakdown {
   item: string;
@@ -32,14 +33,6 @@ interface PaymentRow {
   customLabel: string | null;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "OTHER"];
 
 function statusBadge(status: string, t: (zh: string, en: string) => string): { label: string; cls: string } {
@@ -128,7 +121,7 @@ export default function PaymentModal({
       toast.warning(t("请填金额", "Please enter an amount"));
       return;
     }
-    if (lumpFile && lumpFile.size > 3 * 1024 * 1024) {
+    if (lumpFile && isOversized(lumpFile)) {
       toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
@@ -432,12 +425,12 @@ export default function PaymentModal({
         💰 {t("收款", "Payments")} — {contractCode} ({tenantName})
       </h3>
 
-      <div className="my-3 flex gap-2.5">
+      <div className="my-3 grid grid-cols-3 gap-2 sm:flex sm:gap-2.5">
         <Box label={t("总款", "Total")} value={fmt(totals.due)} />
         <Box label={t("已收", "Paid")} value={fmt(totals.paid)} />
         <Box label={t("还欠", "Owing")} value={fmt(totals.outstanding)} color="text-red-600" />
         {(creditBalance > 0 || (role === "ADMIN" && editingCredit)) && (
-          <div className="flex-1 rounded-lg bg-gray-50 p-3 text-center">
+          <div className="col-span-3 flex-1 rounded-lg bg-gray-50 p-3 text-center">
             {editingCredit ? (
               <div className="flex items-center justify-center gap-1.5">
                 <input
@@ -1119,8 +1112,8 @@ export default function PaymentModal({
 
 function Box({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="flex-1 rounded-lg bg-gray-50 p-3 text-center">
-      <div className={`text-lg font-bold ${color ?? "text-brand"}`}>{value}</div>
+    <div className="min-w-0 flex-1 rounded-lg bg-gray-50 px-1.5 py-2.5 text-center sm:p-3">
+      <div className={`break-words text-[15px] font-bold leading-tight sm:text-lg ${color ?? "text-brand"}`}>{value}</div>
       <div className="text-xs text-gray-500">{label}</div>
     </div>
   );

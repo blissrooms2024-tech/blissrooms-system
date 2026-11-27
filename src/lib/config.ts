@@ -178,7 +178,7 @@ export const PAYMENT_TYPE_LABELS: Record<string, string> = {
   ACCESS_CARD: "门卡押",
   CARPARK: "车位租金",
   AC: "冷气",
-  DRYER: "烘干机",
+  DRYER: "洗衣烘干",
   ELECTRIC: "电费",
   LATE_FEE: "迟交罚款",
   OTHER: "其他",
@@ -202,7 +202,7 @@ export const PAYMENT_TYPE_LABELS_EN: Record<string, string> = {
   ACCESS_CARD: "Access Card Deposit",
   CARPARK: "Car Park Rental",
   AC: "Air-Conditioner Usage",
-  DRYER: "Dryer Usage",
+  DRYER: "Washer & Dryer Usage",
   ELECTRIC: "Electricity Usage",
   LATE_FEE: "Late Payment Penalty",
   OTHER: "Other",
@@ -264,6 +264,11 @@ export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   WIFI: "Wifi",
   CLEANING: "清洁费",
   MAINTENANCE: "维修",
+  SUPPLIES: "日用品/材料",
+  FURNITURE: "家具电器",
+  TRANSPORT: "交通/油费/停车",
+  ADVERTISING: "广告",
+  OFFICE: "办公开销",
   OTHER: "其他",
   VOUCHER: "代金券",
   COMMISSION: "Agent 佣金",
@@ -271,6 +276,22 @@ export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
 
 /** Shows Admin's own custom name for a category=OTHER expense (e.g. "灭虫费") instead of the
  * generic "其他" label, same idea as paymentTypeLabel. */
+/** Categories staff/Admin can pick by hand (VOUCHER/COMMISSION are system-generated only). */
+export const MANUAL_EXPENSE_CATEGORIES = [
+  "WATER",
+  "ELECTRIC",
+  "WIFI",
+  "CLEANING",
+  "MAINTENANCE",
+  "SUPPLIES",
+  "FURNITURE",
+  "TRANSPORT",
+  "ADVERTISING",
+  "OFFICE",
+  "OTHER",
+] as const;
+export type ManualExpenseCategory = (typeof MANUAL_EXPENSE_CATEGORIES)[number];
+
 export function expenseCategoryLabel(category: string, customLabel?: string | null): string {
   if ((category === "OTHER" || category === "VOUCHER") && customLabel) return customLabel;
   return EXPENSE_CATEGORY_LABELS[category] ?? category;
@@ -282,6 +303,11 @@ export const EXPENSE_CATEGORY_LABELS_EN: Record<string, string> = {
   WIFI: "Wifi",
   CLEANING: "Cleaning",
   MAINTENANCE: "Maintenance",
+  SUPPLIES: "Supplies",
+  FURNITURE: "Furniture & Appliances",
+  TRANSPORT: "Transport / Petrol / Parking",
+  ADVERTISING: "Advertising",
+  OFFICE: "Office",
   OTHER: "Other",
   VOUCHER: "Voucher",
   COMMISSION: "Agent Commission",

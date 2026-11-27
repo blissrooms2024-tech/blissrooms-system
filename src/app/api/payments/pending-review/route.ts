@@ -34,6 +34,8 @@ export async function GET() {
         receiptLink: p.receiptLink,
         notes: p.notes,
         customLabel: p.customLabel,
+        // serialize() trims dates to the day; the review page also wants the time of upload.
+        uploadedAt: p.paidDate && !isNaN(p.paidDate.getTime()) ? p.paidDate.toISOString() : null,
       }))
     ),
   });

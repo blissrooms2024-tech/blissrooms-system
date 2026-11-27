@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { newId } from "@/lib/id";
 import { RULES } from "@/lib/config";
+import { withActivity } from "@/lib/activity";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -95,7 +96,7 @@ const createSchema = z.object({
   bankAccountNumber: z.string().trim().optional().default(""),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可建用户" }, { status: 403 });
@@ -131,3 +132,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: `✅ 用户已建: ${d.name} (密码: ${pw})` });
 }
+
+export const POST = withActivity(handlePOST);

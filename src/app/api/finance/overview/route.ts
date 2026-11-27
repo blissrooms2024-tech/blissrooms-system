@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { paymentTypeLabel, expenseCategoryLabel } from "@/lib/config";
+import { bookedLegacyRefs } from "@/lib/pnl";
 
 const DEPOSIT_TYPES = ["DEPOSIT", "UTILITIES", "ACCESS_CARD"] as const;
 
@@ -93,14 +94,14 @@ export async function GET(req: NextRequest) {
         commAmount: { not: null },
         ...(rangeStart && rangeEnd ? { commPaidAt: { gte: rangeStart, lt: rangeEnd } } : { commPaidAt: { not: null } }),
       },
-      select: { commAmount: true },
+      select: { commAmount: true, contractCode: true },
     }),
     prisma.maintenanceRequest.findMany({
       where: {
         cost: { not: null },
         ...(rangeStart && rangeEnd ? { costPaidAt: { gte: rangeStart, lt: rangeEnd } } : { costPaidAt: { not: null } }),
       },
-      select: { cost: true },
+      select: { cost: true, requestCode: true },
     }),
     prisma.expense.findMany({
       where: rangeStart && rangeEnd ? { expenseDate: { gte: rangeStart, lt: rangeEnd } } : {},
@@ -153,15 +154,24 @@ export async function GET(req: NextRequest) {
   const revenueTotal = rentalIncome + otherIncome;
 
   // --- Actual outflow (verified-paid transactions only) -------------------------------------
-  const commissionPaid = sum(paidCommissions.map((c) => Number(c.commAmount)));
-  const maintenancePaid = sum(paidMaintenance.map((m) => Number(m.cost)));
+  // Commission and maintenance payouts now also book an Expense row (counted in expensePaid);
+  // only add the ones paid before that started, so nothing is counted twice.
+  const booked = bookedLegacyRefs(
+    await prisma.expense.findMany({
+      where: { category: { in: ["MAINTENANCE", "COMMISSION"] } },
+      select: { category: true, notes: true },
+    })
+  );
+  const commissionPaid = sum(paidCommissions.filter((c) => !booked.commission.has(c.contractCode)).map((c) => Number(c.commAmount)));
+  const maintenancePaid = sum(paidMaintenance.filter((m) => !booked.maintenance.has(m.requestCode)).map((m) => Number(m.cost)));
   const expensePaid = sum(expenses.map((e) => Number(e.amount)));
   const totalActualOutflow = commissionPaid + maintenancePaid + expensePaid;
 
   const expenseTransactions = expenses.map((e) => ({
     expenseDate: e.expenseDate,
-    propertyCode: e.property.propertyCode,
-    propertyName: e.property.name,
+    // Null property = company overhead (e.g. an approved office/transport claim).
+    propertyCode: e.property?.propertyCode ?? null,
+    propertyName: e.property?.name ?? "公司开销",
     category: e.category,
     label: expenseCategoryLabel(e.category, e.customLabel),
     amount: Number(e.amount),
