@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface MaintenanceRow {
   requestCode: string;
@@ -44,14 +45,6 @@ function buildSteps(r: MaintenanceRow, locale: "zh" | "en", t: (zh: string, en: 
   });
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function MaintenancePanel({ contractCode }: { contractCode: string }) {
   const toast = useToast();
@@ -76,7 +69,7 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
   }, [load]);
 
   async function addPhoto(file: File) {
-    if (file.size > 3 * 1024 * 1024) {
+    if (isOversized(file)) {
       toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }

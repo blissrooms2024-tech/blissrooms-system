@@ -26,6 +26,7 @@ const GUEST_ONLY_PATHS = ["/login", "/signup", "/reset-password"];
 // for any authenticated role (defense-in-depth role checks also happen per-page/route).
 const ROLE_GUARDS: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/dashboard", roles: ["BOSS", "ADMIN"] },
+  { prefix: "/more", roles: ["BOSS", "ADMIN"] },
   { prefix: "/users", roles: ["ADMIN"] },
   { prefix: "/danger-zone", roles: ["ADMIN"] },
   // AGENT included: an Agent can also be the tenant on their own contract.
@@ -36,6 +37,9 @@ const ROLE_GUARDS: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/my-movein", roles: ["TENANT", "AGENT"] },
   { prefix: "/my-moveout", roles: ["TENANT", "AGENT"] },
   { prefix: "/worker", roles: ["WORKER"] },
+  { prefix: "/claims", roles: ["BOSS", "ADMIN", "WORKER"] },
+  { prefix: "/pnl", roles: ["BOSS", "ADMIN"] },
+  { prefix: "/activity", roles: ["BOSS", "ADMIN"] },
   { prefix: "/rooms", roles: ["BOSS", "ADMIN", "AGENT"] },
   { prefix: "/contracts", roles: ["BOSS", "ADMIN", "AGENT"] },
 ];
@@ -67,7 +71,11 @@ export async function proxy(req: NextRequest) {
     PUBLIC_API_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
-    pathname.startsWith("/login-bg/")
+    pathname.startsWith("/login-bg/") ||
+    // App install files: phones fetch these without the login cookie.
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/apple-icon.png" ||
+    pathname.startsWith("/icons/")
   ) {
     return NextResponse.next();
   }

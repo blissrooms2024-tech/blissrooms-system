@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
+import { withActivity } from "@/lib/activity";
 
 export async function GET(
   _req: NextRequest,
@@ -74,7 +75,7 @@ const patchSchema = z
   })
   .refine((d) => Object.values(d).some((v) => v !== undefined), { message: "没有要改的东西" });
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ roomCode: string }> }
 ) {
@@ -131,7 +132,7 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: `✅ ${d.roomCode ?? roomCode} 已更新`, roomCode: d.roomCode ?? roomCode });
 }
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ roomCode: string }> }
 ) {
@@ -159,3 +160,6 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: `✅ ${roomCode} 已删除` });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);

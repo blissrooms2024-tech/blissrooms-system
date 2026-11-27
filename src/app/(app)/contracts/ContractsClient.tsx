@@ -8,7 +8,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/Toast";
 import ContractActions, { type ActionableContract } from "./ContractActions";
 
-interface Contract extends ActionableContract {
+export interface Contract extends ActionableContract {
   roomCode?: string;
   expiredDate: string | null;
   remarks: string | null;
@@ -22,7 +22,7 @@ interface Contract extends ActionableContract {
   room?: { roomCode: string };
 }
 
-const NOT_SIGNED_STATUSES = ["DRAFT", "PENDING_APPROVE", "PENDING_SIGN"];
+export const NOT_SIGNED_STATUSES = ["DRAFT", "PENDING_APPROVE", "PENDING_SIGN"];
 
 
 export default function ContractsClient({ role }: { role: string }) {
@@ -259,7 +259,7 @@ export default function ContractsClient({ role }: { role: string }) {
   );
 }
 
-function ContractsTable({
+export function ContractsTable({
   contracts,
   role,
   locale,

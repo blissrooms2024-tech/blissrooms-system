@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { notifyAgentApproved } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 async function requireAdmin() {
   const user = await getCurrentUser();
@@ -54,7 +55,7 @@ const editSchema = z.object({
   newPassword: z.string().trim().min(4).optional().or(z.literal("")),
 });
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
@@ -104,7 +105,7 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: `✅ 用户已更新: ${updated.name}` });
 }
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
@@ -138,3 +139,6 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: `✅ 用户已删除: ${u.name}` });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);

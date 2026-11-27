@@ -1,10 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import Sheet from "@/components/Sheet";
+import {
+  IconAlert,
+  IconCheck,
+  IconChevronRight,
+  IconContract,
+  IconDoorIn,
+  IconDots,
+  IconFolder,
+  IconIdCard,
+  IconLock,
+  IconPen,
+  IconSignature,
+  IconTrash,
+  IconUpload,
+  IconWallet,
+} from "@/components/icons";
+import { plainLabel, type NavIcon } from "@/components/navMeta";
 import EditContractModal from "./EditContractModal";
 import SignatureModal from "./SignatureModal";
 import ICUploadModal from "./ICUploadModal";
@@ -24,18 +42,36 @@ export interface ActionableContract {
   _rentEscalated?: boolean;
 }
 
-// Shared by the list row (compact: a couple of quick buttons + "更多" dropdown for the rest)
-// and the contract detail page (full: everything laid out as one grid, no dropdown needed).
+const ITEM_ICONS: Record<string, NavIcon> = {
+  pay: IconWallet,
+  sign: IconSignature,
+  submit: IconUpload,
+  approve: IconCheck,
+  terminate: IconLock,
+  ic: IconIdCard,
+  pdf: IconFolder,
+  movein: IconDoorIn,
+  edit: IconPen,
+  warning: IconAlert,
+  delete: IconTrash,
+};
+
+// Shared by the list row (compact: a couple of quick buttons + "更多" dropdown for the rest),
+// the phone contract card (card: the same split, with the rest in a bottom sheet) and the
+// contract detail page (full: everything laid out as one grid, no dropdown needed).
 export default function ContractActions({
   contract: c,
   role,
   onChanged,
   variant = "compact",
+  extra,
 }: {
   contract: ActionableContract;
   role: string;
   onChanged: () => void;
-  variant?: "compact" | "full";
+  variant?: "compact" | "full" | "card";
+  /** card only: shown just before the ⋯ button (e.g. a WhatsApp shortcut). */
+  extra?: ReactNode;
 }) {
   const toast = useToast();
   const t = useT();
@@ -76,7 +112,8 @@ export default function ContractActions({
   // Close the dropdown on scroll (the table body scrolls horizontally, the page scrolls
   // vertically) so it never sits over the wrong row once its anchor button has moved.
   useEffect(() => {
-    if (!menuOpen) return;
+    // The card's ⋯ opens a bottom sheet instead, which has its own scrolling list.
+    if (!menuOpen || variant === "card") return;
     const close = () => setMenuOpen(false);
     window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
@@ -84,7 +121,7 @@ export default function ContractActions({
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
     };
-  }, [menuOpen]);
+  }, [menuOpen, variant]);
 
   async function doAction(fn: "submit" | "approve") {
     try {
@@ -354,6 +391,88 @@ export default function ContractActions({
       />
     </>
   );
+
+  if (variant === "card") {
+    const btn = "flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[13px] font-semibold";
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-2">
+          {primaryItems.map((i) => {
+            const Icon = ITEM_ICONS[i.key] ?? IconCheck;
+            // 收款 sits on every card, so it stays quiet; the one-off steps (approve, sign,
+            // submit, terminate) are the ones that should catch the eye.
+            const tone = i.key === "pay" ? "bg-brand-light text-brand" : i.key === "terminate" ? "bg-rose-600 text-white" : "bg-brand text-white";
+            return i.href ? (
+              <Link key={i.key} href={i.href} className={`${btn} ${tone}`}>
+                <Icon size={16} />
+                {plainLabel(i.label)}
+              </Link>
+            ) : (
+              <button key={i.key} type="button" onClick={i.onClick} className={`${btn} ${tone}`}>
+                <Icon size={16} />
+                {plainLabel(i.label)}
+              </button>
+            );
+          })}
+          <Link href={`/agreement/${c.contractCode}`} className={`${btn} bg-gray-100 text-gray-700`}>
+            <IconContract size={16} />
+            {t("合同", "Contract")}
+          </Link>
+          <span className="flex-1" />
+          {extra}
+          {secondaryItems.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label={t("更多操作", "More actions")}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >
+              <IconDots size={20} />
+            </button>
+          )}
+        </div>
+        <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={`${c.contractCode} · ${c.tenantName}`}>
+          <ul className="-mx-2">
+            {secondaryItems.map((i) => {
+              const Icon = ITEM_ICONS[i.key] ?? IconCheck;
+              const danger = i.key === "delete" || i.key === "terminate";
+              const body = (
+                <>
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${danger ? "bg-rose-50 text-rose-600" : "bg-gray-100 text-gray-600"}`}>
+                    <Icon size={18} />
+                  </span>
+                  <span className={`min-w-0 flex-1 text-sm ${danger ? "text-rose-600" : "text-gray-800"}`}>{plainLabel(i.label)}</span>
+                  <IconChevronRight size={16} className="shrink-0 text-gray-300" />
+                </>
+              );
+              const cls = "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left hover:bg-gray-50";
+              return (
+                <li key={i.key}>
+                  {i.href ? (
+                    <Link href={i.href} onClick={() => setMenuOpen(false)} className={cls}>
+                      {body}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        i.onClick!();
+                      }}
+                      className={cls}
+                    >
+                      {body}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Sheet>
+        {modals}
+      </>
+    );
+  }
 
   if (variant === "full") {
     return (

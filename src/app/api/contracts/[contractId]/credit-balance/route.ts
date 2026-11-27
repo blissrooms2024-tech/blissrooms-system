@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { computeCreditBalance } from "@/lib/creditBalance";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({ creditBalance: z.coerce.number().min(0, "请填金额") });
 
@@ -12,7 +13,7 @@ const schema = z.object({ creditBalance: z.coerce.number().min(0, "请填金额"
  * rows — so a correction here is itself just one more row, for the difference between what
  * Admin says it should be and what the ledger currently adds up to, same as every other Admin
  * correction in this system leaves its own trace instead of silently editing history. */
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -54,3 +55,5 @@ export async function PATCH(
 
   return NextResponse.json({ success: true, message: "✅ 预收余额已更新" });
 }
+
+export const PATCH = withActivity(handlePATCH);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { RULES } from "@/lib/config";
+import { withActivity } from "@/lib/activity";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -68,7 +69,7 @@ const addSchema = z.object({
   isCarpark: z.boolean().default(false),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以加房" }, { status: 403 });
@@ -107,3 +108,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: `✅ 房间已加: ${d.roomCode}` });
 }
+
+export const POST = withActivity(handlePOST);

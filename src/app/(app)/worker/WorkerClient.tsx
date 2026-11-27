@@ -5,6 +5,7 @@ import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import { MAINTENANCE_STATUS_LABELS } from "@/lib/config";
 import { fmtMoney as fmt } from "@/lib/format";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface Job {
   requestCode: string;
@@ -21,14 +22,6 @@ interface Job {
 }
 
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 const STATUS_BADGE: Record<string, string> = {
   ACKNOWLEDGED: "bg-blue-50 text-blue-700",
@@ -80,7 +73,7 @@ export default function WorkerClient() {
     setUploadingId(`${requestCode}_${slot}`);
     try {
       for (const file of toUpload) {
-        if (file.size > 3 * 1024 * 1024) {
+        if (isOversized(file)) {
           toast.warning(`${file.name} 太大(超过3MB)，跳过`);
           continue;
         }

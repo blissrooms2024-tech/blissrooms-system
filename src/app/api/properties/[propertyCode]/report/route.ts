@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { expenseCategoryLabel } from "@/lib/config";
 import { serialize } from "@/lib/serialize";
+import { bookedLegacyRefs } from "@/lib/pnl";
 
 /**
  * Monthly income report for a Unit (Property): total collected, broken down by room and by
@@ -36,7 +37,7 @@ export async function GET(
   if (!property) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
 
   const roomCodes = property.rooms.map((r) => r.roomCode);
-  const [payments, expenses, maintenanceCosts] = await Promise.all([
+  const [payments, expenses, maintenanceCosts, bookedNotes] = await Promise.all([
     roomCodes.length
       ? prisma.payment.findMany({
           where: {
@@ -57,7 +58,11 @@ export async function GET(
           select: { requestCode: true, roomCode: true, title: true, cost: true, costPaidAt: true },
         })
       : Promise.resolve([]),
+    prisma.expense.findMany({ where: { category: "MAINTENANCE" }, select: { category: true, notes: true } }),
   ]);
+  // Paying a maintenance job now also books a MAINTENANCE Expense (already in `expenses`), so
+  // only list jobs paid before that started — otherwise the same cost is counted twice.
+  const bookedMaintenance = bookedLegacyRefs(bookedNotes).maintenance;
 
   const byRoom = new Map<
     string,
@@ -90,7 +95,9 @@ export async function GET(
     recordedBy: e.recordedBy,
   }));
   const expenseTotal = expenseItems.reduce((s, e) => s + e.amount, 0);
-  const maintenanceItems = maintenanceCosts.map((m) => ({
+  const maintenanceItems = maintenanceCosts
+    .filter((m) => !bookedMaintenance.has(m.requestCode))
+    .map((m) => ({
     requestCode: m.requestCode,
     roomCode: m.roomCode,
     title: m.title,
