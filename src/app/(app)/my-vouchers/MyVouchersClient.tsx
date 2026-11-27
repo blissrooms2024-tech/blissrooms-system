@@ -74,7 +74,7 @@ export default function MyVouchersClient() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl bg-white p-5 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 shadow-sm">
         <h3 className="mb-1 text-base font-semibold text-brand">🎟️ {t("我的代金券", "My Vouchers")}</h3>
         <p className="mb-4 text-sm text-gray-500">
           {t(

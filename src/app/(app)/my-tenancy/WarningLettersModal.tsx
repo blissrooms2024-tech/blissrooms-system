@@ -44,7 +44,7 @@ export default function WarningLettersModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="text-lg font-bold text-brand">
+      <h3 className="text-base font-bold text-brand sm:text-lg">
         {t("⚠️ 警告信", "⚠️ Warning Letters")} — {contractCode}
       </h3>
 

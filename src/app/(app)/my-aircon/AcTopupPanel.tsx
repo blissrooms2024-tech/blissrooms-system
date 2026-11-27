@@ -173,7 +173,7 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
 
   if (!hasAircon && info?.plan !== "POSTPAID") {
     return (
-      <div className="rounded-xl bg-white p-5 text-center text-sm text-gray-400 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-center text-sm text-gray-400 shadow-sm">
         {t("这间房没有冷气，不需要冷气充值。", "This room has no air-cond, so no top-up is needed.")}
       </div>
     );
@@ -357,7 +357,7 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
         )}
       </div>
 
-      <div className="rounded-xl bg-white p-5 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 shadow-sm">
         <h3 className="mb-1 text-base font-semibold text-brand">{t("📅 每月充值记录", "📅 Monthly Top-up History")}</h3>
         <p className="mb-3 text-xs text-gray-400">
           {t(
