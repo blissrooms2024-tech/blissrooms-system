@@ -83,6 +83,11 @@ export default function BreakdownPayAllModal({
         onClose();
       } else {
         toast.danger(data.message);
+        // A stale "nothing billed yet" total (e.g. Admin or the monthly-rent cron opened a
+        // formal bill on one of these items since the page was first loaded) is the most likely
+        // reason this specific call fails — refresh so the modal/page stop showing it as payable
+        // here once the tenant closes this and looks again.
+        onPaid();
       }
     } catch {
       toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));

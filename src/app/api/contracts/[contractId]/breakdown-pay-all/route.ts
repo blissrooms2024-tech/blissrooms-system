@@ -73,7 +73,23 @@ export async function POST(
     .filter((row) => row.outstanding > 0);
 
   if (eligible.length === 0) {
-    return NextResponse.json({ success: false, message: "没有可以付款的项目" }, { status: 400 });
+    // The tenant's page can be left open from before Admin opened a formal bill on an item (or
+    // before the monthly-rent cron did) — by submit time it's no longer "unbilled", so this
+    // isn't really "nothing owing", it's "nothing payable through this particular shortcut
+    // anymore". Telling them where it moved to beats a bare "nothing to pay" that reads like
+    // their own form was wrong.
+    const stillOwingButBilled = items.some(
+      (item) => blockedTypes.has(item) && (due[item] || 0) - (paidByType[item] || 0) > 0
+    );
+    return NextResponse.json(
+      {
+        success: false,
+        message: stillOwingButBilled
+          ? "这些项目现在已经有正式账单了，请到下面「待处理账单」那里直接上传付款证明"
+          : "没有可以付款的项目",
+      },
+      { status: 400 }
+    );
   }
   const totalOutstanding = eligible.reduce((s, r) => s + r.outstanding, 0);
   if (amount > totalOutstanding) {
