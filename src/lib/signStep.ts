@@ -19,6 +19,14 @@ export function signStepOf(c: {
   return "TENANT_SIGN";
 }
 
+/** Waiting on Admin is violet (Admin's own queue); every signature step is red, like 等签名. */
+export const SIGN_STEP_TONE: Record<SignStep, "violet" | "rose"> = {
+  APPROVE: "violet",
+  AGENT_SIGN: "rose",
+  TENANT_IC: "rose",
+  TENANT_SIGN: "rose",
+};
+
 export const SIGN_STEP_LABELS: Record<SignStep, { zh: string; en: string }> = {
   APPROVE: { zh: "等 Admin 批准", en: "Admin to approve" },
   AGENT_SIGN: { zh: "等 Agent 签名", en: "Agent to sign" },

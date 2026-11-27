@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Pill from "@/components/Pill";
 import Sheet from "@/components/Sheet";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
-import { IconAlert, IconCheck, IconSearch, IconX } from "@/components/icons";
+import { IconAlert, IconCheck, IconClock, IconSearch, IconX } from "@/components/icons";
 import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate, fmtMoney, isPdfUrl } from "@/lib/format";
+import PaymentsTabs from "../PaymentsTabs";
 
 /**
  * 交易单审核 — one card per uploaded slip, the slip itself big enough to check against the
@@ -144,29 +144,21 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
   ];
 
   return (
-    <div className="app-type mx-auto max-w-6xl space-y-4">
+    <div className="app-type mx-auto max-w-6xl space-y-3">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">
+        <h1 className="text-lg font-semibold text-gray-900">
           {t("交易单审核", "Payment slips")}
-          {items && <span className="ml-1.5 text-base font-normal text-gray-400">{items.length}</span>}
+          {items && <span className="ml-1.5 text-sm font-normal text-gray-400">{items.length}</span>}
         </h1>
         {items && items.length > 0 && (
-          <p className="mt-0.5 text-sm text-gray-500">
+          <p className="text-xs text-gray-500">
             {t(`合计 ${fmtMoney(total)}`, `${fmtMoney(total)} in total`)}
-            {oldestWait > 0 && <span className={oldestWait >= 2 ? "text-rose-600" : ""}>{t(` · 最早一张等了 ${oldestWait} 天`, ` · oldest waiting ${oldestWait} days`)}</span>}
+            {oldestWait > 0 && <span className={oldestWait >= 2 ? "font-medium text-rose-600" : ""}>{t(` · 最早一张等了 ${oldestWait} 天`, ` · oldest waiting ${oldestWait} days`)}</span>}
           </p>
         )}
       </div>
 
-      {/* The two halves of 收款: slips waiting for a decision, and bills nobody has paid yet. */}
-      <nav className="grid max-w-sm grid-cols-2 rounded-xl bg-gray-200/60 p-1 text-sm font-medium">
-        <span aria-current="page" className="rounded-lg bg-white py-2 text-center text-gray-900 shadow-sm">
-          {t("待审核", "To review")} {items ? items.length : ""}
-        </span>
-        <Link href="/payments/outstanding" className="rounded-lg py-2 text-center text-gray-500 hover:text-gray-800">
-          {t("未清账单", "Unpaid bills")}
-        </Link>
-      </nav>
+      <PaymentsTabs current="review" reviewCount={items?.length} />
 
       {items && items.length > 0 && (
         <>
@@ -176,9 +168,19 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("搜房间 / 租客 / 合同号", "Search room, tenant, contract #")}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-3 text-base shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10 sm:text-sm"
+              placeholder={t("搜房间 / 租客 / 合同号", "Room, tenant, contract #")}
+              className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-10 text-base shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10 sm:text-sm"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label={t("清除搜索", "Clear search")}
+                className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-gray-400 hover:bg-gray-100"
+              >
+                <IconX size={16} />
+              </button>
+            )}
           </div>
           {typeCounts.length > 1 && (
             <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 md:mx-0 md:flex-wrap md:px-0">
@@ -188,12 +190,12 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                   type="button"
                   aria-pressed={typeFilter === key}
                   onClick={() => setTypeFilter(key)}
-                  className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium ${
+                  className={`flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-medium ${
                     typeFilter === key ? "bg-brand text-white" : "bg-white text-gray-700 shadow-sm hover:bg-gray-50"
                   }`}
                 >
                   {v.label}
-                  <span className={`text-xs ${typeFilter === key ? "text-white/80" : "text-gray-400"}`}>{v.n}</span>
+                  <span className={`text-[11px] ${typeFilter === key ? "text-white/80" : "text-gray-400"}`}>{v.n}</span>
                 </button>
               ))}
             </div>
@@ -203,9 +205,9 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
 
       {error && <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {!items && !error && (
-        <ul className="space-y-3">
-          {[0, 1].map((i) => (
-            <li key={i} className="h-48 animate-pulse rounded-[20px] bg-white/80 motion-reduce:animate-none" />
+        <ul className="space-y-2">
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="h-24 animate-pulse rounded-2xl bg-white/80 motion-reduce:animate-none" />
           ))}
         </ul>
       )}
@@ -220,92 +222,95 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
       )}
       {items && items.length > 0 && shown.length === 0 && <p className="py-8 text-center text-sm text-gray-400">{t("没有符合条件的交易单", "No slips match")}</p>}
 
-      <ul className="grid gap-3 lg:grid-cols-2">
+      {/* Compact cards: a small slip to tap open full-screen, then who / what / how much and the
+          decision on three short lines, so a phone screen holds six or seven slips. */}
+      <ul className="grid gap-2 lg:grid-cols-2">
         {shown.map((p) => {
           const up = p.uploadedAt ? myTime(p.uploadedAt) : null;
           const late = up && p.dueDate ? dayDiff(up.day, p.dueDate) : 0;
           const topup = p.type === "AC" && !p.periodMonth;
           return (
-            <li key={p.id} className="rounded-[20px] bg-white p-3.5 shadow-[0_1px_2px_rgba(30,27,46,0.04),0_12px_28px_-18px_rgba(76,29,149,0.22)]">
-              <div className="flex gap-3.5">
+            <li key={p.id} className="rounded-2xl bg-white p-2.5 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
+              <div className="flex gap-2.5">
                 {p.receiptLink ? (
                   <button
                     type="button"
                     onClick={() => setViewing(p)}
                     aria-label={t("放大看交易单", "Open the slip")}
-                    className="relative h-[124px] w-[92px] shrink-0 overflow-hidden rounded-xl bg-gray-100 ring-1 ring-black/5"
+                    className="relative h-[72px] w-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-black/5"
                   >
                     {isPdfUrl(p.receiptLink) ? (
                       // Banking apps often give a PDF; browsers show those natively, full screen.
-                      <span className="grid h-full w-full place-items-center bg-rose-50 text-center">
-                        <span>
-                          <b className="block text-lg text-rose-700">PDF</b>
-                          <span className="text-[11px] text-rose-700/80">{t("点我打开", "Tap to open")}</span>
-                        </span>
-                      </span>
+                      <span className="grid h-full w-full place-items-center bg-rose-50 text-[13px] font-bold text-rose-700">PDF</span>
                     ) : (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={p.receiptLink} alt={t("交易单", "Payment slip")} className="h-full w-full object-cover object-top" />
-                        <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent pb-1 pt-4 text-center text-[11px] font-medium text-white">
-                          {t("点我放大", "Tap to view")}
-                        </span>
                       </>
                     )}
                   </button>
                 ) : (
-                  <div className="grid h-[124px] w-[92px] shrink-0 place-items-center rounded-xl bg-gray-50 px-2 text-center text-[11px] text-gray-400 ring-1 ring-black/5">
+                  <div className="grid h-[72px] w-14 shrink-0 place-items-center rounded-lg bg-gray-50 px-1 text-center text-[10.5px] leading-tight text-gray-400 ring-1 ring-black/5">
                     {t("没有交易单", "No slip")}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-baseline gap-2">
-                    <b className="shrink-0 text-base font-semibold text-gray-900">{p.roomCode}</b>
-                    <span className="truncate text-sm text-gray-700">{p.tenantName}</span>
-                  </p>
-                  <Link href={`/contracts/${p.contractCode}`} className="text-xs text-gray-400 hover:text-brand hover:underline">
-                    {p.contractCode}
-                  </Link>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <Pill tone={topup ? "blue" : "violet"}>{label(p)}</Pill>
-                    {p.periodMonth && <span className="text-xs text-gray-500">{p.periodMonth}</span>}
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="flex min-w-0 items-baseline gap-1.5">
+                      <b className="shrink-0 text-[15px] font-semibold text-gray-900">{p.roomCode}</b>
+                      <span className="truncate text-[13px] text-gray-700">{p.tenantName}</span>
+                    </p>
+                    <b className="shrink-0 whitespace-nowrap text-[15px] font-semibold tabular-nums text-gray-900">{fmtMoney(p.amountPaid)}</b>
                   </div>
-                  <p className="mt-1.5 text-xl font-semibold leading-tight text-gray-900">{fmtMoney(p.amountPaid)}</p>
-                  <p className="mt-0.5 text-[11px] text-gray-500">
-                    {up ? t(`上传 ${fmtDate(up.day)} ${up.hm}`, `Uploaded ${fmtDate(up.day)} ${up.hm}`) : t("还没上传时间", "No upload time")}
-                    {late > 0 && <span className="font-medium text-rose-600">{t(` · 迟了 ${late} 天`, ` · ${late} days late`)}</span>}
+                  <p className="mt-0.5 truncate text-[11.5px] text-gray-400">
+                    <span className={`font-medium ${topup ? "text-sky-700" : "text-brand"}`}>{label(p)}</span>
+                    {p.periodMonth && <span className="text-gray-500"> {p.periodMonth}</span>}
+                    {" · "}
+                    <Link href={`/contracts/${p.contractCode}`} className="hover:text-brand hover:underline">
+                      {p.contractCode}
+                    </Link>
                   </p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="flex min-w-0 items-center gap-1 text-[11px] leading-tight text-gray-400">
+                      <IconClock size={12} className="shrink-0" />
+                      <span>
+                        <span className="sr-only">{t("上传 ", "Uploaded ")}</span>
+                        {up ? `${fmtDate(up.day).slice(0, 5)} ${up.hm}` : t("没有时间", "No time")}
+                        {late > 0 && <span className="font-medium text-rose-600">{t(` · 迟了 ${late} 天`, ` · ${late}d late`)}</span>}
+                      </span>
+                    </p>
+                    {canAct && (
+                      <div className="flex shrink-0 gap-1.5">
+                        <button
+                          type="button"
+                          disabled={busy !== null}
+                          onClick={() => setRejecting(p)}
+                          aria-label={t("拒绝", "Reject")}
+                          title={t("拒绝", "Reject")}
+                          className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                        >
+                          <IconX size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy !== null}
+                          onClick={() => approve(p)}
+                          className="flex h-8 items-center gap-1 rounded-lg bg-teal-600 px-3 text-[13px] font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                        >
+                          <IconCheck size={15} />
+                          {busy === p.id ? t("处理中…", "Working…") : t("批准", "Approve")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {topup && (
-                <p className="mt-3 flex gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  <IconAlert size={16} className="mt-px shrink-0" />
+                <p className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-amber-50 px-2 py-1 text-[11px] leading-snug text-amber-800">
+                  <IconAlert size={13} className="shrink-0" />
                   {t("批准后 12 小时内更新到 Smart Meter（只在周一至五）", "Once approved, top up the Smart Meter within 12 hours (weekdays only)")}
                 </p>
-              )}
-
-              {canAct && (
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={busy !== null}
-                    onClick={() => setRejecting(p)}
-                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-rose-50 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                  >
-                    <IconX size={17} />
-                    {t("拒绝", "Reject")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy !== null}
-                    onClick={() => approve(p)}
-                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
-                  >
-                    <IconCheck size={17} />
-                    {busy === p.id ? t("处理中…", "Working…") : t("批准", "Approve")}
-                  </button>
-                </div>
               )}
             </li>
           );

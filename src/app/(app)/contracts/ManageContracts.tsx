@@ -8,10 +8,10 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/Toast";
 import { IconChat, IconChevronRight, IconFolder, IconPlus, IconRefresh, IconSearch, IconSliders, IconUpload, IconUsers, IconX } from "@/components/icons";
 import type { NavIcon } from "@/components/navMeta";
-import { COMPANY, contractStatusLabel } from "@/lib/config";
+import { COMPANY, contractStatusLabel, contractStatusTone } from "@/lib/config";
 import { fmtDate, fmtMoney } from "@/lib/format";
 import { waNumber } from "@/lib/quote";
-import { SIGN_STEP_LABELS, signStepOf } from "@/lib/signStep";
+import { SIGN_STEP_LABELS, SIGN_STEP_TONE, signStepOf } from "@/lib/signStep";
 import ContractActions from "./ContractActions";
 import { ContractsTable, NOT_SIGNED_STATUSES, type Contract } from "./ContractsClient";
 
@@ -342,16 +342,14 @@ export default function ManageContracts({ role }: { role: string }) {
   );
 }
 
-const STATUS_TONE: Record<string, PillTone> = { ACTIVE: "teal", EXPIRING: "amber", TERMINATED: "rose" };
-
 function ContractCard({ c, role, onChanged }: { c: Row; role: string; onChanged: () => void }) {
   const { t, locale } = useLanguage();
   const step = signStepOf(c);
   const status: { l: string; tone: PillTone } = c._expired
     ? { l: t("已过期", "Expired"), tone: "rose" }
     : step
-      ? { l: t(SIGN_STEP_LABELS[step].zh, SIGN_STEP_LABELS[step].en), tone: step === "APPROVE" ? "violet" : "amber" }
-      : { l: contractStatusLabel(c.status, locale), tone: STATUS_TONE[c.status] ?? "gray" };
+      ? { l: t(SIGN_STEP_LABELS[step].zh, SIGN_STEP_LABELS[step].en), tone: SIGN_STEP_TONE[step] }
+      : { l: contractStatusLabel(c.status, locale), tone: contractStatusTone(c.status) };
   const wa = waNumber(c.contactNumber);
   const days = c.expiredDate ? daysFromToday(c.expiredDate) : null;
   const owing = c._outstanding > 0;

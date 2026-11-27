@@ -25,10 +25,10 @@ import {
 } from "@/components/icons";
 import { navMeta, TONE_CLASS, type NavIcon, type Tone } from "@/components/navMeta";
 import { fmtDate, fmtMoney } from "@/lib/format";
-import { COMPANY, contractStatusLabel, maintenanceStatusLabel, ROLE_LABELS } from "@/lib/config";
+import { COMPANY, contractStatusLabel, contractStatusTone, maintenanceStatusLabel, ROLE_LABELS } from "@/lib/config";
 import { label, UTILITY_TYPE_LABELS } from "@/lib/unitInfo";
 import type { DashboardData } from "@/lib/dashboard";
-import { SIGN_STEP_LABELS, type SignStep } from "@/lib/signStep";
+import { SIGN_STEP_LABELS, SIGN_STEP_TONE, type SignStep } from "@/lib/signStep";
 import type { QuoteOptions } from "@/lib/quoteOptions";
 import QuickQuote from "./QuickQuote";
 import ReportsCard from "./ReportsCard";
@@ -162,7 +162,7 @@ export default function DashboardClient({
     ...(isAdmin ? [{ n: todo.pendingUsers, l: t("新用户待激活", "New users to activate"), href: "/users", icon: IconUsers, tone: "slate" as Tone }] : []),
     { n: claims.pending.count, l: t("报销待审批", "Claims to review"), href: "/claims", icon: IconReceiptCheck, tone: "teal" as Tone },
     { n: claims.toPay.count, l: t("报销待付款", "Claims to pay out"), href: "/claims", icon: IconCash, tone: "teal" as Tone },
-    { n: todo.overdueBills.count, l: t(`租客逾期账单 · ${fmtMoney(todo.overdueBills.amount)}`, `Overdue tenant bills · ${fmtMoney(todo.overdueBills.amount)}`), href: "/payments/outstanding", icon: IconAlert, tone: "rose" as Tone },
+    { n: todo.overdueBills.count, l: t(`租客逾期账单 · ${fmtMoney(todo.overdueBills.amount)}`, `Overdue tenant bills · ${fmtMoney(todo.overdueBills.amount)}`), href: "/payments/outstanding?show=overdue", icon: IconAlert, tone: "rose" as Tone },
     {
       n: todo.meterBilling.units.length,
       l: t(
@@ -214,8 +214,7 @@ export default function DashboardClient({
   const undecided = rooms.expiring.filter((c) => c.state === "UNDECIDED").length;
   const vacancyPct = rooms.total ? Math.round((rooms.vacant / rooms.total) * 100) : 0;
 
-  const STEP_TONE: Record<SignStep, "violet" | "amber" | "blue" | "teal"> = { APPROVE: "violet", AGENT_SIGN: "amber", TENANT_IC: "blue", TENANT_SIGN: "teal" };
-  const stepInfo = (step: SignStep) => ({ l: t(SIGN_STEP_LABELS[step].zh, SIGN_STEP_LABELS[step].en), tone: STEP_TONE[step] });
+  const stepInfo = (step: SignStep) => ({ l: t(SIGN_STEP_LABELS[step].zh, SIGN_STEP_LABELS[step].en), tone: SIGN_STEP_TONE[step] });
 
   const curMonth = data.today.slice(0, 7);
   const [cy, cm] = curMonth.split("-").map(Number);
@@ -359,8 +358,15 @@ export default function DashboardClient({
                         href={`/contracts/${m.contractCode}`}
                         right={
                           <>
-                            <Pill>{contractStatusLabel(m.status, locale)}</Pill>
-                            <span className="mt-0.5 block text-[11px] text-gray-400">{t("未做入住检查", "No move-in check")}</span>
+                            <Pill tone={contractStatusTone(m.status)}>{contractStatusLabel(m.status, locale)}</Pill>
+                            {/* Already moved in with no check = red; within 3 days = amber. */}
+                            <span
+                              className={`mt-0.5 block text-[11px] ${
+                                m.daysUntil < 0 ? "font-medium text-rose-600" : m.daysUntil <= 3 ? "font-medium text-amber-700" : "text-gray-400"
+                              }`}
+                            >
+                              {t("未做入住检查", "No move-in check")}
+                            </span>
                           </>
                         }
                       >

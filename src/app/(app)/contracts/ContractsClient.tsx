@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { contractStatusLabel } from "@/lib/config";
+import { contractStatusLabel, contractStatusTone } from "@/lib/config";
+import { PILL } from "@/components/Pill";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/Toast";
@@ -340,7 +341,7 @@ export function ContractsTable({
                     ⛔ {t("已过期", "Expired")}
                   </span>
                 ) : (
-                  <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${PILL[contractStatusTone(c.status)]}`}>
                     {contractStatusLabel(c.status, locale)}
                   </span>
                 )}

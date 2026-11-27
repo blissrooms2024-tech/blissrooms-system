@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
-import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel } from "@/lib/config";
+import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel, contractStatusTone } from "@/lib/config";
+import { PILL } from "@/components/Pill";
 import { fmtDate, isPdfUrl } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 import { readAsDataURL, isOversized } from "@/lib/imageUpload";
@@ -253,7 +254,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
                     </div>
                   )}
                 </div>
-                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${PILL[contractStatusTone(c.status)]}`}>
                   {contractStatusLabel(c.status, locale) ?? c.status}
                 </span>
               </div>

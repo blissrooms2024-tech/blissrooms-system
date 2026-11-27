@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-const PILL = {
+/** Tone → background/text classes; exported for older badges that keep their own size. */
+export const PILL = {
   gray: "bg-gray-100 text-gray-600",
   violet: "bg-brand-light text-brand",
   teal: "bg-teal-50 text-teal-800",

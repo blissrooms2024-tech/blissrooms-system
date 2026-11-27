@@ -148,6 +148,23 @@ export function contractStatusLabel(status: string, locale: "zh" | "en"): string
   return (locale === "en" ? CONTRACT_STATUS_LABELS_EN : CONTRACT_STATUS_LABELS)[status] ?? status;
 }
 
+/** One color per contract status (a Pill tone), the same on every page: live = teal, ending
+ * soon = amber, waiting on a signature or already over = red, waiting on Admin = violet,
+ * finished = gray. */
+export const CONTRACT_STATUS_TONE: Record<string, "teal" | "amber" | "rose" | "violet" | "gray"> = {
+  ACTIVE: "teal",
+  EXPIRING: "amber",
+  PENDING_SIGN: "rose",
+  PENDING_APPROVE: "violet",
+  EXPIRED: "rose",
+  TERMINATED: "rose",
+  DRAFT: "gray",
+  MOVED_OUT: "gray",
+  RENEWED: "gray",
+};
+
+export const contractStatusTone = (status: string) => CONTRACT_STATUS_TONE[status] ?? "gray";
+
 /** Appendix images (logo + 10 house-rule notice photos), bundled as static assets in
  * public/contract-images/. Override via env if you ever want to swap them out without a redeploy. */
 const DEFAULT_NOTICE_URLS = [
