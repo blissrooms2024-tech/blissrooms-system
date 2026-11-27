@@ -7,7 +7,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
 
 interface BreakdownRow {
@@ -30,6 +30,8 @@ interface PaymentRow {
   reviewNote: string | null;
   periodMonth: string | null;
   customLabel: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
 }
 
 function readAsDataURL(file: File): Promise<string> {
@@ -56,10 +58,14 @@ function buildBillSteps(b: PaymentRow, t: (zh: string, en: string) => string): T
     { label: t("账单已开", "Bill Issued"), state: 0 < currentIndex ? "done" : currentIndex === 0 ? "active" : "pending" },
     {
       label: t("已上传交易单", "Slip Uploaded"),
-      sublabel: b.paidDate ? fmtDate(b.paidDate) : undefined,
+      sublabel: b.paidDate ? fmtDateTime(b.paidDate) : undefined,
       state: 1 < currentIndex ? "done" : currentIndex === 1 ? "active" : "pending",
     },
-    { label: t("已批准", "Approved"), state: currentIndex === 2 ? "done" : "pending" },
+    {
+      label: t("已批准", "Approved"),
+      sublabel: currentIndex === 2 && b.reviewedBy ? `${b.reviewedBy} · ${fmtDateTime(b.reviewedAt)}` : undefined,
+      state: currentIndex === 2 ? "done" : "pending",
+    },
   ];
 }
 
@@ -265,13 +271,14 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
             <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("金额", "Amount")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("日期", "Date")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("Admin 审核", "Reviewed By")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("收据", "Receipt")}</th>
           </tr>
         </thead>
         <tbody>
           {paidHistory.length === 0 && (
             <tr>
-              <td colSpan={4} className="py-3 text-center text-gray-400">
+              <td colSpan={5} className="py-3 text-center text-gray-400">
                 {t("还没有付款记录", "No payment history yet")}
               </td>
             </tr>
@@ -283,7 +290,18 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                 {p.periodMonth && <span className="text-gray-400"> ({p.periodMonth})</span>}
               </td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
-              <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
+              <td className="px-2.5 py-1.5">{fmtDateTime(p.paidDate)}</td>
+              <td className="px-2.5 py-1.5 text-xs">
+                {p.reviewedBy ? (
+                  <>
+                    {p.reviewedBy}
+                    <br />
+                    {fmtDateTime(p.reviewedAt)}
+                  </>
+                ) : (
+                  "-"
+                )}
+              </td>
               <td className="px-2.5 py-1.5">
                 <Link href={`/receipt/${p.paymentCode}`} target="_blank" className="text-xs font-semibold text-brand underline">
                   {t("🧾 查看 Receipt", "🧾 View Receipt")}

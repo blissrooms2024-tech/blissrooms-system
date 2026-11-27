@@ -25,3 +25,19 @@ export function fmtDate(v: string | null | undefined): string {
   const [, yyyy, mm, dd] = m;
   return `${dd}/${mm}/${yyyy}`;
 }
+
+// For a genuine moment-in-time field (when a slip was actually uploaded, when Admin actually
+// reviewed it) rather than a plain calendar date (dueDate, periodMonth) — unlike fmtDate, this
+// parses into a real Date and reads the clock fields back from it, so the time-of-day shown is
+// converted into whatever timezone the viewer's own browser is in (correct for everyone, since
+// a timestamp has one real instant but the local wall-clock reading of it differs by viewer).
+export function fmtDateTime(v: string | null | undefined): string {
+  if (!v) return "-";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return fmtDate(v);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${d.getFullYear()} ${hh}:${min}`;
+}

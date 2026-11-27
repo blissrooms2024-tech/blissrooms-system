@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 
 interface PendingPayment {
@@ -166,7 +166,7 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                 <div className="text-sm text-gray-600">
                   {paymentTypeLabelLocale(p.type, p.customLabel, locale)} · {fmt(p.amountPaid)}
                   {p.periodMonth ? ` · ${p.periodMonth}` : ""} · {t("到期", "Due")} {fmtDate(p.dueDate)} ·{" "}
-                  {t("上传于", "Uploaded")} {fmtDate(p.paidDate)}
+                  {t("上传于", "Uploaded")} {fmtDateTime(p.paidDate)}
                 </div>
                 {p.type === "AC" && (
                   <div className="mt-1 text-xs font-semibold text-amber-700">
