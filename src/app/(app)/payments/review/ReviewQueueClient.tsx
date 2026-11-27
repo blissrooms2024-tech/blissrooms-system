@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 
 interface PendingPayment {
@@ -137,13 +137,24 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
           {filteredItems.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 p-3.5">
               {p.receiptLink && (
-                <button type="button" onClick={() => setZoomUrl(p.receiptLink)} className="shrink-0 cursor-zoom-in">
-                  <img
-                    src={p.receiptLink}
-                    alt={t("交易单", "Transaction Slip")}
-                    className="h-[70px] w-[70px] rounded border border-gray-300 object-cover hover:opacity-90"
-                  />
-                </button>
+                isPdfUrl(p.receiptLink) ? (
+                  <a
+                    href={p.receiptLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-[70px] w-[70px] shrink-0 flex-col items-center justify-center rounded border border-gray-300 bg-gray-50 text-xs font-semibold text-brand hover:bg-gray-100"
+                  >
+                    📄 PDF
+                  </a>
+                ) : (
+                  <button type="button" onClick={() => setZoomUrl(p.receiptLink)} className="shrink-0 cursor-zoom-in">
+                    <img
+                      src={p.receiptLink}
+                      alt={t("交易单", "Transaction Slip")}
+                      className="h-[70px] w-[70px] rounded border border-gray-300 object-cover hover:opacity-90"
+                    />
+                  </button>
+                )
               )}
               <div className="min-w-[220px] flex-1">
                 <div className="text-sm font-semibold">

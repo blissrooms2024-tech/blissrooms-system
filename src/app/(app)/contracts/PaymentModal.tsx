@@ -8,7 +8,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 
 interface Breakdown {
   item: string;
@@ -793,13 +793,24 @@ export default function PaymentModal({
                       {b.status === "PENDING_REVIEW" && (
                         <div className="flex flex-col items-start gap-1.5">
                           {b.receiptLink && (
-                            <button
-                              type="button"
-                              onClick={() => setZoomUrl(b.receiptLink)}
-                              className="text-xs font-semibold text-brand underline"
-                            >
-                              🧾 {t("查看交易单", "View Transaction Slip")}
-                            </button>
+                            isPdfUrl(b.receiptLink) ? (
+                              <a
+                                href={b.receiptLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-semibold text-brand underline"
+                              >
+                                📄 {t("查看交易单 (PDF)", "View Transaction Slip (PDF)")}
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setZoomUrl(b.receiptLink)}
+                                className="text-xs font-semibold text-brand underline"
+                              >
+                                🧾 {t("查看交易单", "View Transaction Slip")}
+                              </button>
+                            )
                           )}
                           {role === "ADMIN" && (
                             <button type="button" onClick={() => startEditPeriod(b)} className="text-xs font-semibold text-brand underline">

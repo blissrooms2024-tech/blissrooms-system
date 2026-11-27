@@ -9,7 +9,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 
 interface MaintenanceRow {
   requestCode: string;
@@ -177,7 +177,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
 
   async function addCreatePhoto(file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
     if (createPhotos.length >= 3) {
@@ -427,16 +427,28 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                     {r.description && <div className="text-xs text-gray-500">{r.description}</div>}
                     {r.photos.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-2">
-                        {r.photos.map((p, i) => (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            key={i}
-                            src={p}
-                            alt=""
-                            onClick={() => setZoomUrl(p)}
-                            className="h-14 w-14 cursor-pointer rounded-lg border border-gray-200 object-cover hover:opacity-90"
-                          />
-                        ))}
+                        {r.photos.map((p, i) =>
+                          isPdfUrl(p) ? (
+                            <a
+                              key={i}
+                              href={p}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-semibold text-brand hover:bg-gray-100"
+                            >
+                              📄 PDF
+                            </a>
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              key={i}
+                              src={p}
+                              alt=""
+                              onClick={() => setZoomUrl(p)}
+                              className="h-14 w-14 cursor-pointer rounded-lg border border-gray-200 object-cover hover:opacity-90"
+                            />
+                          )
+                        )}
                       </div>
                     )}
                   </div>
@@ -451,10 +463,22 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                       <div>
                         <div className="mb-1 text-xs text-gray-400">{t("工人拍的 Before", "Worker's Before Photos")}</div>
                         <div className="flex gap-1.5">
-                          {r.workerBeforePhotos.map((p, i) => (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img key={i} src={p} alt="" onClick={() => setZoomUrl(p)} className="h-12 w-12 cursor-pointer rounded object-cover" />
-                          ))}
+                          {r.workerBeforePhotos.map((p, i) =>
+                            isPdfUrl(p) ? (
+                              <a
+                                key={i}
+                                href={p}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex h-12 w-12 flex-col items-center justify-center rounded border border-gray-200 bg-gray-50 text-[10px] font-semibold text-brand hover:bg-gray-100"
+                              >
+                                📄 PDF
+                              </a>
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={i} src={p} alt="" onClick={() => setZoomUrl(p)} className="h-12 w-12 cursor-pointer rounded object-cover" />
+                            )
+                          )}
                         </div>
                       </div>
                     )}
@@ -462,10 +486,22 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                       <div>
                         <div className="mb-1 text-xs text-gray-400">{t("工人拍的 After", "Worker's After Photos")}</div>
                         <div className="flex gap-1.5">
-                          {r.workerAfterPhotos.map((p, i) => (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img key={i} src={p} alt="" onClick={() => setZoomUrl(p)} className="h-12 w-12 cursor-pointer rounded object-cover" />
-                          ))}
+                          {r.workerAfterPhotos.map((p, i) =>
+                            isPdfUrl(p) ? (
+                              <a
+                                key={i}
+                                href={p}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex h-12 w-12 flex-col items-center justify-center rounded border border-gray-200 bg-gray-50 text-[10px] font-semibold text-brand hover:bg-gray-100"
+                              >
+                                📄 PDF
+                              </a>
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={i} src={p} alt="" onClick={() => setZoomUrl(p)} className="h-12 w-12 cursor-pointer rounded object-cover" />
+                            )
+                          )}
                         </div>
                       </div>
                     )}
@@ -564,16 +600,22 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
                               {t("📎 上传单据", "📎 Upload Invoice")}
                               <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,application/pdf"
                                 className="hidden"
                                 onChange={(e) => e.target.files?.[0] && uploadInvoice(r, e.target.files[0])}
                               />
                             </label>
                           )}
                           {r.invoiceUrl && (
-                            <button onClick={() => setZoomUrl(r.invoiceUrl)} className="text-xs font-semibold text-brand underline">
-                              {t("查看单据", "View Invoice")}
-                            </button>
+                            isPdfUrl(r.invoiceUrl) ? (
+                              <a href={r.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-brand underline">
+                                {t("📄 查看单据 (PDF)", "📄 View Invoice (PDF)")}
+                              </a>
+                            ) : (
+                              <button onClick={() => setZoomUrl(r.invoiceUrl)} className="text-xs font-semibold text-brand underline">
+                                {t("查看单据", "View Invoice")}
+                              </button>
+                            )
                           )}
                           <button
                             onClick={() => complete(r)}
@@ -823,16 +865,25 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
               <label className="mb-1.5 block text-sm text-gray-600">{t("照片 (可选，最多3张)", "Photos (optional, up to 3)")}</label>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf"
                 onChange={(e) => e.target.files?.[0] && addCreatePhoto(e.target.files[0])}
                 className="block w-full text-xs text-gray-500 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark"
               />
               {createPhotos.length > 0 && (
                 <div className="mt-2 flex gap-2">
-                  {createPhotos.map((p, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={i} src={p} alt="" className="h-14 w-14 rounded-lg object-cover" />
-                  ))}
+                  {createPhotos.map((p, i) =>
+                    isPdfUrl(p) ? (
+                      <div
+                        key={i}
+                        className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-semibold text-brand"
+                      >
+                        📄 PDF
+                      </div>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={i} src={p} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                    )
+                  )}
                 </div>
               )}
             </div>

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
 import { MAINTENANCE_STATUS_LABELS } from "@/lib/config";
-import { fmtMoney as fmt } from "@/lib/format";
+import { fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 
 interface Job {
   requestCode: string;
@@ -152,10 +152,22 @@ export default function WorkerClient() {
                 <div className="mt-2">
                   <div className="mb-1 text-xs text-gray-400">租客拍的问题照片</div>
                   <div className="flex flex-wrap gap-2">
-                    {j.photos.map((p, i) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={i} src={p} alt="" onClick={() => setZoomUrl(p)} className="h-16 w-16 cursor-pointer rounded-lg border border-gray-200 object-cover" />
-                    ))}
+                    {j.photos.map((p, i) =>
+                      isPdfUrl(p) ? (
+                        <a
+                          key={i}
+                          href={p}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex h-16 w-16 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-semibold text-brand hover:bg-gray-100"
+                        >
+                          📄 PDF
+                        </a>
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={p} alt="" onClick={() => setZoomUrl(p)} className="h-16 w-16 cursor-pointer rounded-lg border border-gray-200 object-cover" />
+                      )
+                    )}
                   </div>
                 </div>
               )}
@@ -251,10 +263,22 @@ function PhotoSlot({
       </div>
       {photos.length > 0 && (
         <div className="mb-1.5 flex flex-wrap gap-1.5">
-          {photos.map((p, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={p} alt="" onClick={() => onZoom(p)} className="h-14 w-14 cursor-pointer rounded-lg object-cover" />
-          ))}
+          {photos.map((p, i) =>
+            isPdfUrl(p) ? (
+              <a
+                key={i}
+                href={p}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-semibold text-brand hover:bg-gray-100"
+              >
+                📄 PDF
+              </a>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={p} alt="" onClick={() => onZoom(p)} className="h-14 w-14 cursor-pointer rounded-lg object-cover" />
+            )
+          )}
         </div>
       )}
       {locked ? null : atLimit ? (
@@ -262,7 +286,7 @@ function PhotoSlot({
       ) : (
         <input
           type="file"
-          accept="image/*"
+          accept="image/*,application/pdf"
           multiple
           disabled={uploading}
           onChange={(e) => {

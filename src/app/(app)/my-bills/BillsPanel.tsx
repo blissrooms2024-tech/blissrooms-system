@@ -7,7 +7,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
 
 interface BreakdownRow {
@@ -94,7 +94,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
 
   async function uploadSlip(paymentId: string, file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
     setUploadingId(paymentId);
@@ -218,19 +218,30 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                     </div>
                   </div>
                   {b.status === "PENDING_REVIEW" && b.receiptLink && (
-                    <button
-                      type="button"
-                      onClick={() => setZoomUrl(b.receiptLink)}
-                      className="mt-2 text-xs font-semibold text-brand underline"
-                    >
-                      {t("🧾 查看已上传的交易单", "🧾 View Uploaded Slip")}
-                    </button>
+                    isPdfUrl(b.receiptLink) ? (
+                      <a
+                        href={b.receiptLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block text-xs font-semibold text-brand underline"
+                      >
+                        {t("📄 查看已上传的交易单 (PDF)", "📄 View Uploaded Slip (PDF)")}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setZoomUrl(b.receiptLink)}
+                        className="mt-2 text-xs font-semibold text-brand underline"
+                      >
+                        {t("🧾 查看已上传的交易单", "🧾 View Uploaded Slip")}
+                      </button>
+                    )
                   )}
                   {(b.status === "PENDING" || b.status === "REJECTED") && (
                     <div className="mt-2">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,application/pdf"
                         disabled={uploadingId === b.id}
                         onChange={(e) => e.target.files?.[0] && uploadSlip(b.id, e.target.files[0])}
                         className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"

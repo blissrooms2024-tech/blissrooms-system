@@ -5,7 +5,7 @@ import Link from "next/link";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, isPdfUrl } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 
 interface RoomDetail {
@@ -76,7 +76,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
 
   async function uploadPhoto(file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image is too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File is too large (over 3MB) — please compress it"));
       return;
     }
     setUploading(true);
@@ -174,14 +174,20 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
             <div className="flex flex-wrap gap-2">
               {room.photos.map((url) => (
                 <div key={url} className="group relative">
-                  <button type="button" onClick={() => setZoomUrl(url)} className="block">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={url}
-                      alt={t("房间照片", "Room Photo")}
-                      className="h-20 w-20 rounded-lg border border-gray-200 object-cover"
-                    />
-                  </button>
+                  {isPdfUrl(url) ? (
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-brand hover:bg-gray-100">
+                      📄 PDF
+                    </a>
+                  ) : (
+                    <button type="button" onClick={() => setZoomUrl(url)} className="block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={t("房间照片", "Room Photo")}
+                        className="h-20 w-20 rounded-lg border border-gray-200 object-cover"
+                      />
+                    </button>
+                  )}
                   <a
                     href={url}
                     download
@@ -209,7 +215,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
             <div className="mt-2">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf"
                 disabled={uploading}
                 onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])}
                 className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"

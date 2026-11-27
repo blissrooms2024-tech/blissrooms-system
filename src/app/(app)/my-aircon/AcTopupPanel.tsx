@@ -6,7 +6,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { COMPANY } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 
 interface AcPayment {
   id: string;
@@ -100,7 +100,7 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
       return;
     }
     if (topupFile.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
     setTopupSubmitting(true);
@@ -179,7 +179,7 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
           />
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf"
             disabled={topupSubmitting}
             onChange={(e) => setTopupFile(e.target.files?.[0] ?? null)}
             className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
@@ -224,13 +224,24 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
                       <div className="text-sm">{fmt(p.amountPaid)}</div>
                       <div className="text-xs text-gray-400">{fmtDate(p.paidDate)}</div>
                       {p.receiptLink && (
-                        <button
-                          type="button"
-                          onClick={() => setZoomUrl(p.receiptLink)}
-                          className="mt-1 text-xs font-semibold text-brand underline"
-                        >
-                          {t("🧾 查看转账证明", "🧾 View Proof of Transfer")}
-                        </button>
+                        isPdfUrl(p.receiptLink) ? (
+                          <a
+                            href={p.receiptLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-block text-xs font-semibold text-brand underline"
+                          >
+                            {t("📄 查看转账证明 (PDF)", "📄 View Proof of Transfer (PDF)")}
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setZoomUrl(p.receiptLink)}
+                            className="mt-1 text-xs font-semibold text-brand underline"
+                          >
+                            {t("🧾 查看转账证明", "🧾 View Proof of Transfer")}
+                          </button>
+                        )
                       )}
                     </div>
                     <div className="min-w-[140px]">

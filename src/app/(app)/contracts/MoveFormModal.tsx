@@ -6,6 +6,7 @@ import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { MOVE_ITEMS, MoveItem } from "@/lib/moveItems";
+import { isPdfUrl } from "@/lib/format";
 
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -108,7 +109,7 @@ export function MoveFormPanel({
 
   async function uploadPhoto(item: MoveItem, file: File) {
     if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
     const arr = photos[item.key] || [];
@@ -247,10 +248,16 @@ export function MoveFormPanel({
               <div className="my-2 flex flex-wrap gap-1.5">
                 {(photos[it.key] || []).map((u, i) => (
                   <div key={i} className="relative">
-                    <button type="button" onClick={() => setZoomUrl(u)} className="cursor-zoom-in">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={u} alt="" className="h-[60px] rounded border border-gray-300 hover:opacity-90" />
-                    </button>
+                    {isPdfUrl(u) ? (
+                      <a href={u} target="_blank" rel="noopener noreferrer" className="flex h-[60px] w-[60px] flex-col items-center justify-center rounded border border-gray-300 bg-gray-50 text-[10px] font-semibold text-brand hover:bg-gray-100">
+                        📄 PDF
+                      </a>
+                    ) : (
+                      <button type="button" onClick={() => setZoomUrl(u)} className="cursor-zoom-in">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={u} alt="" className="h-[60px] rounded border border-gray-300 hover:opacity-90" />
+                      </button>
+                    )}
                     {!readOnly && (
                       <button
                         onClick={() => removePhoto(it.key, i)}
@@ -266,7 +273,7 @@ export function MoveFormPanel({
                 <>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf"
                     disabled={uploadingKey === it.key}
                     onChange={(e) => e.target.files?.[0] && uploadPhoto(it, e.target.files[0])}
                     className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"

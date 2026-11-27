@@ -1,3 +1,15 @@
+// Uploaded proof-of-payment / attachment URLs are either an image (shown inline with a
+// thumbnail + zoom) or a PDF (browsers render these natively, so it's just opened in a new
+// tab instead) — `uploadDataUrl` always names the stored blob with the real extension, so
+// checking the URL for ".pdf" reliably tells the two apart without a network round-trip.
+export function isPdfUrl(v: string | null | undefined): boolean {
+  if (!v) return false;
+  const s = v.toLowerCase();
+  // ".pdf" covers an already-uploaded storage URL; "data:application/pdf" covers a local
+  // preview still held as a base64 data URL before it's been uploaded at all.
+  return s.includes(".pdf") || s.startsWith("data:application/pdf");
+}
+
 export function fmtMoney(v: number | null | undefined): string {
   if (v === null || v === undefined) return "-";
   return `RM${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
