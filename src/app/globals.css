@@ -33,8 +33,10 @@ body {
 }
 
 @layer components {
+  /* 16px on phones: iPhone Safari zooms the whole page into any input smaller than that the
+     moment it's tapped, and doesn't zoom back out. */
   .input {
-    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none;
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-brand focus:outline-none sm:text-sm;
   }
   .btn-primary {
     @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-violet-300;

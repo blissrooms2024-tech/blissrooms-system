@@ -21,10 +21,10 @@ export default function Modal({
   return (
     <div
       onClick={onBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-5"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5"
     >
       <div
-        className={`max-h-[90vh] w-full overflow-auto rounded-xl bg-white p-6 ${
+        className={`max-h-[90vh] w-full overflow-auto rounded-xl bg-white p-4 sm:p-6 ${
           wide ? "max-w-3xl" : "max-w-2xl"
         }`}
       >

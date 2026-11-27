@@ -3,6 +3,7 @@ import { getReports } from "@/lib/reports";
 import { getBillReminders, myDay, periodOf } from "@/lib/bills";
 import { getCollection } from "@/lib/collection";
 import { RULES } from "@/lib/config";
+import { signStepOf, type SignStep } from "@/lib/signStep";
 
 /** Everything the Boss/Admin home page shows, in one call. */
 
@@ -10,11 +11,6 @@ const DAY_MS = 24 * 3600 * 1000;
 const OPEN_MAINTENANCE = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING_REVIEW"] as const;
 export const MOVE_IN_AHEAD_DAYS = 30;
 const MOVE_IN_LATE_DAYS = 7;
-
-/** Where a contract that isn't live yet is stuck, in the order the steps have to happen:
- * Admin approves → Agent signs (renewals are company-signed automatically) → tenant uploads
- * both sides of their IC → tenant signs, which makes it ACTIVE. */
-export type SignStep = "APPROVE" | "AGENT_SIGN" | "TENANT_IC" | "TENANT_SIGN";
 
 const daysBetween = (from: Date, to: Date) => Math.round((myDay(to).getTime() - myDay(from).getTime()) / DAY_MS);
 
@@ -220,8 +216,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
 
   // --- Contracts waiting to go live --------------------------------------------------------
   const signingList = signing.map((c) => {
-    const step: SignStep =
-      c.status === "PENDING_APPROVE" ? "APPROVE" : !c.agentSignature ? "AGENT_SIGN" : !c.icFront || !c.icBack ? "TENANT_IC" : "TENANT_SIGN";
+    const step: SignStep = signStepOf(c) ?? "APPROVE";
     const since = step === "APPROVE" ? c.createdAt : (c.approvedAt ?? c.createdAt);
     return {
       contractCode: c.contractCode,

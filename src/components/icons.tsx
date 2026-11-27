@@ -311,3 +311,40 @@ export const IconHourglass = (p: P) => (
     <path d="M7.5 3.5c0 4.5 4.5 5.5 4.5 8.5s-4.5 4-4.5 8.5M16.5 3.5c0 4.5-4.5 5.5-4.5 8.5s4.5 4 4.5 8.5" />
   </Svg>
 );
+export const IconTrash = (p: P) => (
+  <Svg {...p}>
+    <path d="M4.5 6.5h15M9.5 6.5V4.5h5v2" />
+    <path d="M6.5 6.5l.8 13a1.5 1.5 0 0 0 1.5 1.5h6.4a1.5 1.5 0 0 0 1.5-1.5l.8-13" />
+    <path d="M10 10.5v6M14 10.5v6" />
+  </Svg>
+);
+export const IconPen = (p: P) => (
+  <Svg {...p}>
+    <path d="M15.5 4.5l4 4L9 19l-5 1 1-5z" />
+    <path d="M13.5 6.5l4 4" />
+  </Svg>
+);
+export const IconIdCard = (p: P) => (
+  <Svg {...p}>
+    <rect x="3" y="5.5" width="18" height="13" rx="2" />
+    <circle cx="8.5" cy="11" r="2" />
+    <path d="M5.5 15.5a3 3 0 0 1 6 0M14 10h4M14 13.5h3" />
+  </Svg>
+);
+export const IconSearch = (p: P) => (
+  <Svg {...p}>
+    <circle cx="10.5" cy="10.5" r="6" />
+    <path d="M15 15l5 5" />
+  </Svg>
+);
+export const IconDots = (p: P) => (
+  <Svg {...p}>
+    <path d="M5.5 12h.01M12 12h.01M18.5 12h.01" strokeWidth={3} />
+  </Svg>
+);
+export const IconUpload = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9" />
+    <path d="M4.5 15v3.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V15" />
+  </Svg>
+);

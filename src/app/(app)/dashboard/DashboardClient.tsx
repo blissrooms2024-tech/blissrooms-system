@@ -25,7 +25,8 @@ import { navMeta, TONE_CLASS, type NavIcon, type Tone } from "@/components/navMe
 import { fmtDate, fmtMoney } from "@/lib/format";
 import { COMPANY, contractStatusLabel, maintenanceStatusLabel, ROLE_LABELS } from "@/lib/config";
 import { label, UTILITY_TYPE_LABELS } from "@/lib/unitInfo";
-import type { DashboardData, SignStep } from "@/lib/dashboard";
+import type { DashboardData } from "@/lib/dashboard";
+import { SIGN_STEP_LABELS, type SignStep } from "@/lib/signStep";
 import type { QuoteOptions } from "@/lib/quoteOptions";
 import QuickQuote from "./QuickQuote";
 import ReportsCard from "./ReportsCard";
@@ -192,12 +193,8 @@ export default function DashboardClient({
   const undecided = rooms.expiring.filter((c) => c.state === "UNDECIDED").length;
   const vacancyPct = rooms.total ? Math.round((rooms.vacant / rooms.total) * 100) : 0;
 
-  const stepInfo: Record<SignStep, { l: string; tone: "violet" | "amber" | "blue" | "teal" }> = {
-    APPROVE: { l: t("等 Admin 批准", "Admin to approve"), tone: "violet" },
-    AGENT_SIGN: { l: t("等 Agent 签名", "Agent to sign"), tone: "amber" },
-    TENANT_IC: { l: t("等租客上传 IC", "Tenant to upload IC"), tone: "blue" },
-    TENANT_SIGN: { l: t("等租客签名", "Tenant to sign"), tone: "teal" },
-  };
+  const STEP_TONE: Record<SignStep, "violet" | "amber" | "blue" | "teal"> = { APPROVE: "violet", AGENT_SIGN: "amber", TENANT_IC: "blue", TENANT_SIGN: "teal" };
+  const stepInfo = (step: SignStep) => ({ l: t(SIGN_STEP_LABELS[step].zh, SIGN_STEP_LABELS[step].en), tone: STEP_TONE[step] });
 
   const curMonth = data.today.slice(0, 7);
   const [cy, cm] = curMonth.split("-").map(Number);
@@ -396,7 +393,7 @@ export default function DashboardClient({
                       href={`/contracts/${c.contractCode}`}
                       right={
                         <>
-                          <Pill tone={stepInfo[c.step].tone}>{stepInfo[c.step].l}</Pill>
+                          <Pill tone={stepInfo(c.step).tone}>{stepInfo(c.step).l}</Pill>
                           <span className={`mt-0.5 block text-[11px] ${c.daysWaiting > 3 ? "font-medium text-rose-600" : "text-gray-400"}`}>
                             {c.daysWaiting === 0 ? t("今天", "today") : t(`等了 ${c.daysWaiting} 天`, `${c.daysWaiting} days`)}
                           </span>
