@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import Sheet from "@/components/Sheet";
+import { IconChat, IconCopy } from "@/components/icons";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { fmtMoney } from "@/lib/format";
@@ -22,10 +24,12 @@ function Field({ label, children, className = "" }: { label: string; children: R
 const n = (s: string) => (s.trim() === "" ? NaN : Number(s));
 const optional = (s: string) => (s.trim() === "" ? null : Number(s));
 
+/** Opened from the home page's 快速报价 shortcut or the "+" button (both fire the
+ * "open-quick-quote" event). The form keeps what was typed when the sheet is closed, so
+ * reopening it carries on where you left off; 重新开始 clears it. */
 export default function QuickQuote({ options, today }: { options: QuoteOptions; today: string }) {
   const { t, locale } = useLanguage();
   const toast = useToast();
-  const boxRef = useRef<HTMLDivElement>(null);
 
   const fresh = () => ({
     roomCode: "",
@@ -56,12 +60,8 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
   const [agentIdx, setAgentIdx] = useState("");
   const [phone, setPhone] = useState("");
 
-  // The 🧮 shortcut opens and scrolls to this card.
   useEffect(() => {
-    const show = () => {
-      setOpen(true);
-      setTimeout(() => boxRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    };
+    const show = () => setOpen(true);
     window.addEventListener("open-quick-quote", show);
     return () => window.removeEventListener("open-quick-quote", show);
   }, []);
@@ -144,34 +144,15 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
 
   const set = (k: keyof ReturnType<typeof fresh>) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
 
-  if (!open) {
-    return (
-      <section ref={boxRef} className="flex items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm sm:p-5">
-        <div>
-          <h3 className="text-base font-semibold text-brand">🧮 {t("快速报价", "Quick quote")}</h3>
-          <p className="text-xs text-gray-500">
-            {t("选房间和入住日期，自动算押金、pro-rata，直接 WhatsApp 给 Agent", "Pick a room and move-in date — deposits and pro-rata are worked out, ready to WhatsApp")}
-          </p>
-        </div>
-        <button onClick={() => setOpen(true)} className="btn-primary shrink-0 py-2.5">
-          {t("开始报价", "Start")}
-        </button>
-      </section>
-    );
-  }
-
   return (
-    <section ref={boxRef} className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-brand">🧮 {t("快速报价", "Quick quote")}</h3>
-        <div className="flex gap-2">
-          <button onClick={() => setF(fresh())} className="text-xs text-gray-500 underline">
-            {t("重新开始", "Reset")}
-          </button>
-          <button onClick={() => setOpen(false)} className="text-xs text-gray-500 underline">
-            {t("收起", "Close")}
-          </button>
-        </div>
+    <Sheet open={open} onClose={() => setOpen(false)} title={t("快速报价", "Quick quote")}>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-xs text-gray-500">
+          {t("选房间和入住日期，自动算押金、pro-rata，直接 WhatsApp 给 Agent", "Pick a room and move-in date — deposits and pro-rata are worked out, ready to WhatsApp")}
+        </p>
+        <button type="button" onClick={() => setF(fresh())} className="shrink-0 text-xs font-medium text-brand hover:underline">
+          {t("重新开始", "Start over")}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -314,7 +295,7 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
 
           <div className="mt-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-gray-700">📱 {t("发给 Agent 的报价", "Quote message")}</span>
+              <span className="text-sm font-semibold text-gray-700">{t("发给 Agent 的报价", "Quote message")}</span>
               <div className="flex items-center gap-3 text-xs">
                 <div className="flex rounded-lg bg-brand-light p-0.5">
                   {(["en", "zh"] as const).map((l) => (
@@ -351,15 +332,17 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
             {phone && !wa && <div className="mt-1 text-xs text-red-600">{t("号码好像不对，WhatsApp 会让你自己选联系人", "That number doesn't look right — WhatsApp will ask you to pick a chat")}</div>}
             <div className="mt-2 grid grid-cols-2 gap-2">
               <a href={waHref} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
-                💬 {wa ? t("WhatsApp 发送", "Send on WhatsApp") : t("WhatsApp（选联系人）", "WhatsApp (pick chat)")}
+                <IconChat size={18} />
+                {wa ? t("WhatsApp 发送", "Send on WhatsApp") : t("WhatsApp（选联系人）", "WhatsApp (pick chat)")}
               </a>
-              <button onClick={copy} className="btn-soft py-2.5">
-                📋 {t("复制文字", "Copy text")}
+              <button onClick={copy} className="btn-soft flex items-center justify-center gap-1.5 py-2.5">
+                <IconCopy size={17} />
+                {t("复制文字", "Copy text")}
               </button>
             </div>
           </div>
         </>
       )}
-    </section>
+    </Sheet>
   );
 }

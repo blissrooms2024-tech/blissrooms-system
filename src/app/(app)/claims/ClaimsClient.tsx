@@ -106,7 +106,7 @@ function FileThumb({ url, onView }: { url: string; onView: (u: string) => void }
   );
 }
 
-export default function ClaimsClient({ role }: { role: string }) {
+export default function ClaimsClient({ role, openNew = false }: { role: string; openNew?: boolean }) {
   const { t, locale } = useLanguage();
   const toast = useToast();
 
@@ -132,7 +132,12 @@ export default function ClaimsClient({ role }: { role: string }) {
     expenseDate: todayStr(),
     notes: "",
   };
-  const [showForm, setShowForm] = useState(false);
+  // /claims?new=1 (the home page's "+" → 提交报销) opens the form straight away.
+  const [showForm, setShowForm] = useState(openNew && (role === "ADMIN" || role === "WORKER"));
+  useEffect(() => {
+    // Drop ?new=1 so a refresh or Back doesn't pop the form open again.
+    if (openNew) window.history.replaceState(null, "", "/claims");
+  }, [openNew]);
   const [form, setForm] = useState(emptyForm);
   const [receipts, setReceipts] = useState<string[]>([]);
   const [uploading, setUploading] = useState(0);

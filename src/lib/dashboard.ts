@@ -1,14 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { getReports } from "@/lib/reports";
 import { getBillReminders, myDay, periodOf } from "@/lib/bills";
+import { getCollection } from "@/lib/collection";
 import { RULES } from "@/lib/config";
 
 /** Everything the Boss/Admin home page shows, in one call. */
 
 const DAY_MS = 24 * 3600 * 1000;
 const OPEN_MAINTENANCE = ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING_REVIEW"] as const;
-const MOVE_IN_AHEAD_DAYS = 14;
+export const MOVE_IN_AHEAD_DAYS = 30;
 const MOVE_IN_LATE_DAYS = 7;
+
+/** Where a contract that isn't live yet is stuck, in the order the steps have to happen:
+ * Admin approves → Agent signs (renewals are company-signed automatically) → tenant uploads
+ * both sides of their IC → tenant signs, which makes it ACTIVE. */
+export type SignStep = "APPROVE" | "AGENT_SIGN" | "TENANT_IC" | "TENANT_SIGN";
 
 const daysBetween = (from: Date, to: Date) => Math.round((myDay(to).getTime() - myDay(from).getTime()) / DAY_MS);
 
@@ -34,6 +40,10 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     overdueBills,
     claimGroups,
     activity,
+    outstandingBills,
+    signing,
+    collection,
+    propertyCount,
   ] = await Promise.all([
     getReports(curP, Number(year)),
     prisma.room.groupBy({ by: ["status", "isCarpark"], _count: true }),
@@ -108,6 +118,31 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
       _sum: { amount: true },
     }),
     prisma.activityLog.findMany({ orderBy: { createdAt: "desc" }, take: 12 }),
+    // Same set as the 未清账单 page, so the number on the home tile matches what it opens.
+    prisma.payment.aggregate({
+      where: { status: { in: ["PENDING", "PENDING_REVIEW", "REJECTED"] } },
+      _count: true,
+      _sum: { amountDue: true },
+    }),
+    prisma.contract.findMany({
+      where: { status: { in: ["PENDING_APPROVE", "PENDING_SIGN"] } },
+      select: {
+        contractCode: true,
+        tenantName: true,
+        agentName: true,
+        status: true,
+        agentSignature: true,
+        tenantSignature: true,
+        icFront: true,
+        icBack: true,
+        createdAt: true,
+        approvedAt: true,
+        room: { select: { roomCode: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    getCollection(curP),
+    prisma.property.count({ where: { OR: [{ status: null }, { status: { not: "Inactive" } }] } }),
   ]);
 
   // --- Rooms -------------------------------------------------------------------------------
@@ -183,9 +218,35 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     return { count: g?._count._all ?? 0, amount: Number(g?._sum.amount ?? 0) };
   };
 
+  // --- Contracts waiting to go live --------------------------------------------------------
+  const signingList = signing.map((c) => {
+    const step: SignStep =
+      c.status === "PENDING_APPROVE" ? "APPROVE" : !c.agentSignature ? "AGENT_SIGN" : !c.icFront || !c.icBack ? "TENANT_IC" : "TENANT_SIGN";
+    const since = step === "APPROVE" ? c.createdAt : (c.approvedAt ?? c.createdAt);
+    return {
+      contractCode: c.contractCode,
+      roomCode: c.room.roomCode,
+      tenantName: c.tenantName,
+      agentName: c.agentName,
+      step,
+      daysWaiting: Math.max(daysBetween(since, today), 0),
+    };
+  });
+
+  const countStatus = (...s: string[]) => openMaintenance.filter((m) => s.includes(m.status)).length;
+
   return {
     today: today.toISOString().slice(0, 10),
     reports,
+    collection,
+    propertyCount,
+    signing: signingList,
+    maintenanceStatus: {
+      fresh: countStatus("SUBMITTED"),
+      working: countStatus("ACKNOWLEDGED", "IN_PROGRESS"),
+      toCheck: countStatus("PENDING_REVIEW"),
+    },
+    outstanding: { count: outstandingBills._count, amount: Number(outstandingBills._sum.amountDue ?? 0) },
     rooms: {
       total: rentable(rc),
       occupied: rc.OCCUPIED,

@@ -93,9 +93,9 @@ export default function ReportsCard({ initial }: { initial: ReportsData }) {
   const maxBar = Math.max(1, ...data.year.months.map((r) => Math.max(r.revenue, r.cost)));
 
   return (
-    <section className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-brand">📊 {t("报告", "Reports")}</h3>
+    <section className="scroll-mt-20 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(30,27,46,0.04),0_12px_28px_-18px_rgba(76,29,149,0.22)] sm:p-5">
+      <div className="mb-3 flex min-h-6 items-center justify-between gap-2">
+        <h2 className="text-[15px] font-semibold text-gray-900">{t("月报与年报", "Monthly & annual reports")}</h2>
         {loading && <span className="text-xs text-gray-400">{t("计算中…", "Calculating…")}</span>}
       </div>
 
