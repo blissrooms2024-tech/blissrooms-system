@@ -4,10 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
 import { withActivity } from "@/lib/activity";
+import { newId } from "@/lib/id";
+
+/** Must match TENANT_SIGN_SPOTS in components/AgreementDocument.tsx. */
+const TENANT_SPOTS = ["confirmation", "agreement", "houseRules", "particulars"] as const;
 
 const schema = z.object({
   who: z.enum(["agent", "tenant"]),
   dataUrl: z.string().min(1),
+  // Tenant click-to-sign flow: when each spot was tapped, plus the final
+  // "I have read and agree" declaration. Required for tenants.
+  placed: z.record(z.string(), z.string()).optional(),
+  declaration: z.literal(true).optional(),
+  declarationAt: z.string().optional(),
 });
 
 async function handlePOST(
@@ -25,7 +34,20 @@ async function handlePOST(
   if (!parsed.success) {
     return NextResponse.json({ success: false, message: "请先签名" }, { status: 400 });
   }
-  const { who, dataUrl } = parsed.data;
+  const { who, dataUrl, placed, declaration, declarationAt } = parsed.data;
+
+  if (who === "tenant") {
+    const missing = TENANT_SPOTS.filter((s) => !placed?.[s]);
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { success: false, message: `还有 ${missing.length} 个签名位没签, 请每个都点一下签名` },
+        { status: 400 }
+      );
+    }
+    if (declaration !== true) {
+      return NextResponse.json({ success: false, message: "请先勾选「本人已阅读并同意以上所有条款」" }, { status: 400 });
+    }
+  }
 
   if (c.status !== "PENDING_SIGN" && c.status !== "ACTIVE") {
     return NextResponse.json({ success: false, message: "合同还没批准, 不能签名" }, { status: 409 });
@@ -73,6 +95,29 @@ async function handlePOST(
         ? { agentSignature: signUrl, agentSignDate: now }
         : { tenantSignature: signUrl, tenantSignDate: now },
   });
+
+  if (who === "tenant") {
+    // Evidence of how the tenant signed: each spot's tap time, the declaration tick, device and
+    // IP. Stored in Log (type TENANT_SIGN_EVIDENCE) — its presence also marks the contract as
+    // signed under the new flow, so the old appendix isn't shown on it.
+    await prisma.log.create({
+      data: {
+        logCode: await newId("LG"),
+        type: "TENANT_SIGN_EVIDENCE",
+        relatedId: contractId,
+        triggeredBy: user.sub,
+        status: "signed",
+        subject: JSON.stringify({
+          placed,
+          declaration: "本人已阅读并同意以上所有条款及内容 / I have read and agree to all the above terms and contents",
+          declarationAt: declarationAt ?? now.toISOString(),
+          submittedAt: now.toISOString(),
+          userAgent: req.headers.get("user-agent") ?? null,
+          ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+        }),
+      },
+    });
+  }
 
   const c2 = await prisma.contract.findUnique({ where: { contractCode: contractId } });
   let message = `✅ ${who === "agent" ? "Agent" : "租客"} 签名成功`;
