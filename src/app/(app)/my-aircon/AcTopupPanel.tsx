@@ -19,6 +19,7 @@ interface AcPayment {
   paidDate: string | null;
   receiptLink: string | null;
   reviewNote: string | null;
+  periodMonth: string | null;
 }
 
 function monthOf(v: string | null, t: (zh: string, en: string) => string) {
@@ -73,7 +74,8 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
       return;
     }
     setHasAircon(!!data.contract?.room?.hasAircon);
-    setPayments((data.payments as AcPayment[]).filter((p) => p.type === "AC"));
+    // Only prepaid top-ups; metered aircon bills (with a billing month) are on the bills page.
+    setPayments((data.payments as AcPayment[]).filter((p) => p.type === "AC" && !p.periodMonth));
   }, [contractCode, toast]);
 
   useEffect(() => {

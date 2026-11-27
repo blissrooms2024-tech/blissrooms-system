@@ -78,7 +78,9 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
       return;
     }
     // AC top-ups live on their own 冷气充值 page now, not here.
-    setPayments((data.payments as PaymentRow[]).filter((p) => p.type !== "AC"));
+    // Prepaid aircon top-ups (no billing month) live on the aircon page; metered aircon bills
+    // from 抄表开单 carry a month and are paid here like any other bill.
+    setPayments((data.payments as PaymentRow[]).filter((p) => !(p.type === "AC" && !p.periodMonth)));
     setBreakdown(data.breakdown ?? []);
     setTotals({ due: data.totalDue, paid: data.totalPaid, outstanding: data.totalOutstanding });
   }, [contractCode, toast]);
