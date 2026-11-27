@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { newId } from "@/lib/id";
 import { legacyImportRowSchema, LEGACY_IMPORT_COLUMNS } from "@/lib/schemas/legacyImport";
+import { withActivity } from "@/lib/activity";
 
 const SHEET_NAME = "旧合同导入";
 const EXAMPLE_EMAIL = "demo@example.com";
@@ -87,7 +88,7 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以导入旧合同" }, { status: 403 });
@@ -340,3 +341,5 @@ export async function POST(req: NextRequest) {
     results,
   });
 }
+
+export const POST = withActivity(handlePOST);

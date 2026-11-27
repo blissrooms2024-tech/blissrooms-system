@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 /** Recurring/utility-style charges only — DEPOSIT/ADMIN_FEE/ACCESS_CARD/RENTAL are per-contract
  * move-in terms, not something you'd blast out to a whole unit at once. */
@@ -24,7 +25,7 @@ const schema = z
 /** Admin opens the same bill (same type/amount) for every selected tenant in a unit at once —
  * e.g. splitting a property's electricity bill evenly across all occupied rooms. Each tenant
  * still goes through the normal upload-slip → Admin-review flow individually afterward. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以开账单" }, { status: 403 });
@@ -85,3 +86,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: `✅ 已给 ${created} 位租客开账单，每人 RM${d.amount.toFixed(2)}` });
 }
+
+export const POST = withActivity(handlePOST);

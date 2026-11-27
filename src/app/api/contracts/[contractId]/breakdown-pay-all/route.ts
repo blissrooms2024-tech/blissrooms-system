@@ -6,6 +6,7 @@ import { uploadDataUrl } from "@/lib/storage";
 import { newId } from "@/lib/id";
 import { notifyAdminsSlipUploaded } from "@/lib/mail";
 import { fmtMoney } from "@/lib/format";
+import { withActivity } from "@/lib/activity";
 
 const BREAKDOWN_ITEMS = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "RENTAL"] as const;
 const CARPARK_ONLY_ITEMS = ["ACCESS_CARD", "CARPARK"] as const;
@@ -24,7 +25,7 @@ const schema = z.object({
  * priority order (deposit, then utilities, admin fee, access card, carpark, rental) and
  * whichever item it runs out on is left partially paid — an "installment" on that one item,
  * still outstanding for the difference until the tenant tops it up (or pays it off) next time. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -132,3 +133,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withActivity(handlePOST);

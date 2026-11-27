@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
 import { allocateLumpSum, allocationMessage } from "@/lib/allocatePayment";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   amount: z.coerce.number().positive(),
@@ -18,7 +19,7 @@ const schema = z.object({
  * Paid — same trust level as the existing single-item "记一笔新收款" — with an optional slip
  * photo attached to every row this creates, allocated in priority order (deposit, utilities,
  * admin fee, access card, carpark, rental) the same way the tenant-facing flow does. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -64,3 +65,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withActivity(handlePOST);

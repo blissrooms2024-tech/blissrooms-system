@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 export async function GET(
   _req: NextRequest,
@@ -114,7 +115,7 @@ async function shrinkRooms(propertyId: string, propertyCode: string, isCarpark: 
   return { removed: toRemove.length, kept: toRemoveCount - toRemove.length };
 }
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ propertyCode: string }> }
 ) {
@@ -221,7 +222,7 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: `✅ 楼盘已更新: ${d.name}${extra}` });
 }
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ propertyCode: string }> }
 ) {
@@ -247,3 +248,6 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: `✅ 楼盘已删除: ${existing.name}` });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);
