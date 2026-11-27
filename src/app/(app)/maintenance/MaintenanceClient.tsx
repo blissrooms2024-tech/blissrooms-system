@@ -10,6 +10,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
 interface MaintenanceRow {
   requestCode: string;
@@ -77,14 +78,6 @@ function unitCodeOf(roomCode: string): string {
   return i > 0 ? roomCode.slice(0, i) : roomCode;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 interface AssignDraft {
   workerType: "IN_HOUSE" | "OUTSOURCED";
@@ -176,15 +169,15 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   }
 
   async function addCreatePhoto(file: File) {
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+    if (!file.type.startsWith("image/") && file.size > 3 * 1024 * 1024) {
+      toast.warning(t("文件太大(超过3MB)", "File too large (over 3MB)"));
       return;
     }
     if (createPhotos.length >= 3) {
       toast.warning(t("最多传 3 张照片", "Max 3 photos"));
       return;
     }
-    const dataUrl = await readAsDataURL(file);
+    const dataUrl = await compressImageToDataUrl(file);
     setCreatePhotos((p) => [...p, dataUrl]);
   }
 
@@ -284,7 +277,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   }
 
   async function uploadInvoice(r: MaintenanceRow, file: File) {
-    const dataUrl = await readAsDataURL(file);
+    const dataUrl = await compressImageToDataUrl(file);
     await patchRequest(r.requestCode, { invoiceDataUrl: dataUrl });
   }
 

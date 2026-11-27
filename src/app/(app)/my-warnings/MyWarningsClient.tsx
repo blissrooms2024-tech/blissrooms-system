@@ -34,8 +34,8 @@ export default function MyWarningsClient() {
   }, []);
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-bold text-brand">{t("⚠️ 警告信 Warning Letter", "⚠️ Warning Letters")}</h3>
+    <div className="rounded-xl bg-white p-4 sm:p-5 shadow-sm">
+      <h3 className="text-base font-bold text-brand sm:text-lg">{t("⚠️ 警告信 Warning Letter", "⚠️ Warning Letters")}</h3>
 
       {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
       {!letters && !error && <div className="mt-3 text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}

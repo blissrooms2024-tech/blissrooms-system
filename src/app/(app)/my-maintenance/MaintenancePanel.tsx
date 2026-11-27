@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
 interface MaintenanceRow {
   requestCode: string;
@@ -44,14 +45,6 @@ function buildSteps(r: MaintenanceRow, locale: "zh" | "en", t: (zh: string, en: 
   });
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function MaintenancePanel({ contractCode }: { contractCode: string }) {
   const toast = useToast();
@@ -76,15 +69,15 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
   }, [load]);
 
   async function addPhoto(file: File) {
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+    if (!file.type.startsWith("image/") && file.size > 3 * 1024 * 1024) {
+      toast.warning(t("文件太大(超过3MB)", "File too large (over 3MB)"));
       return;
     }
     if (photos.length >= 3) {
       toast.warning(t("最多传 3 张照片", "Max 3 photos"));
       return;
     }
-    const dataUrl = await readAsDataURL(file);
+    const dataUrl = await compressImageToDataUrl(file);
     setPhotos((p) => [...p, dataUrl]);
   }
 
@@ -119,8 +112,8 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
   }
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-bold text-brand">
+    <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+      <h3 className="text-base font-bold text-brand sm:text-lg">
         {t("🔧 报修", "🔧 Maintenance")} — {contractCode}
       </h3>
 
@@ -145,13 +138,23 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
               type="file"
               accept="image/*"
               onChange={(e) => e.target.files?.[0] && addPhoto(e.target.files[0])}
-              className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark"
+              className="block w-full text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2.5 sm:file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark"
             />
             {photos.length > 0 && (
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex gap-3">
                 {photos.map((p, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={i} src={p} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                  <div key={i} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPhotos((arr) => arr.filter((_, j) => j !== i))}
+                      aria-label={t("删除照片", "Remove photo")}
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-sm text-white shadow"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -169,8 +172,8 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
       <div className="space-y-3">
         {requests.map((r) => (
           <div key={r.requestCode} className="rounded-lg border border-gray-200 p-3">
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div>
+            <div className="mb-2 flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+              <div className="min-w-0">
                 <div className="text-xs text-gray-400">🧾 {r.requestCode}</div>
                 <b className="text-sm">{r.title}</b>
                 {r.description && <div className="text-xs text-gray-500">{r.description}</div>}
@@ -188,7 +191,7 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
                     src={p}
                     alt=""
                     onClick={() => setZoomUrl(p)}
-                    className="h-14 w-14 cursor-pointer rounded-lg object-cover"
+                    className="h-16 w-16 cursor-pointer rounded-lg object-cover"
                   />
                 ))}
               </div>

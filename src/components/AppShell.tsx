@@ -161,15 +161,16 @@ export default function AppShell({
             {ROLE_LABELS[user.role] ?? user.role}
           </span>
           <LanguageToggle />
+          {/* Phone: password/logout live in the slide-out menu to keep the top bar uncluttered. */}
           <button
             onClick={() => setShowChangePw(true)}
-            className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"
+            className="hidden rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:inline-block sm:px-3"
           >
             {t("改密码", "Password")}
           </button>
           <button
             onClick={logout}
-            className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"
+            className="hidden rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:inline-block sm:px-3"
           >
             {t("登出", "Logout")}
           </button>
@@ -193,7 +194,7 @@ export default function AppShell({
         {menuOpen && (
           <div className="fixed inset-0 z-30 md:hidden">
             <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
-            <div className="absolute inset-y-0 left-0 w-[230px] overflow-y-auto bg-white py-3.5 shadow-xl">
+            <div className="absolute inset-y-0 left-0 w-[260px] max-w-[85vw] overflow-y-auto bg-white py-3.5 shadow-xl">
               <div className="flex items-center justify-between px-5 pb-3">
                 <span className="text-sm font-semibold text-brand">🏠 Bliss Rooms</span>
                 <button
@@ -206,7 +207,25 @@ export default function AppShell({
                   </svg>
                 </button>
               </div>
+              <div className="mx-5 mb-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                <div className="truncate font-semibold text-gray-800">{user.name}</div>
+                <div>{ROLE_LABELS[user.role] ?? user.role}</div>
+              </div>
               {sidebarLinks}
+              <div className="mt-3 space-y-2 border-t border-gray-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowChangePw(true);
+                  }}
+                  className="w-full rounded-lg bg-brand-light px-3 py-2.5 text-sm font-semibold text-brand"
+                >
+                  🔑 {t("改密码", "Change Password")}
+                </button>
+                <button onClick={logout} className="w-full rounded-lg bg-gray-100 px-3 py-2.5 text-sm font-semibold text-gray-700">
+                  🚪 {t("登出", "Logout")}
+                </button>
+              </div>
             </div>
           </div>
         )}

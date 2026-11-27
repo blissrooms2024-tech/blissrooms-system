@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { COMPANY } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
 interface AcPayment {
   id: string;
@@ -22,14 +23,6 @@ interface AcPayment {
 
 function monthOf(v: string | null, t: (zh: string, en: string) => string) {
   return v ? v.slice(0, 7) : t("未知月份", "Unknown month");
-}
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 const AC_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
@@ -99,13 +92,13 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
       toast.warning(t("请上传转账证明", "Please upload proof of transfer"));
       return;
     }
-    if (topupFile.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+    if (!topupFile.type.startsWith("image/") && topupFile.size > 3 * 1024 * 1024) {
+      toast.warning(t("文件太大(超过3MB)", "File too large (over 3MB)"));
       return;
     }
     setTopupSubmitting(true);
     try {
-      const dataUrl = await readAsDataURL(topupFile);
+      const dataUrl = await compressImageToDataUrl(topupFile);
       const res = await fetch(`/api/contracts/${contractCode}/ac-topup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -129,7 +122,7 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
 
   if (!hasAircon) {
     return (
-      <div className="rounded-xl bg-white p-5 text-center text-sm text-gray-400 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-center text-sm text-gray-400 shadow-sm">
         {t("这间房没有冷气，不需要冷气充值。", "This room has no air-cond, so no top-up is needed.")}
       </div>
     );
@@ -146,8 +139,8 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <h3 className="text-lg font-bold text-brand">{t("❄️ 冷气 Top-up 充值", "❄️ Air-Cond Top-Up")}</h3>
+      <div className="rounded-xl bg-white p-4 sm:p-5 shadow-sm">
+        <h3 className="text-base font-bold text-brand sm:text-lg">{t("❄️ 冷气 Top-up 充值", "❄️ Air-Cond Top-Up")}</h3>
         <div className="mt-3 rounded-lg bg-brand-light/40 p-3.5 text-sm">
           <div className="font-semibold text-brand">{COMPANY.NAME}</div>
           <div className="mt-1 text-gray-700">
@@ -195,7 +188,7 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
         )}
       </div>
 
-      <div className="rounded-xl bg-white p-5 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 shadow-sm">
         <h3 className="mb-1 text-base font-semibold text-brand">{t("📅 每月充值记录", "📅 Monthly Top-up History")}</h3>
         <p className="mb-3 text-xs text-gray-400">
           {t(

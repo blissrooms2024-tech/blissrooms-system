@@ -6,20 +6,13 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtMoney } from "@/lib/format";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
 interface Item {
   item: string;
   outstanding: number;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function BreakdownPayAllModal({
   contractCode,
@@ -64,13 +57,13 @@ export default function BreakdownPayAllModal({
       toast.warning(t("请上传付款证明", "Please upload proof of payment"));
       return;
     }
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+    if (!file.type.startsWith("image/") && file.size > 3 * 1024 * 1024) {
+      toast.warning(t("文件太大(超过3MB)", "File too large (over 3MB)"));
       return;
     }
     setSubmitting(true);
     try {
-      const dataUrl = await readAsDataURL(file);
+      const dataUrl = await compressImageToDataUrl(file);
       const res = await fetch(`/api/contracts/${contractCode}/breakdown-pay-all`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,7 +86,7 @@ export default function BreakdownPayAllModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="mb-1 text-lg font-bold text-brand">
+      <h3 className="mb-1 text-base font-bold text-brand sm:text-lg">
         {t("💰 一次过付款", "💰 Pay All at Once")} — {contractCode}
       </h3>
       <p className="mb-3.5 text-sm text-gray-500">
