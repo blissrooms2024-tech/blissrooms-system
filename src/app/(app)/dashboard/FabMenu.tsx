@@ -55,7 +55,7 @@ export default function FabMenu({ role, onQuote }: { role: string; onQuote: () =
         type="button"
         onClick={() => (single ? onQuote() : setOpen(true))}
         aria-label={single ? t("快速报价", "Quick quote") : t("新增", "Create")}
-        className={`fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-2xl bg-brand text-white shadow-[0_10px_24px_-6px_rgba(109,40,217,0.55)] transition-[transform,opacity] duration-200 hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none md:bottom-6 md:right-6 md:translate-y-0 md:opacity-100 ${
+        className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-2xl bg-brand text-white shadow-[0_10px_24px_-6px_rgba(109,40,217,0.55)] transition-[transform,opacity] duration-200 hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none md:bottom-6 md:right-6 md:translate-y-0 md:opacity-100 ${
           tucked ? "pointer-events-none translate-y-24 opacity-0 md:pointer-events-auto" : ""
         }`}
       >

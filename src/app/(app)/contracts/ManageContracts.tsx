@@ -160,7 +160,7 @@ export default function ManageContracts({ role }: { role: string }) {
       rows.length === 0 ? (
         <p className="rounded-[20px] bg-white px-4 py-8 text-center text-sm text-gray-400">{empty}</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-2">
           {rows.map((c) => (
             <ContractCard key={c.contractCode} c={c} role={role} onChanged={load} />
           ))}
@@ -173,27 +173,27 @@ export default function ManageContracts({ role }: { role: string }) {
   const emptyText = q || filter ? t("没有符合条件的合同", "No contracts match") : t("还没有合同", "No contracts yet");
 
   return (
-    <div className="app-type mx-auto max-w-6xl space-y-4">
+    <div className="app-type mx-auto max-w-6xl space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold text-gray-900">
+        <h1 className="text-lg font-semibold text-gray-900">
           {t("合同", "Contracts")}
-          {contracts && <span className="ml-1.5 text-base font-normal text-gray-400">{liveTotal}</span>}
+          {contracts && <span className="ml-1.5 text-sm font-normal text-gray-400">{liveTotal}</span>}
         </h1>
         <div className="flex items-center gap-2">
           {isAdmin && isPhone && (
             <button
               type="button"
               onClick={() => setToolsOpen(true)}
-              className="flex h-10 items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+              aria-label={t("合同工具", "Contract tools")}
+              className="grid h-9 w-9 place-items-center rounded-xl bg-white text-gray-700 shadow-sm hover:bg-gray-50"
             >
               <IconSliders size={17} />
-              {t("工具", "Tools")}
             </button>
           )}
           {isAdmin && (
-            <Link href="/contracts/new" className="flex h-10 items-center gap-1.5 rounded-xl bg-brand px-3.5 text-sm font-semibold text-white hover:bg-brand-dark">
-              <IconPlus size={18} />
-              {t("新合同", "New contract")}
+            <Link href="/contracts/new" className="flex h-9 items-center gap-1 rounded-xl bg-brand px-3 text-[13px] font-semibold text-white hover:bg-brand-dark">
+              <IconPlus size={16} />
+              {t("新合同", "New")}
             </Link>
           )}
         </div>
@@ -230,8 +230,8 @@ export default function ManageContracts({ role }: { role: string }) {
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("搜房间 / 租客 / 合同号 / Agent / 电话", "Search room, tenant, contract #, agent, phone")}
-          className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-10 text-base shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10 sm:text-sm"
+          placeholder={t("搜房间 / 租客 / 合同号 / 电话", "Room, tenant, contract #, phone")}
+          className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-10 text-base shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10 sm:text-sm"
         />
         {search && (
           <button
@@ -255,12 +255,12 @@ export default function ManageContracts({ role }: { role: string }) {
               type="button"
               aria-pressed={on}
               onClick={() => setFilter(f.key)}
-              className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors ${
+              className={`flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-medium transition-colors ${
                 on ? "bg-brand text-white" : "bg-white text-gray-700 shadow-sm hover:bg-gray-50"
               }`}
             >
               {t(f.zh, f.en)}
-              <span className={`text-xs ${on ? "text-white/80" : "text-gray-400"}`}>{counts[f.key] ?? 0}</span>
+              <span className={`text-[11px] ${on ? "text-white/80" : "text-gray-400"}`}>{counts[f.key] ?? 0}</span>
             </button>
           );
         })}
@@ -278,16 +278,14 @@ export default function ManageContracts({ role }: { role: string }) {
       {!contracts && !error && (
         <ul className="space-y-3" aria-label={t("载入中", "Loading")}>
           {[0, 1, 2].map((i) => (
-            <li key={i} className="h-40 animate-pulse rounded-[20px] bg-white/80 motion-reduce:animate-none" />
+            <li key={i} className="h-24 animate-pulse rounded-2xl bg-white/80 motion-reduce:animate-none" />
           ))}
         </ul>
       )}
 
       {contracts && (
         <>
-          <p className="px-1 text-xs text-gray-500">
-            {live.length === liveTotal ? t(`共 ${liveTotal} 份合同`, `${liveTotal} contracts`) : t(`显示 ${live.length} 份（共 ${liveTotal} 份）`, `${live.length} of ${liveTotal} shown`)}
-          </p>
+          {live.length !== liveTotal && <p className="px-1 text-xs text-gray-500">{t(`显示 ${live.length} 份（共 ${liveTotal} 份）`, `${live.length} of ${liveTotal} shown`)}</p>}
           {isPhone ? list(live, emptyText) : <div className="rounded-[20px] bg-white p-4 shadow-sm">{list(live, emptyText)}</div>}
 
           {expired.length > 0 && (
@@ -357,58 +355,58 @@ function ContractCard({ c, role, onChanged }: { c: Row; role: string; onChanged:
   const wa = waNumber(c.contactNumber);
   const days = c.expiredDate ? daysFromToday(c.expiredDate) : null;
   const owing = c._outstanding > 0;
+  const agent = c.agentName === COMPANY.NAME ? t("公司续约", "Company renewal") : c.agentName;
+  const legacy = c.remarks?.includes("旧合同导入");
+  const flags = c._rentEscalated || c._creditBalance > 0;
 
+  // Compact on purpose — three short lines and one row of small buttons — so a phone screen
+  // shows several contracts at once.
   return (
-    <li className="rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(30,27,46,0.04),0_12px_28px_-18px_rgba(76,29,149,0.22)]">
+    <li className="rounded-2xl bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
       <Link href={`/contracts/${c.contractCode}`} className="block">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="flex items-baseline gap-2">
-              <b className="shrink-0 text-base font-semibold text-gray-900">{c.room?.roomCode ?? "—"}</b>
-              <span className="truncate text-sm text-gray-700">{c.tenantName}</span>
-            </p>
-            <p className="mt-0.5 truncate text-xs text-gray-400">
-              {c.contractCode} · {c.agentName === COMPANY.NAME ? t("公司续约", "Company renewal") : c.agentName}
-            </p>
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex min-w-0 items-baseline gap-1.5">
+            <b className="shrink-0 text-[15px] font-semibold text-gray-900">{c.room?.roomCode ?? "—"}</b>
+            <span className="truncate text-[13px] text-gray-700">{c.tenantName}</span>
+          </p>
           <Pill tone={status.tone}>{status.l}</Pill>
         </div>
-
-        <div className="mt-3 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] text-gray-500">{owing ? t("还欠", "Owing") : t("账款", "Balance")}</p>
-            <p className={`text-lg font-semibold leading-tight ${owing ? "text-rose-600" : "text-gray-900"}`}>{owing ? fmtMoney(c._outstanding) : t("已付清", "Paid up")}</p>
-          </div>
-          <div className="text-right text-[11px] leading-relaxed text-gray-500">
-            <p>
-              {t("已收", "Paid")} <span className="tabular-nums text-gray-700">{fmtMoney(c._paid)}</span> / <span className="tabular-nums">{fmtMoney(c._due)}</span>
-            </p>
-            {c.expiredDate && (
-              <p>
-                {t("到期", "Ends")} <span className="tabular-nums text-gray-700">{fmtDate(c.expiredDate)}</span>
-                {days !== null && (c._expiringSoon || c._expired) && (
-                  <span className={c._expired ? "text-rose-600" : "text-amber-700"}>
-                    {" · "}
-                    {days < 0 ? t(`过了 ${-days} 天`, `${-days} days ago`) : t(`还有 ${days} 天`, `in ${days} days`)}
-                  </span>
-                )}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {(c._rentEscalated || c._expiringSoon || c._creditBalance > 0 || c.renewedFromContractId || c.remarks?.includes("旧合同导入")) && (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <p className="mt-0.5 truncate text-[11.5px] text-gray-400">
+          {c.contractCode} · {agent}
+          {c.renewedFromContractId && c.agentName !== COMPANY.NAME ? t(" · 续约", " · renewal") : ""}
+          {legacy ? t(" · 旧合同", " · legacy") : ""}
+          {c.expiredDate && (
+            <>
+              {" · "}
+              {t("到期", "ends")} {fmtDate(c.expiredDate)}
+              {days !== null && (c._expiringSoon || c._expired) && (
+                <span className={c._expired ? "text-rose-600" : "text-amber-700"}>
+                  {" "}
+                  {days < 0 ? t(`（过了 ${-days} 天）`, `(${-days}d ago)`) : t(`（还有 ${days} 天）`, `(in ${days}d)`)}
+                </span>
+              )}
+            </>
+          )}
+        </p>
+        {flags && (
+          <div className="mt-1 flex flex-wrap gap-1">
             {c._rentEscalated && <Pill tone="rose">{t("租金逾期超10天", "Rent 10+ days late")}</Pill>}
-            {c._expiringSoon && <Pill tone="amber">{t("快到期", "Ending soon")}</Pill>}
             {c._creditBalance > 0 && <Pill tone="teal">{t(`预付 ${fmtMoney(c._creditBalance)}`, `${fmtMoney(c._creditBalance)} prepaid`)}</Pill>}
-            {c.renewedFromContractId && <Pill>{t("续约", "Renewal")}</Pill>}
-            {c.remarks?.includes("旧合同导入") && <Pill>{t("旧合同导入", "Legacy import")}</Pill>}
           </div>
         )}
       </Link>
 
-      <div className="mt-3 border-t border-gray-100 pt-3">
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        {/* The amount never wraps; the small line under it gives way first when space is short. */}
+        <Link href={`/contracts/${c.contractCode}`} className="min-w-0 leading-tight">
+          <span className={`block whitespace-nowrap text-[14px] font-semibold tabular-nums ${owing ? "text-rose-600" : "text-teal-700"}`}>
+            {owing ? fmtMoney(c._outstanding) : t("已付清", "Paid up")}
+          </span>
+          <span className="block truncate text-[11px] tabular-nums text-gray-400">
+            {owing ? t("还欠 · ", "owing · ") : ""}
+            {t("已收", "paid")} {fmtMoney(c._paid)} / {fmtMoney(c._due)}
+          </span>
+        </Link>
         <ContractActions
           contract={c}
           role={role}
@@ -421,9 +419,9 @@ function ContractCard({ c, role, onChanged }: { c: Row; role: string; onChanged:
                 target="_blank"
                 rel="noreferrer"
                 aria-label={t(`WhatsApp ${c.tenantName}`, `WhatsApp ${c.tenantName}`)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#25D366]/12 text-[#128C7E] hover:bg-[#25D366]/20"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#25D366]/12 text-[#128C7E] hover:bg-[#25D366]/20"
               >
-                <IconChat size={19} />
+                <IconChat size={17} />
               </a>
             ) : null
           }

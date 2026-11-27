@@ -145,8 +145,8 @@ export default function AppShell({
   return (
     <div className="min-h-screen">
       <div
-        className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-brand px-3 pb-3 text-white sm:px-5"
-        style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+        className={`sticky top-0 z-20 flex items-center justify-between gap-2 bg-brand px-3 text-white sm:px-5 ${appNav ? "pb-2 md:pb-3" : "pb-3"}`}
+        style={{ paddingTop: appNav ? "max(0.5rem, env(safe-area-inset-top))" : "max(0.75rem, env(safe-area-inset-top))" }}
       >
         <div className="flex items-center gap-2 min-w-0">
           <button
@@ -231,7 +231,7 @@ export default function AppShell({
 
         <div
           className={`min-w-0 flex-1 overflow-x-auto p-3 sm:p-5 ${
-            appNav ? "pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-5" : ""
+            appNav ? "pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-5" : ""
           }`}
         >
           {children}

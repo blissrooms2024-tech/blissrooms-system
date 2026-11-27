@@ -50,10 +50,10 @@ export default function MobileTabBar({ alerts }: { alerts: Record<string, number
               key={tab.href}
               href={tab.href}
               aria-current={active ? "page" : undefined}
-              className={`flex flex-col items-center gap-0.5 pb-1.5 pt-2 text-[11px] font-medium ${active ? "text-brand" : "text-gray-500"}`}
+              className={`flex flex-col items-center gap-px pb-1 pt-1.5 text-[10.5px] font-medium ${active ? "text-brand" : "text-gray-500"}`}
             >
-              <span className={`relative flex h-7 w-14 items-center justify-center rounded-full transition-colors ${active ? "bg-brand-light" : ""}`}>
-                <Icon size={22} />
+              <span className={`relative flex h-6 w-12 items-center justify-center rounded-full transition-colors ${active ? "bg-brand-light" : ""}`}>
+                <Icon size={20} />
                 {!!tab.badge && (
                   <span className="absolute -top-1 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
                     {tab.badge > 99 ? "99+" : tab.badge}

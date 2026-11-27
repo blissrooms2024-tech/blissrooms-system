@@ -50,6 +50,7 @@ const ITEM_ICONS: Record<string, NavIcon> = {
   sign: IconSignature,
   submit: IconUpload,
   approve: IconCheck,
+  agreement: IconContract,
   renew: IconRefresh,
   terminate: IconLock,
   ic: IconIdCard,
@@ -404,47 +405,48 @@ export default function ContractActions({
   );
 
   if (variant === "card") {
-    const btn = "flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[13px] font-semibold";
+    // Compact, so a phone screen shows several contracts: only 收款 and the one-off steps
+    // (approve, sign, submit, terminate) sit on the card; viewing the agreement and 续约 — once
+    // a year per contract — live under ⋯ with the rest.
+    const onCard = primaryItems.filter((i) => i.key !== "renew");
+    const inMenu: Item[] = [
+      { key: "agreement", label: `📄 ${t("看合同", "View agreement")}`, color: "", href: `/agreement/${c.contractCode}` },
+      ...primaryItems.filter((i) => i.key === "renew"),
+      ...secondaryItems,
+    ];
+    const btn = "flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold";
     return (
       <>
-        <div className="flex flex-wrap items-center gap-2">
-          {primaryItems.map((i) => {
+        <div className="flex items-center gap-1.5">
+          {onCard.map((i) => {
             const Icon = ITEM_ICONS[i.key] ?? IconCheck;
-            // 收款 and 续约 sit on every active card, so they stay quiet; the one-off steps
-            // (approve, sign, submit, terminate) are the ones that should catch the eye.
-            const tone = i.key === "pay" || i.key === "renew" ? "bg-brand-light text-brand" : i.key === "terminate" ? "bg-rose-600 text-white" : "bg-brand text-white";
+            // 收款 sits on every card, so it stays quiet; the one-off steps catch the eye.
+            const tone = i.key === "pay" ? "bg-brand-light text-brand" : i.key === "terminate" ? "bg-rose-600 text-white" : "bg-brand text-white";
             return i.href ? (
               <Link key={i.key} href={i.href} className={`${btn} ${tone}`}>
-                <Icon size={16} />
+                <Icon size={15} />
                 {plainLabel(i.label)}
               </Link>
             ) : (
               <button key={i.key} type="button" onClick={i.onClick} className={`${btn} ${tone}`}>
-                <Icon size={16} />
+                <Icon size={15} />
                 {plainLabel(i.label)}
               </button>
             );
           })}
-          <Link href={`/agreement/${c.contractCode}`} className={`${btn} bg-gray-100 text-gray-700`}>
-            <IconContract size={16} />
-            {t("合同", "Contract")}
-          </Link>
-          <span className="flex-1" />
           {extra}
-          {secondaryItems.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label={t("更多操作", "More actions")}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200"
-            >
-              <IconDots size={20} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label={t("更多操作", "More actions")}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+          >
+            <IconDots size={18} />
+          </button>
         </div>
         <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={`${c.contractCode} · ${c.tenantName}`}>
           <ul className="-mx-2">
-            {secondaryItems.map((i) => {
+            {inMenu.map((i) => {
               const Icon = ITEM_ICONS[i.key] ?? IconCheck;
               const danger = i.key === "delete" || i.key === "terminate";
               const body = (
