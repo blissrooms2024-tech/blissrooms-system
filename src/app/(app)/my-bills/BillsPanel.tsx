@@ -31,7 +31,11 @@ interface PaymentRow {
   reviewNote: string | null;
   periodMonth: string | null;
   customLabel: string | null;
+  notes?: string | null;
 }
+
+/** Metered usage bills (抄表开单) carry a note explaining how the amount was worked out. */
+const usageNote = (b: PaymentRow) => (["ELECTRIC", "DRYER", "AC"].includes(b.type) && b.periodMonth && b.notes ? b.notes : null);
 
 
 const BILL_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
@@ -195,6 +199,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                       <b className="text-sm">{paymentTypeLabelLocale(b.type, b.customLabel, locale)}</b>{" "}
                       <span className="text-sm text-gray-600">{fmt(b.amountDue)}</span>
                       {b.periodMonth && <span className="ml-1.5 text-xs text-gray-400">({b.periodMonth})</span>}
+                      {usageNote(b) && <div className="text-xs text-gray-500">{usageNote(b)}</div>}
                       <div className="text-xs text-gray-500">
                         {t("到期日", "Due Date")}: {fmtDate(b.dueDate)}
                       </div>

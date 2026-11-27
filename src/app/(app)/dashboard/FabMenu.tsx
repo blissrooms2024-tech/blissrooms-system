@@ -22,6 +22,7 @@ export default function FabMenu({ role, onQuote }: { role: string; onQuote: () =
       ? [
           { key: "contract", zh: "新合同", en: "New contract", descZh: "为租客开一份新合同", descEn: "Start a tenancy contract", meta: "/contracts/new", href: "/contracts/new" },
           { key: "bulk", zh: "批量开账单", en: "Bulk billing", descZh: "一次给多个租客开账单", descEn: "Bill many tenants at once", meta: "/payments/bulk", href: "/payments/bulk" },
+          { key: "meter", zh: "抄表开单", en: "Meter billing", descZh: "输入电表读数，自动算每间房的电费", descEn: "Enter meter readings; each room's share is worked out", meta: "/utilities", href: "/utilities" },
           { key: "claim", zh: "提交报销", en: "New expense claim", descZh: "拍收据，选单位，提交审批", descEn: "Snap the receipt, pick the unit", meta: "/claims", href: "/claims?new=1" },
           { key: "room", zh: "新增房间", en: "Add a room", descZh: "在现有楼盘加房间或车位", descEn: "Add a room or carpark to a unit", meta: "/rooms", href: "/rooms/new" },
           { key: "unit", zh: "新增楼盘", en: "Add a property", descZh: "登记新租下的单位", descEn: "Register a newly leased unit", meta: "/units", href: "/units/new" },

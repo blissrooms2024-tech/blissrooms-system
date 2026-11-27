@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import {
   IconAlert,
   IconBed,
+  IconBolt,
   IconCar,
   IconCash,
   IconCheck,
@@ -161,6 +162,16 @@ export default function DashboardClient({
     { n: claims.pending.count, l: t("报销待审批", "Claims to review"), href: "/claims", icon: IconReceiptCheck, tone: "teal" as Tone },
     { n: claims.toPay.count, l: t("报销待付款", "Claims to pay out"), href: "/claims", icon: IconCash, tone: "teal" as Tone },
     { n: todo.overdueBills.count, l: t(`租客逾期账单 · ${fmtMoney(todo.overdueBills.amount)}`, `Overdue tenant bills · ${fmtMoney(todo.overdueBills.amount)}`), href: "/payments/outstanding", icon: IconAlert, tone: "rose" as Tone },
+    {
+      n: todo.meterBilling.units.length,
+      l: t(
+        `${Number(todo.meterBilling.period.slice(5))}月还没抄表开单 · ${todo.meterBilling.units.map((u) => u.propertyCode).join("、")}`,
+        `${todo.meterBilling.period} meters not billed · ${todo.meterBilling.units.map((u) => u.propertyCode).join(", ")}`
+      ),
+      href: `/utilities?period=${todo.meterBilling.period}`,
+      icon: IconBolt,
+      tone: "amber" as Tone,
+    },
   ].filter((a) => a.n > 0);
 
   const todoCount = approvals.reduce((s, a) => s + a.n, 0) + todo.moveIns.length + todo.bills.length;

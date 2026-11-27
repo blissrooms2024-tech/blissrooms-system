@@ -4,6 +4,7 @@ import { getBillReminders, myDay, periodOf } from "@/lib/bills";
 import { getCollection } from "@/lib/collection";
 import { RULES } from "@/lib/config";
 import { signStepOf, type SignStep } from "@/lib/signStep";
+import { billingOverview, defaultBillingPeriod } from "@/lib/utilityBilling";
 
 /** Everything the Boss/Admin home page shows, in one call. */
 
@@ -40,6 +41,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     signing,
     collection,
     propertyCount,
+    meterUnits,
   ] = await Promise.all([
     getReports(curP, Number(year)),
     prisma.room.groupBy({ by: ["status", "isCarpark"], _count: true }),
@@ -139,6 +141,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     }),
     getCollection(curP),
     prisma.property.count({ where: { OR: [{ status: null }, { status: { not: "Inactive" } }] } }),
+    billingOverview(defaultBillingPeriod(today)),
   ]);
 
   // --- Rooms -------------------------------------------------------------------------------
@@ -264,6 +267,11 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
       maintenanceCount: openMaintenance.length,
       maintenanceToClose: openMaintenance.filter((m) => m.status === "PENDING_REVIEW").length,
       bills,
+      // Units with meters whose last month hasn't been billed yet (抄表开单).
+      meterBilling: {
+        period: defaultBillingPeriod(today),
+        units: meterUnits.filter((u) => !u.run && !u.registeredLater).map((u) => ({ propertyCode: u.propertyCode, name: u.name })),
+      },
     },
     claims: { pending: claimSum("PENDING"), toPay: claimSum("APPROVED") },
     activity: activity.map((a) => ({

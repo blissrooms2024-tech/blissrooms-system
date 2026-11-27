@@ -19,6 +19,7 @@ export const ACTIONS: Action[] = [
   { id: "quote", meta: "/quote", zh: "快速报价", en: "Quick quote" },
   { id: "contract-new", href: "/contracts/new", meta: "/contracts/new", zh: "新合同", en: "New contract", adminOnly: true },
   { id: "bulk", href: "/payments/bulk", meta: "/payments/bulk", zh: "批量开账单", en: "Bulk billing", adminOnly: true },
+  { id: "meter", href: "/utilities", meta: "/utilities", zh: "抄表开单", en: "Meter billing" },
   { id: "renewal", href: "/contracts/renewal", meta: "/contracts/renewal", zh: "续约管理", en: "Renewals", adminOnly: true },
   { id: "review", href: "/payments/review", meta: "/payments/review", zh: "交易单审核", en: "Slip review" },
   { id: "outstanding", href: "/payments/outstanding", meta: "/payments/outstanding", zh: "未清账单", en: "Outstanding" },
@@ -38,7 +39,7 @@ export const ACTIONS: Action[] = [
 ];
 
 const DEFAULTS: Record<string, string[]> = {
-  ADMIN: ["quote", "contract-new", "bulk", "review", "outstanding", "maintenance", "claims", "renewal"],
+  ADMIN: ["quote", "contract-new", "meter", "review", "outstanding", "maintenance", "claims", "renewal"],
   BOSS: ["quote", "review", "outstanding", "maintenance", "claims", "pnl", "finance", "activity"],
 };
 const MAX = 8;

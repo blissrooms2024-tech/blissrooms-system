@@ -342,6 +342,12 @@ export const IconDots = (p: P) => (
     <path d="M5.5 12h.01M12 12h.01M18.5 12h.01" strokeWidth={3} />
   </Svg>
 );
+export const IconCamera = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 8a1.5 1.5 0 0 1 1.5-1.5h2.2L9.3 4.5h5.4l1.6 2h2.2A1.5 1.5 0 0 1 20 8v10a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z" />
+    <circle cx="12" cy="12.8" r="3.3" />
+  </Svg>
+);
 export const IconUpload = (p: P) => (
   <Svg {...p}>
     <path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9" />

@@ -22,6 +22,7 @@ const SKIP_PATHS = new Set([
 
 const AREAS: [RegExp, string][] = [
   [/^\/api\/claims/, "报销"],
+  [/^\/api\/utilities/, "抄表开单"],
   [/^\/api\/expenses/, "支出"],
   [/^\/api\/contracts\/[^/]+\/(bills|payments|collect-lump-sum|breakdown-pay-all|credit-balance|ac-topup)/, "收款/账单"],
   [/^\/api\/contracts\/[^/]+\/maintenance/, "报修"],

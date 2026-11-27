@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
 import { FEES, PAYMENT_TYPE_LABELS, RENT_ARREARS } from "@/lib/config";
-import { notifyTenantLateFee, sendWarningLetter, notifyAdminsRentEscalation } from "@/lib/mail";
+import { notifyTenantLateFee, sendWarningLetter, notifyAdminsRentEscalation, notifyTenantUtilityOverdue } from "@/lib/mail";
 
-/** Vercel Cron hits this daily. Any bill (RENTAL/UTILITIES/AC/DRYER) still PENDING past its
- * dueDate gets a RM30 LATE_FEE bill charged for that day — idempotent per bill per day, so
+/** Usage bills (electricity, washer & dryer, aircon) never get the automatic RM30/day — the
+ * tenant gets an overdue reminder instead, on day 1 and then every 3 days while unpaid, which
+ * still warns that a penalty may be charged under the agreement. */
+const USAGE_TYPES = new Set(["ELECTRIC", "DRYER", "AC"]);
+const REMIND_EVERY_DAYS = 3;
+
+/** Vercel Cron hits this daily. Any bill (RENTAL/UTILITIES deposit/other) still PENDING past its
+ * dueDate gets a RM30 LATE_FEE bill charged for that day (usage bills — see USAGE_TYPES — only
+ * get reminders) — idempotent per bill per day, so
  * re-running (or a bill staying overdue for a week) charges once per calendar day, not once
  * total. Excludes LATE_FEE rows themselves so penalties don't compound into penalties on
  * penalties. On top of that, overdue RENTAL bills specifically escalate: day 7 auto-sends the
@@ -28,6 +35,7 @@ export async function GET(req: NextRequest) {
   });
 
   let charged = 0;
+  let reminded = 0;
   let warned = 0;
   let escalated = 0;
   let skippedNoTenant = 0;
@@ -39,6 +47,31 @@ export async function GET(req: NextRequest) {
     }
 
     const daysOverdue = Math.round((startOfToday.getTime() - bill.dueDate!.getTime()) / (24 * 3600 * 1000));
+
+    if (USAGE_TYPES.has(bill.type)) {
+      if (daysOverdue >= 1 && (daysOverdue - 1) % REMIND_EVERY_DAYS === 0) {
+        const sentToday = await prisma.log.findFirst({
+          where: { type: "UtilityOverdue", relatedId: bill.paymentCode, timestamp: { gte: startOfToday } },
+        });
+        if (!sentToday) {
+          await notifyTenantUtilityOverdue(
+            tenant,
+            {
+              paymentCode: bill.paymentCode,
+              contractCode: "",
+              roomCode: bill.roomCode,
+              type: bill.type,
+              amountDue: Number(bill.amountDue),
+              amountPaid: Number(bill.amountPaid),
+              periodMonth: bill.periodMonth,
+            },
+            daysOverdue
+          );
+          reminded++;
+        }
+      }
+      continue;
+    }
 
     const alreadyChargedToday = await prisma.payment.findFirst({
       where: { relatedPaymentId: bill.id, dueDate: { gte: startOfToday, lt: startOfTomorrow } },
@@ -123,5 +156,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, charged, warned, escalated, skippedNoTenant });
+  return NextResponse.json({ success: true, charged, reminded, warned, escalated, skippedNoTenant });
 }

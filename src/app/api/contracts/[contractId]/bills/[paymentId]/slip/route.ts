@@ -59,6 +59,7 @@ async function handlePOST(
         type: payment.type,
         amountDue: Number(payment.amountDue),
         amountPaid: Number(payment.amountDue),
+        periodMonth: payment.periodMonth,
       },
       c.tenantName,
       user.name

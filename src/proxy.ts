@@ -27,6 +27,7 @@ const GUEST_ONLY_PATHS = ["/login", "/signup", "/reset-password"];
 const ROLE_GUARDS: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/dashboard", roles: ["BOSS", "ADMIN"] },
   { prefix: "/more", roles: ["BOSS", "ADMIN"] },
+  { prefix: "/utilities", roles: ["BOSS", "ADMIN"] },
   { prefix: "/users", roles: ["ADMIN"] },
   { prefix: "/danger-zone", roles: ["ADMIN"] },
   // AGENT included: an Agent can also be the tenant on their own contract.

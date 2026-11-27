@@ -13,7 +13,9 @@ const PAYMENT_TYPE_LABELS_EN: Record<string, string> = {
   ADMIN_FEE: "Admin Fee",
   ACCESS_CARD: "Access Card Deposit",
   AC: "Air-Cond Top-Up",
-  DRYER: "Dryer",
+  DRYER: "Washer & Dryer",
+  ELECTRIC: "Electricity",
+  CARPARK: "Car Park Rental",
   LATE_FEE: "Late Payment Penalty",
   OTHER: "Other",
 };
@@ -111,7 +113,9 @@ function wrap(title: string, bodyHtml: string, accentColor = "#0b5394") {
     <p style="color:#888;font-size:12px;">Bliss Rooms Enterprise</p></div>`;
 }
 
-function typeLabel(type: string) {
+function typeLabel(type: string, periodMonth?: string | null) {
+  // An AC bill with a billing month is metered usage (抄表开单), not a prepaid top-up.
+  if (type === "AC" && periodMonth) return "Air-Con Usage";
   return PAYMENT_TYPE_LABELS_EN[type] ?? type;
 }
 
@@ -132,16 +136,16 @@ export async function notifyAdminsSlipUploaded(bill: BillInfo, tenantName: strin
   const link = `${APP_URL}/payments/review`;
   // Aircon top-ups block the tenant's AC immediately, so flag these orange to catch Admin's
   // eye in the inbox and get handled faster than an ordinary slip review.
-  const isAcTopup = bill.type === "AC";
+  const isAcTopup = bill.type === "AC" && !bill.periodMonth;
   const accentColor = isAcTopup ? "#e67e22" : "#0b5394";
   const html = wrap(
     "New Transaction Slip Pending Review",
     `<p>${tenantName} uploaded a transaction slip that needs review:</p>
-     <p><b style="${isAcTopup ? `color:${accentColor};` : ""}">${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type)} · RM${bill.amountPaid.toFixed(2)}</p>
+     <p><b style="${isAcTopup ? `color:${accentColor};` : ""}">${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type, bill.periodMonth)} · RM${bill.amountPaid.toFixed(2)}</p>
      <p><a href="${link}" style="background:${accentColor};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Review</a></p>`,
     accentColor
   );
-  const subject = `${isAcTopup ? "🟠 " : ""}Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type)} RM${bill.amountPaid.toFixed(2)}`;
+  const subject = `${isAcTopup ? "🟠 " : ""}Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type, bill.periodMonth)} RM${bill.amountPaid.toFixed(2)}`;
   return Promise.all(admins.map((a) => send(a.email, subject, html, "SlipUploaded", bill.paymentCode, triggeredBy)));
 }
 
@@ -151,12 +155,16 @@ export async function notifyTenantBillCreated(tenant: { name: string; email: str
     "New Bill",
     `<p>Hi ${tenant.name},</p>
      <p>You have a new bill. Please pay and upload your transaction slip as soon as possible:</p>
-     <p><b>${typeLabel(bill.type)}</b> · RM${bill.amountDue.toFixed(2)}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
+     <p><b>${typeLabel(bill.type, bill.periodMonth)}</b> · RM${bill.amountDue.toFixed(2)}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
      <p>Due date: ${fmtDate(bill.dueDate)}</p>
-     <p style="color:#c0392b;">A late payment penalty of RM30.00/day applies if the transaction slip isn't uploaded by the due date.</p>
+     <p style="color:#c0392b;">${
+       ["ELECTRIC", "DRYER", "AC"].includes(bill.type)
+         ? "If it stays unpaid after the due date, the company may charge a late payment penalty under your tenancy agreement."
+         : "A late payment penalty of RM30.00/day applies if the transaction slip isn't uploaded by the due date."
+     }</p>
      <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Upload Transaction Slip</a></p>`
   );
-  return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type)} RM${bill.amountDue.toFixed(2)}`, html, "BillCreated", bill.paymentCode, triggeredBy);
+  return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type, bill.periodMonth)} RM${bill.amountDue.toFixed(2)}`, html, "BillCreated", bill.paymentCode, triggeredBy);
 }
 
 /** Admin issues a voucher ahead of time — tenant redeems it themselves later from 我的代金券. */
@@ -184,22 +192,64 @@ export async function notifyTenantBillReviewed(
   reason: string | null,
   triggeredBy: string
 ) {
-  const label = approved ? (bill.type === "AC" ? "Topped Up" : "Approved") : "Rejected";
+  const label = approved ? (bill.type === "AC" && !bill.periodMonth ? "Topped Up" : "Approved") : "Rejected";
   const html = wrap(
     `Bill ${approved ? "Approved" : "Rejected"}`,
     `<p>Hi ${tenant.name},</p>
-     <p>Your bill <b>${typeLabel(bill.type)} RM${bill.amountPaid.toFixed(2)}</b> has been ${label}.</p>
+     <p>Your bill <b>${typeLabel(bill.type, bill.periodMonth)} RM${bill.amountPaid.toFixed(2)}</b> has been ${label}.</p>
      ${!approved ? `<p style="color:#c0392b;">Reason: ${reason}</p><p>Please re-upload the correct transaction slip.</p>` : ""}
      <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View My Tenancy</a></p>`
   );
   return send(
     tenant.email,
-    `Bliss Rooms — Bill ${approved ? "Approved" : "Rejected"}: ${typeLabel(bill.type)}`,
+    `Bliss Rooms — Bill ${approved ? "Approved" : "Rejected"}: ${typeLabel(bill.type, bill.periodMonth)}`,
     html,
     "BillReviewed",
     bill.paymentCode,
     triggeredBy
   );
+}
+
+/** 抄表开单 — one email per tenant listing this month's electricity / washer & dryer / aircon
+ * bills with how each was worked out. These bills don't get the automatic RM30/day penalty,
+ * but the email still warns that the company may charge one under the agreement if unpaid. */
+export async function notifyTenantUtilityBills(
+  tenant: { name: string; email: string },
+  info: { period: string; roomCode: string; dueDate: string; lines: { label: string; amount: number; note: string }[]; runCode: string },
+  triggeredBy: string
+) {
+  const total = info.lines.reduce((s, l) => s + l.amount, 0);
+  const rows = info.lines
+    .map(
+      (l) =>
+        `<tr><td style="padding:6px 10px 6px 0;vertical-align:top;"><b>${l.label}</b><br><span style="color:#666;font-size:12px;">${l.note}</span></td><td style="padding:6px 0;text-align:right;vertical-align:top;white-space:nowrap;">RM${l.amount.toFixed(2)}</td></tr>`
+    )
+    .join("");
+  const html = wrap(
+    `Utility Bill ${info.period}`,
+    `<p>Hi ${tenant.name},</p>
+     <p>Your utility usage bill for <b>${info.roomCode}</b>, ${info.period}:</p>
+     <table style="border-collapse:collapse;min-width:280px;">${rows}
+       <tr><td style="padding:8px 10px 0 0;border-top:1px solid #ddd;"><b>Total</b></td><td style="padding:8px 0 0;border-top:1px solid #ddd;text-align:right;"><b>RM${total.toFixed(2)}</b></td></tr>
+     </table>
+     <p>Please pay by <b>${fmtDate(info.dueDate)}</b> (put your room code in the transfer reference) and upload the transaction slip in the app.</p>
+     <p style="color:#c0392b;">If it stays unpaid after the due date, the company may charge a late payment penalty under your tenancy agreement.</p>
+     <p><a href="${APP_URL}/my-bills" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View &amp; Pay</a></p>`
+  );
+  return send(tenant.email, `Bliss Rooms — Utility Bill ${info.period}: RM${total.toFixed(2)}`, html, "UtilityBill", info.runCode, triggeredBy);
+}
+
+/** Daily cron, for an unpaid usage bill past its due date (every few days, not every day). */
+export async function notifyTenantUtilityOverdue(tenant: { name: string; email: string }, bill: BillInfo, daysOverdue: number) {
+  const html = wrap(
+    "Utility Bill Overdue",
+    `<p>Hi ${tenant.name},</p>
+     <p>Your <b>${typeLabel(bill.type, bill.periodMonth)}</b> bill of <b>RM${bill.amountDue.toFixed(2)}</b>${bill.periodMonth ? ` (${bill.periodMonth})` : ""} for ${bill.roomCode} is now <b>${daysOverdue} day${daysOverdue === 1 ? "" : "s"} overdue</b>.</p>
+     <p>Please pay and upload the transaction slip as soon as possible. The company may charge a late payment penalty under your tenancy agreement for bills that remain unpaid.</p>
+     <p><a href="${APP_URL}/my-bills" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Pay Now</a></p>`,
+    "#c0392b"
+  );
+  return send(tenant.email, `Bliss Rooms — Overdue: ${typeLabel(bill.type, bill.periodMonth)} RM${bill.amountDue.toFixed(2)}`, html, "UtilityOverdue", bill.paymentCode, "system-cron");
 }
 
 /** Cron-generated late fee — lets the tenant know a penalty was charged and why. */
