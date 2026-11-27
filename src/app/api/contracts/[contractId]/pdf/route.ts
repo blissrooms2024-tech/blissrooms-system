@@ -3,12 +3,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({ dataUrl: z.string().min(1) });
 
 // Attaches the scanned/signed PDF of an already-existing (often legacy-imported) contract —
 // separate from the main contract edit endpoint, which locks once a contract is ACTIVE.
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -39,3 +40,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 合同 PDF 已上传", url });
 }
+
+export const POST = withActivity(handlePOST);

@@ -8,6 +8,7 @@ export const MENUS: Record<string, MenuItem[]> = {
   BOSS: [
     { href: "/dashboard", label: "📊 总览", labelEn: "📊 Overview" },
     { href: "/finance", label: "💰 财务总览", labelEn: "💰 Finance Overview" },
+    { href: "/pnl", label: "📈 损益表 P&L", labelEn: "📈 Profit & Loss" },
     { href: "/units", label: "🏢 楼盘", labelEn: "🏢 Properties" },
     { href: "/rooms", label: "🏠 房间", labelEn: "🏠 Rooms" },
     { href: "/contracts", label: "📄 合同", labelEn: "📄 Contracts" },
@@ -18,10 +19,13 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/warning-letters", label: "⚠️ 警告信记录", labelEn: "⚠️ Warning Letters" },
     { href: "/maintenance", label: "🔧 报修", labelEn: "🔧 Maintenance" },
     { href: "/agent-commissions", label: "💰 Agent 佣金", labelEn: "💰 Agent Commissions" },
+    { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
+    { href: "/activity", label: "🕘 活动记录", labelEn: "🕘 Activity Log" },
   ],
   ADMIN: [
     { href: "/dashboard", label: "📊 总览", labelEn: "📊 Overview" },
     { href: "/finance", label: "💰 财务总览", labelEn: "💰 Finance Overview" },
+    { href: "/pnl", label: "📈 损益表 P&L", labelEn: "📈 Profit & Loss" },
     { href: "/units", label: "🏢 楼盘", labelEn: "🏢 Properties" },
     { href: "/rooms", label: "🏠 房间", labelEn: "🏠 Rooms" },
     { href: "/contracts", label: "📄 合同", labelEn: "📄 Contracts" },
@@ -33,6 +37,8 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/warning-letters", label: "⚠️ 警告信记录", labelEn: "⚠️ Warning Letters" },
     { href: "/maintenance", label: "🔧 报修", labelEn: "🔧 Maintenance" },
     { href: "/agent-commissions", label: "💰 Agent 佣金", labelEn: "💰 Agent Commissions" },
+    { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
+    { href: "/activity", label: "🕘 活动记录", labelEn: "🕘 Activity Log" },
     { href: "/users", label: "👥 用户", labelEn: "👥 Users" },
   ],
   AGENT: [
@@ -56,5 +62,6 @@ export const MENUS: Record<string, MenuItem[]> = {
   WORKER: [
     { href: "/worker", label: "🔧 我的报修任务", labelEn: "🔧 My Maintenance Jobs" },
     { href: "/worker/payslip", label: "💰 我的薪水单", labelEn: "💰 My Payslip" },
+    { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
   ],
 };

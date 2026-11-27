@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface Breakdown {
   item: string;
@@ -32,14 +33,6 @@ interface PaymentRow {
   customLabel: string | null;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "OTHER"];
 
 function statusBadge(status: string, t: (zh: string, en: string) => string): { label: string; cls: string } {
@@ -128,7 +121,7 @@ export default function PaymentModal({
       toast.warning(t("请填金额", "Please enter an amount"));
       return;
     }
-    if (lumpFile && lumpFile.size > 3 * 1024 * 1024) {
+    if (lumpFile && isOversized(lumpFile)) {
       toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }

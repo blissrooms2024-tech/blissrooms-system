@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { notifyTenantBillReviewed } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
 ) {
@@ -46,3 +47,5 @@ export async function POST(
   const label = payment.type === "AC" ? "已充值" : "已批准";
   return NextResponse.json({ success: true, message: `✅ ${payment.paymentCode} ${label}` });
 }
+
+export const POST = withActivity(handlePOST);
