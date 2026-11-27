@@ -45,13 +45,13 @@ export default function ConfirmDialog({
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+            className="flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-200 sm:flex-none sm:py-2"
           >
             {t("取消", "Cancel")}
           </button>
           <button
             onClick={onConfirm}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
+            className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white sm:flex-none sm:py-2 ${
               danger ? "bg-red-600 hover:bg-red-700" : "bg-brand hover:bg-brand-dark"
             }`}
           >

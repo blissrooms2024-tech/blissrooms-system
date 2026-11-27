@@ -25,8 +25,16 @@ export default function SignatureModal({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Match the canvas bitmap to its on-screen size so strokes aren't stretched on phones
+    // (the box is taller on mobile to give fingers room).
+    const dpr = window.devicePixelRatio || 1;
+    const box = canvas.getBoundingClientRect();
+    if (box.width > 0 && box.height > 0) {
+      canvas.width = Math.round(box.width * dpr);
+      canvas.height = Math.round(box.height * dpr);
+    }
     const ctx = canvas.getContext("2d")!;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2.5 * dpr;
     ctx.lineCap = "round";
     ctx.strokeStyle = "#111";
 
@@ -129,13 +137,13 @@ export default function SignatureModal({
         ref={canvasRef}
         width={560}
         height={200}
-        className="mt-2 w-full touch-none rounded-lg border-2 border-dashed border-gray-300 bg-white"
+        className="mt-2 h-56 w-full touch-none rounded-lg border-2 border-dashed border-gray-300 bg-white sm:h-[200px]"
       />
       <div className="mt-2.5 flex gap-2">
-        <button onClick={clearSig} className="btn-soft">
+        <button onClick={clearSig} className="btn-soft flex-1 sm:flex-none">
           {tt("清除重签", "Clear & Redo")}
         </button>
-        <button onClick={submit} disabled={loading} className="btn-primary">
+        <button onClick={submit} disabled={loading} className="btn-primary flex-1 sm:flex-none">
           {tt("确定签名", "Confirm Signature")}
         </button>
       </div>

@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
 interface BreakdownRow {
   item: string;
@@ -32,14 +33,6 @@ interface PaymentRow {
   customLabel: string | null;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 const BILL_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
 
@@ -93,13 +86,13 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   }, [load]);
 
   async function uploadSlip(paymentId: string, file: File) {
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+    if (!file.type.startsWith("image/") && file.size > 3 * 1024 * 1024) {
+      toast.warning(t("文件太大(超过3MB)", "File too large (over 3MB)"));
       return;
     }
     setUploadingId(paymentId);
     try {
-      const dataUrl = await readAsDataURL(file);
+      const dataUrl = await compressImageToDataUrl(file);
       const res = await fetch(`/api/contracts/${contractCode}/bills/${paymentId}/slip`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,8 +123,8 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   const payableTotal = payableItems.reduce((s, b) => s + b.outstanding, 0);
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-bold text-brand">
+    <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+      <h3 className="text-base font-bold text-brand sm:text-lg">
         {t("💳 我的账单", "💳 My Bills")} — {contractCode}
       </h3>
 
@@ -142,7 +135,40 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
       {breakdown.length > 0 && (
         <>
           <b className="mb-1.5 block text-sm">{t("🧾 费用明细", "🧾 Fee Breakdown")}</b>
-          <table className="mb-3.5 w-full text-sm">
+          {/* Phone: one compact row per item instead of a 4-column table. */}
+          <div className="mb-3.5 divide-y divide-gray-100 rounded-lg border border-gray-200 sm:hidden">
+            {breakdown.map((b) => (
+              <div key={b.item} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <div className="font-medium">{paymentTypeLabelLocale(b.item, null, locale)}</div>
+                  <div className="text-xs text-gray-500">
+                    {t("应收", "Due")} {fmt(b.due)} · {t("已收", "Paid")} {fmt(b.paid)}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  {b.outstanding > 0 ? (
+                    <span className="font-semibold text-red-600">{fmt(b.outstanding)}</span>
+                  ) : (
+                    <span className="text-green-700">{t("✅清", "✅ Settled")}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-3 bg-gray-50 px-3 py-3 text-sm font-semibold">
+              <div className="min-w-0">
+                <div className="text-xs font-normal text-gray-500">{t("还欠总额 (未开账单项目)", "Total Outstanding (Not Yet Billed)")}</div>
+                <div className={payableTotal > 0 ? "text-red-600" : "text-gray-400"}>{fmt(payableTotal)}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPayingAll(true)}
+                className="shrink-0 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
+              >
+                {t("付款", "Pay")}
+              </button>
+            </div>
+          </div>
+          <table className="mb-3.5 hidden w-full text-sm sm:table">
             <thead>
               <tr className="bg-gray-50 text-left text-gray-600">
                 <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
@@ -208,7 +234,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                       <Link
                         href={`/invoice/${b.paymentCode}`}
                         target="_blank"
-                        className="mt-0.5 inline-block text-xs font-semibold text-brand underline"
+                        className="mt-1 inline-block py-1 text-xs font-semibold text-brand underline"
                       >
                         {t("📄 查看正式 Invoice", "📄 View Official Invoice")}
                       </Link>
@@ -221,7 +247,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                     <button
                       type="button"
                       onClick={() => setZoomUrl(b.receiptLink)}
-                      className="mt-2 text-xs font-semibold text-brand underline"
+                      className="mt-2 py-1 text-xs font-semibold text-brand underline"
                     >
                       {t("🧾 查看已上传的交易单", "🧾 View Uploaded Slip")}
                     </button>
@@ -233,7 +259,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                         accept="image/*"
                         disabled={uploadingId === b.id}
                         onChange={(e) => e.target.files?.[0] && uploadSlip(b.id, e.target.files[0])}
-                        className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
+                        className="block w-full text-sm text-gray-500 file:mr-3 file:py-2.5 sm:file:py-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
                       />
                       {uploadingId === b.id && <span className="ml-2 text-sm text-gray-500">{t("上传中...", "Uploading...")}</span>}
                     </div>
@@ -248,7 +274,31 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
       <b className="mt-3.5 block text-sm">
         {t("📜 已付款记录", "📜 Payment History")} ({paidHistory.length})
       </b>
-      <table className="mt-1.5 w-full text-sm">
+      {/* Phone: payment history as cards. */}
+      <div className="mt-1.5 space-y-2 sm:hidden">
+        {paidHistory.length === 0 && <div className="py-3 text-center text-sm text-gray-400">{t("还没有付款记录", "No payment history yet")}</div>}
+        {paidHistory.map((p) => (
+          <div key={p.paymentCode} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5 text-sm">
+            <div className="min-w-0">
+              <div className="font-medium">
+                {paymentTypeLabelLocale(p.type, p.customLabel, locale)}
+                {p.periodMonth && <span className="text-gray-400"> ({p.periodMonth})</span>}
+              </div>
+              <div className="text-xs text-gray-500">
+                {fmt(p.amountPaid)} · {fmtDate(p.paidDate)}
+              </div>
+            </div>
+            <Link
+              href={`/receipt/${p.paymentCode}`}
+              target="_blank"
+              className="shrink-0 rounded-lg bg-brand-light px-3 py-2 text-xs font-semibold text-brand"
+            >
+              {t("🧾 收据", "🧾 Receipt")}
+            </Link>
+          </div>
+        ))}
+      </div>
+      <table className="mt-1.5 hidden w-full text-sm sm:table">
         <thead>
           <tr className="bg-gray-50 text-left text-gray-600">
             <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>

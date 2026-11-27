@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
 interface RoomDetail {
   roomCode: string;
@@ -26,14 +27,6 @@ interface RoomDetail {
   currentTenant: { name: string; email: string; phone: string | null } | null;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 interface ContractRow {
   contractCode: string;
   tenantName: string;
@@ -75,13 +68,13 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
   }, [load]);
 
   async function uploadPhoto(file: File) {
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image is too large (over 3MB) — please compress it"));
+    if (!file.type.startsWith("image/") && file.size > 3 * 1024 * 1024) {
+      toast.warning(t("文件太大(超过3MB)", "File too large (over 3MB)"));
       return;
     }
     setUploading(true);
     try {
-      const dataUrl = await readAsDataURL(file);
+      const dataUrl = await compressImageToDataUrl(file);
       const res = await fetch(`/api/rooms/${roomCode}/photos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

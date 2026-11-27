@@ -76,7 +76,7 @@ export default function TenantInfoEditModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="mb-3.5 text-lg font-bold text-brand">{t("✏️ 编辑我的资料", "✏️ Edit My Info")}</h3>
+      <h3 className="mb-3.5 text-base font-bold text-brand sm:text-lg">{t("✏️ 编辑我的资料", "✏️ Edit My Info")}</h3>
       <p className="mb-3.5 text-xs text-gray-400">
         {t(
           "如果 Admin 帮你 keyin 的资料有打错或漏了，可以在这里自己更正。房租、押金、租期等资料如需更改请联系 Admin。",

@@ -6,15 +6,8 @@ import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { MOVE_ITEMS, MoveItem } from "@/lib/moveItems";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 type MoveType = "MoveIn" | "MoveOut";
 
@@ -107,8 +100,8 @@ export function MoveFormPanel({
   }
 
   async function uploadPhoto(item: MoveItem, file: File) {
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+    if (!file.type.startsWith("image/") && file.size > 3 * 1024 * 1024) {
+      toast.warning(t("文件太大(超过3MB)", "File too large (over 3MB)"));
       return;
     }
     const arr = photos[item.key] || [];
@@ -118,7 +111,7 @@ export function MoveFormPanel({
     }
     setUploadingKey(item.key);
     try {
-      const dataUrl = await readAsDataURL(file);
+      const dataUrl = await compressImageToDataUrl(file);
       const res = await fetch(`/api/contracts/${contractCode}/move/photo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -211,7 +204,7 @@ export function MoveFormPanel({
             <input
               type="date"
               disabled={readOnly}
-              className="input max-w-xs disabled:bg-gray-50 disabled:text-gray-500"
+              className="input disabled:bg-gray-50 disabled:text-gray-500 sm:max-w-xs"
               value={moveInDate}
               onChange={(e) => setMoveInDate(e.target.value)}
             />
@@ -222,12 +215,12 @@ export function MoveFormPanel({
               <b className="text-sm">
                 {it.label} {it.required && <span className="text-red-600">*</span>}
               </b>
-              <div className="my-1.5 flex gap-1.5">
+              <div className="my-2 flex gap-2">
                 <button
                   type="button"
                   disabled={readOnly}
                   onClick={() => setConditions((c) => ({ ...c, [it.key]: "Good" }))}
-                  className={`rounded-md px-3 py-1 text-xs disabled:cursor-not-allowed ${
+                  className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold disabled:cursor-not-allowed sm:flex-none sm:py-1 sm:text-xs sm:font-normal ${
                     conditions[it.key] === "Good" ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600"
                   }`}
                 >
@@ -237,7 +230,7 @@ export function MoveFormPanel({
                   type="button"
                   disabled={readOnly}
                   onClick={() => setConditions((c) => ({ ...c, [it.key]: "Broken" }))}
-                  className={`rounded-md px-3 py-1 text-xs disabled:cursor-not-allowed ${
+                  className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold disabled:cursor-not-allowed sm:flex-none sm:py-1 sm:text-xs sm:font-normal ${
                     conditions[it.key] === "Broken" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-600"
                   }`}
                 >
@@ -249,12 +242,12 @@ export function MoveFormPanel({
                   <div key={i} className="relative">
                     <button type="button" onClick={() => setZoomUrl(u)} className="cursor-zoom-in">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={u} alt="" className="h-[60px] rounded border border-gray-300 hover:opacity-90" />
+                      <img src={u} alt="" className="h-[72px] w-[72px] rounded border border-gray-300 object-cover hover:opacity-90 sm:h-[60px] sm:w-auto" />
                     </button>
                     {!readOnly && (
                       <button
                         onClick={() => removePhoto(it.key, i)}
-                        className="absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red-600 text-xs text-white"
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-sm text-white shadow sm:-right-1.5 sm:-top-1.5 sm:h-[18px] sm:w-[18px] sm:text-xs"
                       >
                         ×
                       </button>
@@ -269,9 +262,9 @@ export function MoveFormPanel({
                     accept="image/*"
                     disabled={uploadingKey === it.key}
                     onChange={(e) => e.target.files?.[0] && uploadPhoto(it, e.target.files[0])}
-                    className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
+                    className="block w-full text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-2.5 sm:file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
                   />
-                  <span className="ml-1.5 text-xs text-gray-400">{t(`最多${it.max}张`, `Max ${it.max} photos`)}</span>
+                  <span className="mt-1 block text-xs text-gray-400 sm:ml-1.5 sm:mt-0 sm:inline">{uploadingKey === it.key ? t("上传中...", "Uploading...") + " · " : ""}{t(`最多${it.max}张`, `Max ${it.max} photos`)}</span>
                 </>
               )}
               <input
@@ -290,8 +283,8 @@ export function MoveFormPanel({
           </div>
 
           {!readOnly && (
-            <button onClick={submit} disabled={submitting} className="btn-primary">
-              {t("提交表单", "Submit Form")}
+            <button onClick={submit} disabled={submitting} className="btn-primary w-full py-3 sm:w-auto sm:py-2">
+              {submitting ? t("提交中...", "Submitting...") : t("提交表单", "Submit Form")}
             </button>
           )}
         </div>

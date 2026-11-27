@@ -5,15 +5,8 @@ import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
+import { compressImageToDataUrl } from "@/lib/compressImage";
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function ICUploadModal({
   contractCode,
@@ -45,13 +38,13 @@ export default function ICUploadModal({
   }, [contractCode]);
 
   async function upload(side: "front" | "back", file: File) {
-    if (file.size > 3 * 1024 * 1024) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+    if (!file.type.startsWith("image/") && file.size > 3 * 1024 * 1024) {
+      toast.warning(t("文件太大(超过3MB)", "File too large (over 3MB)"));
       return;
     }
     setLoadingSide(side);
     try {
-      const dataUrl = await readAsDataURL(file);
+      const dataUrl = await compressImageToDataUrl(file);
       const res = await fetch(`/api/contracts/${contractCode}/ic`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,7 +126,7 @@ function Slot({
         {url ? (
           <button type="button" onClick={() => onZoom(url)} className="cursor-zoom-in">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={label} className="max-h-[120px] rounded border border-gray-300 hover:opacity-90" />
+            <img src={url} alt={label} className="max-h-[160px] max-w-full rounded border border-gray-300 hover:opacity-90 sm:max-h-[120px]" />
           </button>
         ) : (
           <span className="text-sm text-gray-400">{t("还没上传", "Not uploaded yet")}</span>
