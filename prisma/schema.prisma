@@ -160,6 +160,10 @@ model User {
   commissions       Commission[]
   moveInOutForms    MoveInOutForm[]
   expenseClaims     ExpenseClaim[]    @relation("ClaimSubmitter")
+  meetingSeats          MeetingAttendee[]
+  meetingNotes          MeetingNote[]
+  meetingIssuesOwned    MeetingIssue[]    @relation("IssueOwner")
+  meetingIssuesFollowed MeetingIssue[]    @relation("IssueFollowUp")
 
   @@index([role])
 }
@@ -864,3 +868,89 @@ model AppSetting {
   updatedBy String?
 }
 
+/// 会议记录 — one meeting: when and where, who came, each attendee's own notes (written from
+/// their own account), and the issues it raised or closed.
+model Meeting {
+  id            String            @id @default(cuid())
+  meetingCode   String            @unique
+  title         String
+  startsAt      DateTime
+  endsAt        DateTime?
+  location      String?
+  /// People without an account who came (landlord, contractor…), one name each.
+  guests        String[]
+  /// OPEN: attendees can still write notes · DONE: record finished, notes locked
+  status        String            @default("OPEN")
+  createdById   String
+  createdByName String
+  finishedAt    DateTime?
+  finishedBy    String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  attendees     MeetingAttendee[]
+  notes         MeetingNote[]
+  issues        MeetingIssue[]    @relation("IssueRaisedIn")
+  issuesDone    MeetingIssue[]    @relation("IssueDoneIn")
+
+  @@index([startsAt])
+}
+
+model MeetingAttendee {
+  id        String  @id @default(cuid())
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@index([userId])
+}
+
+/// One attendee's notes for a meeting; everyone's together make the meeting's record.
+model MeetingNote {
+  id        String   @id @default(cuid())
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([meetingId, authorId])
+}
+
+/// An issue to sort out: raised in a meeting, handled by someone (谁处理), followed up by someone
+/// (谁跟进), open until it's marked done — often at a later meeting.
+model MeetingIssue {
+  id            String    @id @default(cuid())
+  issueCode     String    @unique
+  meetingId     String
+  meeting       Meeting   @relation("IssueRaisedIn", fields: [meetingId], references: [id], onDelete: Cascade)
+  title         String
+  detail        String?
+  /// Who handles it: an account, or just a name for someone without one.
+  ownerId       String?
+  owner         User?     @relation("IssueOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerName     String?
+  followUpId    String?
+  followUp      User?     @relation("IssueFollowUp", fields: [followUpId], references: [id], onDelete: SetNull)
+  dueDate       DateTime?
+  /// OPEN | DONE
+  status        String    @default("OPEN")
+  doneAt        DateTime?
+  doneBy        String?
+  doneNote      String?
+  /// The meeting it was reported done in, if any.
+  doneMeetingId String?
+  doneMeeting   Meeting?  @relation("IssueDoneIn", fields: [doneMeetingId], references: [id], onDelete: SetNull)
+  createdById   String
+  createdByName String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([meetingId])
+  @@index([ownerId])
+  @@index([followUpId])
+  @@index([status])
+}

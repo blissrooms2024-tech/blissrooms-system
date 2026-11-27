@@ -16,6 +16,7 @@ import {
   IconContract,
   IconHome,
   IconMegaphone,
+  IconNotes,
   IconPie,
   IconReceipt,
   IconReceiptCheck,
@@ -72,6 +73,7 @@ export const NAV_META: Record<string, { icon: NavIcon; group: NavGroup; tone: To
   "/claims": meta(IconReceiptCheck, "money"),
   "/quote": meta(IconCalculator, "money"),
   "/activity": meta(IconClock, "team"),
+  "/meetings": meta(IconNotes, "team"),
   "/users": meta(IconUsers, "team"),
   "/profile": meta(IconUser, "team"),
 };

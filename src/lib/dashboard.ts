@@ -42,6 +42,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     collection,
     propertyCount,
     meterUnits,
+    myMeetingIssues,
   ] = await Promise.all([
     getReports(curP, Number(year)),
     prisma.room.groupBy({ by: ["status", "isCarpark"], _count: true }),
@@ -142,6 +143,11 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
     getCollection(curP),
     prisma.property.count({ where: { OR: [{ status: null }, { status: { not: "Inactive" } }] } }),
     billingOverview(defaultBillingPeriod(today)),
+    // 会议记录: open issues this person handles or follows up.
+    prisma.meetingIssue.findMany({
+      where: { status: "OPEN", OR: [{ ownerId: viewer.id }, { followUpId: viewer.id }] },
+      select: { dueDate: true },
+    }),
   ]);
 
   // --- Rooms -------------------------------------------------------------------------------
@@ -271,6 +277,10 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
       meterBilling: {
         period: defaultBillingPeriod(today),
         units: meterUnits.filter((u) => !u.run && !u.startsLater).map((u) => ({ propertyCode: u.propertyCode, name: u.name })),
+      },
+      meetingIssues: {
+        count: myMeetingIssues.length,
+        overdue: myMeetingIssues.filter((i) => i.dueDate && i.dueDate < today).length,
       },
     },
     claims: { pending: claimSum("PENDING"), toPay: claimSum("APPROVED") },

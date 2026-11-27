@@ -524,3 +524,27 @@ export async function notifyAgentApproved(agent: { userCode: string; name: strin
   );
   return send(agent.email, "Bliss Rooms — Your Agent Account Has Been Approved", html, "AgentApproved", agent.userCode, triggeredBy);
 }
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+/** 会议记录: someone was given an issue to handle (谁处理) or to follow up (谁跟进). Staff email, in Chinese. */
+export async function notifyMeetingIssue(
+  person: { name: string; email: string },
+  issue: { issueCode: string; title: string; detail: string | null; dueDate: string | null; owner: string | null; followUp: string | null },
+  meeting: { meetingCode: string; title: string },
+  as: "OWNER" | "FOLLOW_UP",
+  triggeredBy: string
+) {
+  const role = as === "OWNER" ? "处理" : "跟进";
+  const html = wrap(
+    "会议事项",
+    `<p>${esc(person.name)} 你好，</p>
+     <p>在会议「${esc(meeting.title)}」里，你被安排<b>${role}</b>这件事：</p>
+     <p style="border-left:3px solid #7c3aed;padding:6px 12px;background:#f6f3ff;"><b>${esc(issue.title)}</b>${issue.detail ? `<br><span style="color:#555;">${esc(issue.detail)}</span>` : ""}</p>
+     <p>处理：${esc(issue.owner ?? "—")}　跟进：${esc(issue.followUp ?? "—")}${issue.dueDate ? `　期限：${fmtDate(issue.dueDate)}` : ""}</p>
+     <p>做好之后，请在系统里把它标记为「已完成」。</p>
+     <p><a href="${APP_URL}/meetings?tab=mine" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">查看我的事项</a></p>`,
+    "#7c3aed"
+  );
+  return send(person.email, `Bliss Rooms — 会议事项（${role}）：${issue.title}`, html, "MeetingIssue", issue.issueCode, triggeredBy);
+}

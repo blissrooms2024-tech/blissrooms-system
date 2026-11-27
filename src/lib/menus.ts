@@ -22,6 +22,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/agent-commissions", label: "💰 Agent 佣金", labelEn: "💰 Agent Commissions" },
     { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
     { href: "/activity", label: "🕘 活动记录", labelEn: "🕘 Activity Log" },
+    { href: "/meetings", label: "📝 会议记录", labelEn: "📝 Meetings" },
   ],
   ADMIN: [
     { href: "/dashboard", label: "📊 总览", labelEn: "📊 Overview" },
@@ -41,6 +42,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/agent-commissions", label: "💰 Agent 佣金", labelEn: "💰 Agent Commissions" },
     { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
     { href: "/activity", label: "🕘 活动记录", labelEn: "🕘 Activity Log" },
+    { href: "/meetings", label: "📝 会议记录", labelEn: "📝 Meetings" },
     { href: "/users", label: "👥 用户", labelEn: "👥 Users" },
   ],
   AGENT: [
@@ -50,6 +52,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/agent-payslip", label: "📑 我的 Payslip", labelEn: "📑 My Payslip" },
     { href: "/rooms", label: "🏠 空房", labelEn: "🏠 Vacant Rooms" },
     { href: "/contracts", label: "📄 我的合同", labelEn: "📄 My Contracts" },
+    { href: "/meetings", label: "📝 会议记录", labelEn: "📝 Meetings" },
   ],
   TENANT: [
     { href: "/my-tenancy", label: "📄 我的租约", labelEn: "📄 My Tenancy" },
@@ -65,5 +68,6 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/worker", label: "🔧 我的报修任务", labelEn: "🔧 My Maintenance Jobs" },
     { href: "/worker/payslip", label: "💰 我的薪水单", labelEn: "💰 My Payslip" },
     { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
+    { href: "/meetings", label: "📝 会议记录", labelEn: "📝 Meetings" },
   ],
 };

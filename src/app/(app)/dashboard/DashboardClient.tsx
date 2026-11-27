@@ -10,6 +10,7 @@ import {
   IconAlert,
   IconBed,
   IconBolt,
+  IconNotes,
   IconCar,
   IconCash,
   IconCheck,
@@ -171,6 +172,15 @@ export default function DashboardClient({
       href: `/utilities?period=${todo.meterBilling.period}`,
       icon: IconBolt,
       tone: "amber" as Tone,
+    },
+    {
+      n: todo.meetingIssues.count,
+      l: todo.meetingIssues.overdue
+        ? t(`会议事项要跟进 · ${todo.meetingIssues.overdue} 项逾期`, `Meeting items to follow up · ${todo.meetingIssues.overdue} overdue`)
+        : t("会议事项要跟进", "Meeting items to follow up"),
+      href: "/meetings?tab=mine",
+      icon: IconNotes,
+      tone: (todo.meetingIssues.overdue ? "rose" : "slate") as Tone,
     },
   ].filter((a) => a.n > 0);
 

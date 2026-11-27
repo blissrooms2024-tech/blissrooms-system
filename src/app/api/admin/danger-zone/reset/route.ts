@@ -40,6 +40,8 @@ async function handlePOST(req: NextRequest) {
     const rooms = await tx.room.deleteMany({});
     const properties = await tx.property.deleteMany({});
     const logs = await tx.log.deleteMany({});
+    // Meeting records go too (their attendees, notes and issues with them).
+    await tx.meeting.deleteMany({});
     await tx.counter.deleteMany({});
     const users = await tx.user.deleteMany({ where: { role: { not: "ADMIN" } } });
 

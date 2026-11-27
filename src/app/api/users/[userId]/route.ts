@@ -121,14 +121,16 @@ async function handleDELETE(
     return NextResponse.json({ success: false, message: "不能删除自己的账号" }, { status: 400 });
   }
 
-  const [contractCount, roomCount, moveFormCount, commissionCount, maintenanceCount] = await Promise.all([
+  const [contractCount, roomCount, moveFormCount, commissionCount, maintenanceCount, meetingCount] = await Promise.all([
     prisma.contract.count({ where: { OR: [{ tenantId: u.id }, { agentId: u.id }] } }),
     prisma.room.count({ where: { currentTenantId: u.id } }),
     prisma.moveInOutForm.count({ where: { tenantId: u.id } }),
     prisma.commission.count({ where: { agentId: u.id } }),
     prisma.maintenanceRequest.count({ where: { OR: [{ tenantId: u.id }, { assignedWorkerId: u.id }] } }),
+    // Meeting records keep who was there and who wrote what.
+    prisma.meetingAttendee.count({ where: { userId: u.id } }),
   ]);
-  if (contractCount + roomCount + moveFormCount + commissionCount + maintenanceCount > 0) {
+  if (contractCount + roomCount + moveFormCount + commissionCount + maintenanceCount + meetingCount > 0) {
     return NextResponse.json(
       { success: false, message: "这个用户有关联的合同/房间/记录，不能删除，请改用「停用」" },
       { status: 409 }

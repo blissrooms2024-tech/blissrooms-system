@@ -35,6 +35,7 @@ export const ACTIONS: Action[] = [
   { id: "warnings", href: "/warning-letters", meta: "/warning-letters", zh: "警告信", en: "Warnings" },
   { id: "commissions", href: "/agent-commissions", meta: "/agent-commissions", zh: "Agent 佣金", en: "Commissions" },
   { id: "activity", href: "/activity", meta: "/activity", zh: "活动记录", en: "Activity" },
+  { id: "meetings", href: "/meetings", meta: "/meetings", zh: "会议记录", en: "Meetings" },
   { id: "users", href: "/users", meta: "/users", zh: "用户", en: "Users", adminOnly: true },
 ];
 
