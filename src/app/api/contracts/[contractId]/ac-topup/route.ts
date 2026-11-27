@@ -6,6 +6,7 @@ import { uploadDataUrl } from "@/lib/storage";
 import { newId } from "@/lib/id";
 import { notifyAdminsSlipUploaded } from "@/lib/mail";
 import { withActivity } from "@/lib/activity";
+import { airconPlan } from "@/lib/utilityBilling";
 
 const schema = z.object({
   amount: z.coerce.number().positive(),
@@ -31,6 +32,12 @@ async function handlePOST(
   }
   if (!c.room.hasAircon) {
     return NextResponse.json({ success: false, message: "这间房没有冷气，不能充值" }, { status: 400 });
+  }
+  if ((await airconPlan(c.roomId)).plan === "POSTPAID") {
+    return NextResponse.json(
+      { success: false, message: "这间房的冷气已经改成月结，不用再充值。每个月底抄表，账单会出现在「我的账单」。" },
+      { status: 400 }
+    );
   }
 
   const parsed = schema.safeParse(await req.json().catch(() => null));

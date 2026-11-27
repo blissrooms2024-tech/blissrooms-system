@@ -56,7 +56,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/my-warnings", label: "⚠️ 警告信", labelEn: "⚠️ Warning Letters" },
     { href: "/my-bills", label: "💳 我的账单", labelEn: "💳 My Bills" },
     { href: "/my-vouchers", label: "🎟️ 我的代金券", labelEn: "🎟️ My Vouchers" },
-    { href: "/my-aircon", label: "❄️ 冷气充值", labelEn: "❄️ Air-Cond Top-Up" },
+    { href: "/my-aircon", label: "❄️ 冷气", labelEn: "❄️ Air-Cond" },
     { href: "/my-movein", label: "📋 Move-in", labelEn: "📋 Move-in" },
     { href: "/my-moveout", label: "📦 Move-out", labelEn: "📦 Move-out" },
     { href: "/my-maintenance", label: "🔧 报修", labelEn: "🔧 Maintenance" },

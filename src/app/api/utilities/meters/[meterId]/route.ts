@@ -15,7 +15,8 @@ async function load(meterId: string) {
   });
 }
 
-/** PATCH — change a meter's room, name, meter no., input mode or starting reading (Admin). */
+/** PATCH — change a meter's room, name, meter no., input mode, starting reading or start month
+ * (Admin). The start month is fixed once the meter has been billed. */
 async function handlePATCH(req: NextRequest, { params }: Ctx) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ success: false, message: "只有 Admin 可以改电表" }, { status: 403 });
@@ -29,6 +30,9 @@ async function handlePATCH(req: NextRequest, { params }: Ctx) {
     const rooms = await unitRooms(meter.property);
     if (!rooms.some((r) => r.id === d.roomId)) return NextResponse.json({ success: false, message: "这个房间不在这个单位" }, { status: 400 });
   }
+  if (d.startPeriod !== undefined && meter._count.readings > 0) {
+    return NextResponse.json({ success: false, message: "这个电表已经开过账单，不能改开始月份" }, { status: 400 });
+  }
   await prisma.utilityMeter.update({
     where: { id: meterId },
     data: {
@@ -37,6 +41,7 @@ async function handlePATCH(req: NextRequest, { params }: Ctx) {
       ...(d.meterNo !== undefined ? { meterNo: d.meterNo || null } : {}),
       ...(d.inputMode ? { inputMode: d.inputMode } : {}),
       ...(d.startReading !== undefined ? { startReading: d.startReading } : {}),
+      ...(d.startPeriod !== undefined ? { startPeriod: d.startPeriod } : {}),
     },
   });
   return NextResponse.json({ success: true, message: `已更新 ${meter.property.propertyCode} ${KIND_LABELS[meter.kind as UtilityKind]?.zh ?? meter.kind}电表` });

@@ -14,8 +14,11 @@ export function billNote(
   period: string,
   meters: { usage: number; rate: number; amount: number; previous: number | null; reading: number | null }[],
   share: Line["share"],
+  /** What this kind came to after any manual change, before the prepaid balance. */
   amount: number,
-  computed: number
+  computed: number,
+  /** Taken from the tenant's prepaid balance. */
+  credit = 0
 ) {
   const parts = meters.map((m) => {
     const read = m.previous !== null && m.reading !== null ? `${num(m.previous)} → ${num(m.reading)} = ` : "";
@@ -26,6 +29,7 @@ export function billNote(
   else if (share?.by === "SAME_ROOM") text += `，这间房这个月有 ${share.total} 位租客，平分`;
   else if (share) text += `，${share.total} 间房平分`;
   if (Math.abs(amount - computed) > 0.004) text += `（已调整为 ${rm(amount)}）`;
+  if (credit > 0) text += `，已扣预付余额 ${rm(credit)}`;
   return text;
 }
 

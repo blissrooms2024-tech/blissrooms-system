@@ -10,6 +10,7 @@ import {
   finalBills,
   round2,
   splitUsage,
+  type Credits,
   type MeterUsage,
   type Overrides,
   type SplitBy,
@@ -31,6 +32,13 @@ export function periodBounds(period: string) {
 }
 
 const day = (d: Date | null | undefined) => (d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null);
+
+/** YYYY-MM of a moment, in Malaysia time. */
+export const myMonth = (d: Date) => new Date(d.getTime() + 8 * 3600_000).toISOString().slice(0, 7);
+
+/** First month a meter is billed. Meters registered before start months existed begin in the
+ * month they were registered. */
+export const meterStart = (m: { startPeriod: string | null; createdAt: Date }) => m.startPeriod ?? myMonth(m.createdAt);
 
 // ---------------------------------------------------------------------------------- rates
 const rateKey = (k: UtilityKind) => `rate.${k}`;
@@ -58,6 +66,47 @@ export async function setRates(rates: Partial<Record<UtilityKind, number>>, by: 
   }
 }
 
+// ---------------------------------------------------------------------------------- aircon plan
+/** How a room's aircon is paid. PREPAID: tenants top up the smart meter. POSTPAID: billed
+ * monthly from the room's aircon meter in 抄表开单. SWITCHING: an aircon meter is registered
+ * but only starts next month, so top-ups carry on until then. `from` = first billed month. */
+export async function airconPlan(roomId: string) {
+  const meters = await prisma.utilityMeter.findMany({
+    where: { roomId, kind: "AC", active: true },
+    select: { startPeriod: true, createdAt: true },
+  });
+  if (!meters.length) return { plan: "PREPAID" as const, from: null };
+  const from = meters.map(meterStart).sort()[0];
+  return { plan: from <= myMonth(new Date()) ? ("POSTPAID" as const) : ("SWITCHING" as const), from };
+}
+
+/** Aircon rooms with no aircon meter in 抄表开单 yet — still on prepaid top-up — by unit. */
+export async function prepaidAirconRooms() {
+  const [rooms, units] = await Promise.all([
+    prisma.room.findMany({
+      where: { hasAircon: true, isCarpark: false, status: { not: "STORE" }, utilityMeters: { none: { kind: "AC", active: true } } },
+      select: { roomCode: true, propertyId: true, propertyName: true },
+      orderBy: { roomCode: "asc" },
+    }),
+    prisma.property.findMany({
+      where: { OR: [{ status: null }, { status: { not: "Inactive" } }] },
+      select: { id: true, propertyCode: true, name: true },
+    }),
+  ]);
+  const byId = new Map(units.map((u) => [u.id, u]));
+  const byName = new Map(units.map((u) => [u.name, u]));
+  const out = new Map<string, { propertyCode: string; name: string; rooms: string[] }>();
+  for (const r of rooms) {
+    // Older rooms sometimes only carry the unit's name, not its id.
+    const u = (r.propertyId ? byId.get(r.propertyId) : undefined) ?? byName.get(r.propertyName);
+    if (!u) continue;
+    const row = out.get(u.propertyCode) ?? { propertyCode: u.propertyCode, name: u.name, rooms: [] };
+    row.rooms.push(r.roomCode);
+    out.set(u.propertyCode, row);
+  }
+  return [...out.values()].sort((a, b) => a.propertyCode.localeCompare(b.propertyCode));
+}
+
 // ---------------------------------------------------------------------------------- unit
 export async function findUnit(propertyCode: string) {
   return prisma.property.findUnique({ where: { propertyCode }, select: { id: true, propertyCode: true, name: true } });
@@ -68,7 +117,7 @@ export async function findUnit(propertyCode: string) {
 export async function unitRooms(unit: { id: string; name: string }) {
   return prisma.room.findMany({
     where: { isCarpark: false, OR: [{ propertyId: unit.id }, { propertyName: unit.name }] },
-    select: { id: true, roomCode: true, status: true },
+    select: { id: true, roomCode: true, status: true, hasAircon: true },
     orderBy: { roomCode: "asc" },
   });
 }
@@ -77,6 +126,8 @@ const LIVE = ["ACTIVE", "EXPIRING"] as const;
 const ENDED = ["EXPIRED", "MOVED_OUT", "TERMINATED", "RENEWED"] as const;
 
 export type TenancyRow = Tenancy & {
+  /** Prepaid balance still to use, by kind (e.g. aircon top-up left over). */
+  credit: Partial<Record<UtilityKind, number>>;
   tenantId: string | null;
   contactNumber: string | null;
   expiredDate: string | null;
@@ -110,6 +161,7 @@ export async function getTenancies(roomIds: string[], period: string): Promise<T
       room: { select: { roomCode: true } },
       moveForms: { where: { type: "MOVE_OUT" }, select: { formDate: true, submittedAt: true } },
       utilityExemptions: { orderBy: { startDate: "asc" } },
+      utilityCredits: { select: { kind: true, amount: true } },
     },
   });
 
@@ -149,6 +201,9 @@ export async function getTenancies(roomIds: string[], period: string): Promise<T
         });
       const exempt: Tenancy["exempt"] = {};
       for (const e of exemptions) if (e.current) exempt[e.kind] = { reason: e.reason, until: e.until };
+      const credit: TenancyRow["credit"] = {};
+      for (const r of c.utilityCredits) if (isKind(r.kind)) credit[r.kind] = round2((credit[r.kind] ?? 0) + Number(r.amount));
+      for (const k of UTILITY_KINDS) if ((credit[k] ?? 0) <= 0) delete credit[k];
       return {
         contractId: c.id,
         contractCode: c.contractCode,
@@ -163,6 +218,7 @@ export async function getTenancies(roomIds: string[], period: string): Promise<T
         pays: { ELECTRIC: c.utilElectric, LAUNDRY: c.utilDryer, AC: c.utilAircond },
         exempt,
         exemptions,
+        credit,
       };
     });
 }
@@ -172,14 +228,17 @@ export async function getTenancies(roomIds: string[], period: string): Promise<T
 async function previousReadings(meterIds: string[], period: string) {
   const rows = meterIds.length
     ? await prisma.meterReading.findMany({
-        where: { meterId: { in: meterIds }, period: { lt: period }, reading: { not: null } },
+        where: { meterId: { in: meterIds }, period: { lt: period } },
         orderBy: { period: "desc" },
-        select: { meterId: true, period: true, reading: true },
+        select: { meterId: true, period: true, reading: true, usage: true },
       })
     : [];
   const out = new Map<string, { reading: number; period: string }>();
-  for (const r of rows) if (!out.has(r.meterId)) out.set(r.meterId, { reading: Number(r.reading), period: r.period });
-  return out;
+  for (const r of rows) if (r.reading !== null && !out.has(r.meterId)) out.set(r.meterId, { reading: Number(r.reading), period: r.period });
+  // kWh used the month before, to spot a mistyped reading.
+  const lastUsage = new Map<string, number>();
+  for (const r of rows) if (!lastUsage.has(r.meterId)) lastUsage.set(r.meterId, Number(r.usage));
+  return { out, lastUsage };
 }
 
 /** Everything the 抄表开单 page needs for one unit and one month. */
@@ -204,33 +263,39 @@ export async function getUnitBilling(unit: { id: string; propertyCode: string; n
     rooms.map((r) => r.id),
     period
   );
-  const prev = await previousReadings(
+  const { out: prev, lastUsage } = await previousReadings(
     meters.map((m) => m.id),
     period
   );
+  // Shared meters first (electricity, then washer & dryer), then each room's meter by room.
+  const rows = [...meters]
+    .sort((a, b) => Number(!!a.roomId) - Number(!!b.roomId) || UTILITY_KINDS.indexOf(a.kind as UtilityKind) - UTILITY_KINDS.indexOf(b.kind as UtilityKind) || (a.room?.roomCode ?? "").localeCompare(b.room?.roomCode ?? ""))
+    .map((m) => {
+      const p = prev.get(m.id);
+      return {
+        id: m.id,
+        kind: m.kind as UtilityKind,
+        roomId: m.roomId,
+        roomCode: m.room?.roomCode ?? null,
+        label: m.label,
+        meterNo: m.meterNo,
+        inputMode: m.inputMode as "READING" | "USAGE",
+        startPeriod: meterStart(m),
+        startReading: m.startReading === null ? null : Number(m.startReading),
+        previous: p ? p.reading : m.startReading === null ? null : Number(m.startReading),
+        previousPeriod: p?.period ?? null,
+        lastUsage: lastUsage.get(m.id) ?? null,
+      };
+    });
   return {
     unit,
     period,
     rates,
-    rooms: rooms.map((r) => ({ id: r.id, roomCode: r.roomCode, status: r.status })),
-    // Shared meters first (electricity, then washer & dryer), then each room's meter by room.
-    meters: [...meters]
-      .sort((a, b) => Number(!!a.roomId) - Number(!!b.roomId) || UTILITY_KINDS.indexOf(a.kind as UtilityKind) - UTILITY_KINDS.indexOf(b.kind as UtilityKind) || (a.room?.roomCode ?? "").localeCompare(b.room?.roomCode ?? ""))
-      .map((m) => {
-        const p = prev.get(m.id);
-        return {
-          id: m.id,
-          kind: m.kind as UtilityKind,
-          roomId: m.roomId,
-          roomCode: m.room?.roomCode ?? null,
-          label: m.label,
-          meterNo: m.meterNo,
-          inputMode: m.inputMode as "READING" | "USAGE",
-          startReading: m.startReading === null ? null : Number(m.startReading),
-          previous: p ? p.reading : m.startReading === null ? null : Number(m.startReading),
-          previousPeriod: p?.period ?? null,
-        };
-      }),
+    rooms: rooms.map((r) => ({ id: r.id, roomCode: r.roomCode, status: r.status, hasAircon: r.hasAircon })),
+    /** Meters billed this month. */
+    meters: rows.filter((m) => m.startPeriod <= period),
+    /** Meters registered to start in a later month (e.g. aircon switching to monthly billing). */
+    upcoming: rows.filter((m) => m.startPeriod > period),
     tenancies,
     run: run
       ? {
@@ -240,6 +305,7 @@ export async function getUnitBilling(unit: { id: string; propertyCode: string; n
           totalAmount: Number(run.totalAmount),
           billedAmount: Number(run.billedAmount),
           companyAmount: Number(run.companyAmount),
+          creditAmount: Number(run.creditAmount),
           details: run.details,
           createdBy: run.createdBy,
           createdAt: run.createdAt.toISOString(),
@@ -317,19 +383,24 @@ export async function issueRun(opts: {
 }) {
   const data = await getUnitBilling(opts.unit, opts.period);
   if (data.run) throw new BillingError(`${opts.unit.propertyCode} ${opts.period} 已经开过账单了（${data.run.runCode}）`);
-  if (!data.meters.length) throw new BillingError("这个单位还没有登记电表");
+  if (!data.meters.length) {
+    throw new BillingError(data.upcoming.length ? `这个单位的电表 ${data.upcoming[0].startPeriod} 才开始收` : "这个单位还没有登记电表");
+  }
 
   const { usages, readings } = usageFromInputs(data.meters, opts.inputs, data.rates);
   const tenancies = data.tenancies.filter((t) => !opts.skip.includes(t.contractId));
   const result = splitUsage(usages, tenancies, opts.splitBy);
-  const final = finalBills(result, opts.overrides);
+  const credits: Credits = Object.fromEntries(tenancies.map((t) => [t.contractId, t.credit]));
+  const final = finalBills(result, opts.overrides, credits);
+  // Bills fully paid from a prepaid balance get no bill — only the balance going down.
+  const toBill = final.bills.filter((b) => b.amount > 0);
   const due = new Date(`${opts.dueDate}T00:00:00.000Z`);
 
   const tenancyById = new Map(tenancies.map((t) => [t.contractId, t]));
-  const codes = await Promise.all(final.bills.map(() => newId("PY")));
+  const codes = await Promise.all(toBill.map(() => newId("PY")));
   const runCode = await newId("UB");
 
-  const notes = final.bills.map((b) => {
+  const notes = toBill.map((b) => {
     const tb = result.tenants.find((t) => t.tenancy.contractId === b.contractId)!;
     const lines = tb.lines.filter((l) => l.kind === b.kind);
     const ms = lines.map((l) => {
@@ -337,7 +408,7 @@ export async function issueRun(opts: {
       const rd = readings.get(l.meterId)!;
       return { usage: mr.meter.usage, rate: mr.meter.rate, amount: mr.amount, previous: rd.previous, reading: rd.reading };
     });
-    return billNote(b.kind, opts.period, ms, lines.find((l) => l.share)?.share ?? null, b.amount, b.computed);
+    return billNote(b.kind, opts.period, ms, lines.find((l) => l.share)?.share ?? null, round2(b.amount + b.credit), b.computed, b.credit);
   });
 
   const details = {
@@ -368,6 +439,7 @@ export async function issueRun(opts: {
         totalAmount: result.total,
         billedAmount: final.billed,
         companyAmount: final.company,
+        creditAmount: final.credited,
         details: JSON.parse(JSON.stringify(details)),
         createdBy: opts.by,
       },
@@ -380,7 +452,19 @@ export async function issueRun(opts: {
         update: { previous: r.previous, reading: r.reading, usage: r.usage, rate: m.rate, photoUrl: r.photoUrl, runId: created.id, createdBy: opts.by },
       });
     }
-    for (const [i, b] of final.bills.entries()) {
+    for (const b of final.bills.filter((x) => x.credit > 0)) {
+      await tx.utilityCredit.create({
+        data: {
+          contractId: b.contractId,
+          kind: b.kind,
+          amount: -b.credit,
+          note: `${opts.period} ${KIND_LABELS[b.kind].zh}账单扣除（${runCode}）`,
+          runId: created.id,
+          createdBy: opts.by,
+        },
+      });
+    }
+    for (const [i, b] of toBill.entries()) {
       const t = tenancyById.get(b.contractId)!;
       await tx.payment.create({
         data: {
@@ -405,7 +489,7 @@ export async function issueRun(opts: {
   });
 
   const perTenant = new Map<string, { tenancy: TenancyRow; lines: { kind: UtilityKind; amount: number; note: string; paymentCode: string }[] }>();
-  final.bills.forEach((b, i) => {
+  toBill.forEach((b, i) => {
     const t = tenancyById.get(b.contractId)!;
     if (!perTenant.has(b.contractId)) perTenant.set(b.contractId, { tenancy: t, lines: [] });
     perTenant.get(b.contractId)!.lines.push({ kind: b.kind, amount: b.amount, note: notes[i], paymentCode: codes[i] });
@@ -420,7 +504,7 @@ export async function issueRun(opts: {
       opts.unit.propertyCode,
       opts.period,
       usages,
-      final.bills.map((b) => ({ roomCode: tenancyById.get(b.contractId)!.roomCode, amount: b.amount })),
+      toBill.map((b) => ({ roomCode: tenancyById.get(b.contractId)!.roomCode, amount: b.amount })),
       opts.dueDate
     ),
   };
@@ -435,6 +519,8 @@ export async function voidRun(runCode: string) {
   await prisma.$transaction([
     prisma.payment.deleteMany({ where: { utilityRunId: run.id } }),
     prisma.meterReading.deleteMany({ where: { runId: run.id } }),
+    // Prepaid balance this month used goes back to the tenants.
+    prisma.utilityCredit.deleteMany({ where: { runId: run.id } }),
     prisma.utilityBillRun.delete({ where: { id: run.id } }),
   ]);
   return run;
@@ -448,36 +534,89 @@ export async function billingOverview(period: string) {
       id: true,
       propertyCode: true,
       name: true,
-      utilityMeters: { select: { kind: true, roomId: true, active: true, createdAt: true } },
-      utilityRuns: { where: { period }, select: { runCode: true, billedAmount: true, companyAmount: true, payments: { select: { status: true } } } },
+      utilityMeters: { where: { active: true }, select: { kind: true, roomId: true, createdAt: true, startPeriod: true } },
+      utilityRuns: {
+        where: { period },
+        select: {
+          runCode: true,
+          totalAmount: true,
+          billedAmount: true,
+          companyAmount: true,
+          creditAmount: true,
+          payments: { select: { status: true, amountPaid: true } },
+          readings: { select: { usage: true, meter: { select: { kind: true } } } },
+        },
+      },
     },
     orderBy: { propertyCode: "asc" },
   });
   return units.map((u) => {
     const run = u.utilityRuns[0];
-    const active = u.utilityMeters.filter((m) => m.active);
-    // The month the unit's first meter was registered (Malaysia time). A month before that was
-    // billed outside the system, so it isn't flagged as missing — it can still be billed late.
-    const since = new Date(Math.min(...u.utilityMeters.map((m) => m.createdAt.getTime())) + 8 * 3600_000).toISOString().slice(0, 7);
+    // Meters billed this month. A unit whose meters all start later (e.g. registered this month,
+    // or aircon switching over next month) isn't flagged as missing for this month.
+    const billed = u.utilityMeters.filter((m) => meterStart(m) <= period);
+    const since = u.utilityMeters.map(meterStart).sort()[0];
     return {
       propertyCode: u.propertyCode,
       name: u.name,
-      kinds: UTILITY_KINDS.filter((k) => active.some((m) => m.kind === k)),
-      meterCount: active.length,
+      kinds: UTILITY_KINDS.filter((k) => (billed.length ? billed : u.utilityMeters).some((m) => m.kind === k)),
+      meterCount: (billed.length ? billed : u.utilityMeters).length,
       since,
-      registeredLater: since > period,
+      startsLater: !billed.length,
       run: run
         ? {
             runCode: run.runCode,
+            total: Number(run.totalAmount),
             billed: Number(run.billedAmount),
             company: Number(run.companyAmount),
+            credit: Number(run.creditAmount),
             bills: run.payments.length,
             paid: run.payments.filter((p) => p.status === "Paid").length,
+            collected: round2(run.payments.filter((p) => p.status === "Paid").reduce((s, p) => s + Number(p.amountPaid), 0)),
+            kwh: kwhByKind(run.readings),
           }
         : null,
     };
   });
 }
+
+function kwhByKind(readings: { usage: unknown; meter: { kind: string } }[]) {
+  const out: Record<UtilityKind, number> = { ELECTRIC: 0, LAUNDRY: 0, AC: 0 };
+  for (const r of readings) if (isKind(r.meter.kind)) out[r.meter.kind] = round2(out[r.meter.kind] + Number(r.usage));
+  return out;
+}
+
+/** The unit's last 12 billed months: kWh by kind, amounts, and how much is paid. */
+export async function unitHistory(unitId: string) {
+  const runs = await prisma.utilityBillRun.findMany({
+    where: { propertyId: unitId },
+    orderBy: { period: "desc" },
+    take: 12,
+    select: {
+      period: true,
+      runCode: true,
+      totalAmount: true,
+      billedAmount: true,
+      companyAmount: true,
+      creditAmount: true,
+      payments: { select: { status: true, amountPaid: true } },
+      readings: { select: { usage: true, meter: { select: { kind: true } } } },
+    },
+  });
+  return runs.map((r) => ({
+    period: r.period,
+    runCode: r.runCode,
+    total: Number(r.totalAmount),
+    billed: Number(r.billedAmount),
+    company: Number(r.companyAmount),
+    credit: Number(r.creditAmount),
+    bills: r.payments.length,
+    paid: r.payments.filter((p) => p.status === "Paid").length,
+    collected: round2(r.payments.filter((p) => p.status === "Paid").reduce((s, p) => s + Number(p.amountPaid), 0)),
+    kwh: kwhByKind(r.readings),
+  }));
+}
+export type UnitHistory = Awaited<ReturnType<typeof unitHistory>>;
 
 /** Last full month — the one that gets billed. */
 export function defaultBillingPeriod(todayMY: Date) {

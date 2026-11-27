@@ -50,13 +50,14 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ prop
     }
   });
 
-  const n = out.final.bills.length;
+  const n = out.final.bills.filter((b) => b.amount > 0).length;
   const people = out.perTenant.length;
+  const credit = out.final.credited > 0 ? `，预付余额扣了 RM${out.final.credited.toFixed(2)}` : "";
   const company = out.final.company > 0 ? `，公司承担 RM${out.final.company.toFixed(2)}` : "";
   const missing = noEmail.length ? `（${noEmail.join("、")} 没有租客账号，收不到 email）` : "";
   return NextResponse.json({
     success: true,
-    message: `${unit.propertyCode} ${d.period} 已开 ${n} 张账单给 ${people} 位租客，共 RM${out.final.billed.toFixed(2)}${company}${missing}`,
+    message: `${unit.propertyCode} ${d.period} 已开 ${n} 张账单给 ${people} 位租客，共 RM${out.final.billed.toFixed(2)}${credit}${company}${missing}`,
     runCode: out.run.runCode,
     whatsapp: out.whatsapp,
   });

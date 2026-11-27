@@ -16,6 +16,8 @@ import type { UnitBilling } from "@/lib/utilityBilling";
 type Run = NonNullable<UnitBilling["run"]>;
 type Details = {
   meters?: { meterId: string; kind: UtilityKind; roomId: string | null; roomCode: string | null; usage: number; amount: number }[];
+  tenants?: { contractId: string; roomCode: string; tenantName: string }[];
+  bills?: { contractId: string; kind: UtilityKind; amount: number; credit?: number }[];
 };
 
 const STATUS: Record<string, { zh: string; en: string; tone: PillTone }> = {
@@ -32,10 +34,18 @@ export default function RunView({ data, run, isAdmin, onChanged }: { data: UnitB
   const toast = useToast();
   const [confirmVoid, setConfirmVoid] = useState(false);
   const details = (run.details ?? {}) as Details;
-  const meterById = new Map(data.meters.map((m) => [m.id, m]));
+  const meterById = new Map([...data.meters, ...data.upcoming].map((m) => [m.id, m]));
 
   const byRoom = new Map<string, Run["payments"]>();
   for (const p of run.payments) byRoom.set(p.roomCode, [...(byRoom.get(p.roomCode) ?? []), p]);
+  // What came off tenants' prepaid balances, by room (a bill fully paid that way has no payment).
+  const creditByRoom = new Map<string, { kind: UtilityKind; credit: number; tenantName: string }[]>();
+  for (const b of details.bills ?? []) {
+    const tn = details.tenants?.find((x) => x.contractId === b.contractId);
+    if (!tn || !b.credit) continue;
+    creditByRoom.set(tn.roomCode, [...(creditByRoom.get(tn.roomCode) ?? []), { kind: b.kind, credit: b.credit, tenantName: tn.tenantName }]);
+    if (!byRoom.has(tn.roomCode)) byRoom.set(tn.roomCode, []);
+  }
   const rooms = [...byRoom.entries()].sort(([a], [b]) => a.localeCompare(b));
   const paid = run.payments.filter((p) => p.status === "Paid").length;
   const canVoid = isAdmin && run.payments.every((p) => p.status === "PENDING");
@@ -74,6 +84,7 @@ export default function RunView({ data, run, isAdmin, onChanged }: { data: UnitB
           <div>
             <p className="text-xs text-gray-500">{t("租客要付", "Billed to tenants")}</p>
             <p className="text-[26px] font-semibold leading-tight text-gray-900">{fmtMoney(run.billedAmount)}</p>
+            {run.creditAmount > 0 && <p className="text-xs text-gray-500">{t(`另外从预付余额扣 ${fmtMoney(run.creditAmount)}`, `Plus ${fmtMoney(run.creditAmount)} from prepaid balances`)}</p>}
             {run.companyAmount > 0 && <p className="text-xs text-gray-500">{t(`公司承担 ${fmtMoney(run.companyAmount)}`, `Company pays ${fmtMoney(run.companyAmount)}`)}</p>}
           </div>
           <Pill tone={paid === run.payments.length && paid > 0 ? "teal" : "amber"}>{t(`已付 ${paid} / ${run.payments.length}`, `${paid} of ${run.payments.length} paid`)}</Pill>
@@ -93,7 +104,7 @@ export default function RunView({ data, run, isAdmin, onChanged }: { data: UnitB
               <li key={room} className="py-2.5">
                 <p className="flex items-baseline justify-between gap-2">
                   <span>
-                    <b className="font-semibold">{room}</b> <span className="text-sm text-gray-600">{ps[0].tenantName}</span>
+                    <b className="font-semibold">{room}</b> <span className="text-sm text-gray-600">{ps[0]?.tenantName ?? creditByRoom.get(room)?.[0]?.tenantName}</span>
                   </span>
                   <b className="tabular-nums">{fmtMoney(ps.reduce((s, p) => s + p.amountDue, 0))}</b>
                 </p>
@@ -102,6 +113,11 @@ export default function RunView({ data, run, isAdmin, onChanged }: { data: UnitB
                     <span key={p.id} className="flex items-center gap-1 rounded-full bg-gray-50 py-0.5 pl-2.5 pr-1 text-xs text-gray-700">
                       {paymentTypeLabelLocale(p.type, null, locale)} {fmtMoney(p.amountDue)}
                       <Pill tone={STATUS[p.status]?.tone ?? "gray"}>{t(STATUS[p.status]?.zh ?? p.status, STATUS[p.status]?.en ?? p.status)}</Pill>
+                    </span>
+                  ))}
+                  {(creditByRoom.get(room) ?? []).map((c) => (
+                    <span key={`cr-${c.kind}`} className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs text-teal-700">
+                      {t(`${KIND_LABELS[c.kind].zh} 预付扣 ${fmtMoney(c.credit)}`, `${KIND_LABELS[c.kind].en} ${fmtMoney(c.credit)} prepaid`)}
                     </span>
                   ))}
                 </div>
@@ -116,11 +132,12 @@ export default function RunView({ data, run, isAdmin, onChanged }: { data: UnitB
         <ul className="divide-y divide-gray-100 text-sm">
           {run.readings.map((r) => {
             const m = meterById.get(r.meterId);
-            const kind = (m?.kind ?? details.meters?.find((x) => x.meterId === r.meterId)?.kind ?? "ELECTRIC") as UtilityKind;
+            const saved = details.meters?.find((x) => x.meterId === r.meterId);
+            const kind = (m?.kind ?? saved?.kind ?? "ELECTRIC") as UtilityKind;
             return (
               <li key={r.meterId} className="flex items-center justify-between gap-3 py-2">
                 <span className="min-w-0">
-                  {t(KIND_LABELS[kind].zh, KIND_LABELS[kind].en)} · {m?.roomCode ?? t("整个单位", "whole unit")}
+                  {t(KIND_LABELS[kind].zh, KIND_LABELS[kind].en)} · {m?.roomCode ?? saved?.roomCode ?? t("整个单位", "whole unit")}
                   <span className="block text-xs text-gray-500">
                     {r.previous !== null && r.reading !== null ? `${r.previous} → ${r.reading} = ` : ""}
                     {r.usage} {t("度", "kWh")} × RM{r.rate.toFixed(2)}

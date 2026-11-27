@@ -11,7 +11,7 @@ import { fmtDate, fmtMoney } from "@/lib/format";
 import { compressImage, readAsDataURL } from "@/lib/imageUpload";
 import { KIND_LABELS, UTILITY_KINDS, finalBills, overrideKey, round2, splitUsage, type MeterUsage, type SplitBy, type UtilityKind } from "@/lib/utilitySplit";
 import { whatsappText } from "@/lib/utilityText";
-import type { TenancyRow, UnitBilling } from "@/lib/utilityBilling";
+import type { TenancyRow, UnitBilling, UnitHistory } from "@/lib/utilityBilling";
 import MonthSwitcher from "../MonthSwitcher";
 import MeterSetupSheet from "./MeterSetupSheet";
 import ExemptionSheet from "./ExemptionSheet";
@@ -21,6 +21,9 @@ type Draft = { previous: string; reading: string; usage: string; direct: boolean
 
 const todayMY = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
 const addDays = (iso: string, n: number) => new Date(Date.parse(iso) + n * 86_400_000).toISOString().slice(0, 10);
+const monthZh = (period: string) => `${Number(period.slice(5, 7))}月`;
+/** Usage at least double (or under half) last month's, by more than 30 kWh — likely a typo. */
+const unusual = (usage: number | null, last: number) => usage !== null && Math.abs(usage - last) > 30 && (usage > last * 2 || usage < last / 2);
 const card = "rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(30,27,46,0.04),0_12px_28px_-18px_rgba(76,29,149,0.22)]";
 const KIND_TONE: Record<UtilityKind, string> = { ELECTRIC: "bg-amber-50 text-amber-700", LAUNDRY: "bg-sky-50 text-sky-700", AC: "bg-teal-50 text-teal-700" };
 const KindIcon = ({ kind, size = 17 }: { kind: UtilityKind; size?: number }) => (kind === "LAUNDRY" ? <IconWrench size={size} /> : <IconBolt size={size} />);
@@ -32,11 +35,14 @@ export default function UnitBillingClient({
   propertyCode,
   initialPeriod,
   openSetup,
+  setupKind,
   isAdmin,
 }: {
   propertyCode: string;
   initialPeriod: string | null;
   openSetup: boolean;
+  /** Open the meter setup on this kind (from the "still on top-up" aircon list). */
+  setupKind?: UtilityKind;
   isAdmin: boolean;
 }) {
   const { t } = useLanguage();
@@ -54,6 +60,9 @@ export default function UnitBillingClient({
   const [exemptFor, setExemptFor] = useState<string | null>(null);
   const [issuing, setIssuing] = useState(false);
   const [issued, setIssued] = useState<{ message: string; whatsapp: string } | null>(null);
+  const [history, setHistory] = useState<UnitHistory>([]);
+  const [creditFor, setCreditFor] = useState<{ contractCode: string; tenantName: string; value: string } | null>(null);
+  const [savingCredit, setSavingCredit] = useState(false);
   const fileFor = useRef<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -61,10 +70,16 @@ export default function UnitBillingClient({
     async (p: string | null, freshDrafts: boolean) => {
       setLoading(true);
       try {
-        const d = await fetch(`/api/utilities/${encodeURIComponent(propertyCode)}${p ? `?period=${p}` : ""}`).then((r) => r.json());
+        const [d, h] = await Promise.all([
+          fetch(`/api/utilities/${encodeURIComponent(propertyCode)}${p ? `?period=${p}` : ""}`).then((r) => r.json()),
+          fetch(`/api/utilities/${encodeURIComponent(propertyCode)}/history`)
+            .then((r) => r.json())
+            .catch(() => null),
+        ]);
         if (!d.success) return setError(d.message);
         setError("");
         setData(d);
+        if (h?.success) setHistory(h.months);
         setDrafts((prev) => {
           const next: Record<string, Draft> = {};
           for (const m of (d as UnitBilling).meters) {
@@ -140,9 +155,11 @@ export default function UnitBillingClient({
     const result = splitUsage(usages, tenancies, splitBy);
     const ov: Record<string, number> = {};
     for (const [k, v] of Object.entries(overrides)) if (v !== "" && Number.isFinite(Number(v))) ov[k] = Number(v);
-    const final = finalBills(result, ov);
+    const final = finalBills(result, ov, Object.fromEntries(tenancies.map((tn) => [tn.contractId, tn.credit])));
+    // Bills that will actually be sent (one fully paid from a prepaid balance isn't).
+    const toBill = final.bills.filter((b) => b.amount > 0);
     const ready = meters.length > 0 && meters.every((x) => x.usage !== null && !x.problem);
-    return { meters, usages, result, final, ready, ov };
+    return { meters, usages, result, final, toBill, ready, ov };
   }, [data, drafts, skip, splitBy, overrides, t]);
 
   const kinds = useMemo(() => UTILITY_KINDS.filter((k) => data?.meters.some((m) => m.kind === k)), [data]);
@@ -194,6 +211,24 @@ export default function UnitBillingClient({
     }
   }
 
+  async function saveCredit() {
+    if (!creditFor || !data) return;
+    setSavingCredit(true);
+    try {
+      const d = await fetch("/api/utilities/credits", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractCode: creditFor.contractCode, kind: "AC", balance: Number(creditFor.value || 0) }),
+      }).then((r) => r.json());
+      if (!d.success) return toast.danger(d.message);
+      toast.success(d.message);
+      setCreditFor(null);
+      load(data.period, false);
+    } finally {
+      setSavingCredit(false);
+    }
+  }
+
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -204,6 +239,13 @@ export default function UnitBillingClient({
   }
 
   const kindLabel = (k: UtilityKind) => t(KIND_LABELS[k].zh, KIND_LABELS[k].en);
+  // Meters that only start in a later month, e.g. aircon moving from top-up to monthly billing.
+  const upcomingText = data?.upcoming.length
+    ? t(
+        `还没开始收：${data.upcoming.map((m) => `${KIND_LABELS[m.kind].zh}${m.roomCode ? ` ${m.roomCode}` : ""}（${monthZh(m.startPeriod)}起）`).join("、")}`,
+        `Not billed yet: ${data.upcoming.map((m) => `${KIND_LABELS[m.kind].en}${m.roomCode ? ` ${m.roomCode}` : ""} (from ${m.startPeriod})`).join(", ")}`
+      )
+    : "";
   const roomOf = (tn: TenancyRow) => calc?.result.tenants.find((x) => x.tenancy.contractId === tn.contractId);
   // How the shared meters are split right now, for the line under the switch.
   const sharedOf = (k: UtilityKind) => calc?.result.meters.find((m) => !m.meter.roomId && m.meter.kind === k);
@@ -229,7 +271,7 @@ export default function UnitBillingClient({
           data.unit.propertyCode,
           data.period,
           calc.usages,
-          calc.final.bills.map((b) => ({ roomCode: data.tenancies.find((x) => x.contractId === b.contractId)!.roomCode, amount: b.amount })),
+          calc.toBill.map((b) => ({ roomCode: data.tenancies.find((x) => x.contractId === b.contractId)!.roomCode, amount: b.amount })),
           dueDate
         )
       : "";
@@ -266,15 +308,24 @@ export default function UnitBillingClient({
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-amber-50 text-amber-700">
             <IconBolt size={24} />
           </span>
-          <p className="mt-3 font-medium text-gray-900">{t("这个单位还没有电表", "This unit has no meters yet")}</p>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
-            {t("先登记要收费的电表：电费、洗衣机 + 烘干机、每间房的冷气。只要登记一次。", "Register the meters you bill: electricity, washer & dryer, each room's aircon. Only once.")}
-          </p>
-          {isAdmin && (
-            <button type="button" onClick={() => setSetupOpen(true)} className="btn-primary mt-4 inline-flex items-center gap-1.5 px-5 py-2.5">
-              <IconPlus size={18} />
-              {t("登记电表", "Add meters")}
-            </button>
+          {data.upcoming.length > 0 ? (
+            <>
+              <p className="mt-3 font-medium text-gray-900">{t(`${monthZh(data.period)}不用开单`, `Nothing to bill for ${data.period}`)}</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">{upcomingText}</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 font-medium text-gray-900">{t("这个单位还没有电表", "This unit has no meters yet")}</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
+                {t("先登记要收费的电表：电费、洗衣机 + 烘干机、每间房的冷气。只要登记一次。", "Register the meters you bill: electricity, washer & dryer, each room's aircon. Only once.")}
+              </p>
+              {isAdmin && (
+                <button type="button" onClick={() => setSetupOpen(true)} className="btn-primary mt-4 inline-flex items-center gap-1.5 px-5 py-2.5">
+                  <IconPlus size={18} />
+                  {t("登记电表", "Add meters")}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -291,6 +342,7 @@ export default function UnitBillingClient({
               {kinds.map((k) => `${kindLabel(k)} RM${data.rates[k].toFixed(2)}`).join(" · ")}
               {t(" / 度", " / kWh")}
             </p>
+            {data.upcoming.length > 0 && <p className="-mt-2 mb-3 text-xs text-gray-400">{upcomingText}</p>}
             <ul className="space-y-2.5">
               {calc.meters.map(({ meter: m, usage, problem, amount }) => {
                 const d = drafts[m.id];
@@ -383,6 +435,12 @@ export default function UnitBillingClient({
                         <span className="text-gray-400">{t("还没填", "Not entered")}</span>
                       )}
                     </div>
+                    {m.lastUsage !== null && (
+                      <p className={`mt-1 text-right text-[11px] ${unusual(usage, m.lastUsage) ? "font-medium text-amber-700" : "text-gray-400"}`}>
+                        {t(`上个月用了 ${m.lastUsage} 度`, `Last month: ${m.lastUsage} kWh`)}
+                        {unusual(usage, m.lastUsage) ? t("，这个月差很多，请再看一下读数", " — very different this month, please check the reading") : ""}
+                      </p>
+                    )}
                   </li>
                 );
               })}
@@ -448,7 +506,7 @@ export default function UnitBillingClient({
                                     type="number"
                                     inputMode="decimal"
                                     min="0"
-                                    defaultValue={overrides[key] ?? String(fb?.amount ?? 0)}
+                                    defaultValue={overrides[key] ?? String(fb ? round2(fb.amount + fb.credit) : 0)}
                                     onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
                                     onBlur={(e) => {
                                       const v = e.target.value;
@@ -469,6 +527,7 @@ export default function UnitBillingClient({
                               >
                                 {kindLabel(k)}{" "}
                                 {status === "BILL" || overridden ? <b className="font-semibold tabular-nums">{fmtMoney(fb?.amount ?? 0)}</b> : <s className="tabular-nums">{fmtMoney(all)}</s>}
+                                {fb && fb.credit > 0 && <span className="text-[10px] text-teal-700">{t(`扣预付 ${fmtMoney(fb.credit)}`, `−${fmtMoney(fb.credit)} prepaid`)}</span>}
                                 {overridden && <span className="text-[10px]">{t("已改", "edited")}</span>}
                               </button>
                             );
@@ -490,6 +549,11 @@ export default function UnitBillingClient({
                               </Pill>
                             ) : null
                           )}
+                          {UTILITY_KINDS.filter((k) => (tn.credit[k] ?? 0) > 0).map((k) => (
+                            <Pill key={`cr-${k}`} tone="teal">
+                              {t(`${KIND_LABELS[k].zh}预付余额 ${fmtMoney(tn.credit[k]!)}`, `${KIND_LABELS[k].en} prepaid ${fmtMoney(tn.credit[k]!)}`)}
+                            </Pill>
+                          ))}
                           {!["ACTIVE", "EXPIRING"].includes(tn.status) && <Pill>{t("已搬走 / 已结束", "Moved out / ended")}</Pill>}
                           {Object.keys(calc.ov).some((k) => k.startsWith(`${tn.contractId}:`)) && (
                             <button
@@ -520,6 +584,15 @@ export default function UnitBillingClient({
                             {t("豁免", "Exemptions")}
                             {tn.exemptions.length > 0 ? ` (${tn.exemptions.length})` : ""}
                           </button>
+                          {(bill?.lines.some((l) => l.kind === "AC") || (tn.credit.AC ?? 0) > 0) && (
+                            <button
+                              type="button"
+                              onClick={() => setCreditFor({ contractCode: tn.contractCode, tenantName: tn.tenantName, value: String(tn.credit.AC ?? 0) })}
+                              className="rounded-xl bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                            >
+                              {t("冷气预付余额", "Aircon prepaid")}
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => setSkip((s) => (skipped ? s.filter((x) => x !== tn.contractId) : [...s, tn.contractId]))}
@@ -535,11 +608,17 @@ export default function UnitBillingClient({
               </ul>
             )}
 
-            <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-gray-50 p-3 text-sm">
+            <div className={`mt-3 grid gap-2 rounded-2xl bg-gray-50 p-3 text-sm ${calc.final.credited > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
               <div>
                 <span className="block text-[11px] text-gray-500">{t("租客要付", "Tenants pay")}</span>
                 <b className="text-base">{fmtMoney(calc.final.billed)}</b>
               </div>
+              {calc.final.credited > 0 && (
+                <div>
+                  <span className="block text-[11px] text-gray-500">{t("从预付余额扣", "From prepaid balance")}</span>
+                  <b className="text-base">{fmtMoney(calc.final.credited)}</b>
+                </div>
+              )}
               <div>
                 <span className="block text-[11px] text-gray-500">{t("公司承担（豁免、空房、合同没包含）", "Company pays (exempt, empty, not in contract)")}</span>
                 <b className="text-base">{fmtMoney(calc.final.company)}</b>
@@ -556,14 +635,14 @@ export default function UnitBillingClient({
               <input type="date" value={dueDate} min={todayMY()} onChange={(e) => setDueDate(e.target.value)} className="input" />
             </label>
             <p className="mt-1 text-xs text-gray-500">{t("这类账单迟交不会自动罚款，过期后系统每 3 天提醒租客一次。", "These bills aren't fined automatically; tenants get a reminder every 3 days once overdue.")}</p>
-            {calc.final.bills.length > 0 && (
+            {calc.toBill.length > 0 && (
               <pre className="mt-3 whitespace-pre-wrap rounded-xl bg-[#e7f8ee] p-3 font-sans text-[13px] leading-relaxed text-gray-800">{preview}</pre>
             )}
             {isAdmin ? (
               <button
                 type="button"
                 onClick={issue}
-                disabled={issuing || !calc.ready || calc.final.bills.length === 0 || !dueDate}
+                disabled={issuing || !calc.ready || calc.toBill.length === 0 || !dueDate}
                 className="btn-primary mt-3 flex w-full items-center justify-center gap-1.5 py-3"
               >
                 <IconCheck size={18} />
@@ -571,7 +650,7 @@ export default function UnitBillingClient({
                   ? t("开单中…", "Issuing…")
                   : !calc.ready
                     ? t("先填好全部读数", "Fill in every meter first")
-                    : t(`开 ${calc.final.bills.length} 张账单并通知租客`, `Issue ${calc.final.bills.length} bills and notify`)}
+                    : t(`开 ${calc.toBill.length} 张账单并通知租客`, `Issue ${calc.toBill.length} bills and notify`)}
               </button>
             ) : (
               <p className="mt-3 text-center text-xs text-gray-400">{t("只有 Admin 可以开单。", "Only Admin can issue bills.")}</p>
@@ -581,7 +660,47 @@ export default function UnitBillingClient({
         </div>
       )}
 
-      {data && isAdmin && <MeterSetupSheet open={setupOpen} onClose={() => setSetupOpen(false)} data={data} onChanged={() => load(data.period, false)} />}
+      {data && history.length > 0 && (
+        <section className={card}>
+          <h2 className="text-[15px] font-semibold text-gray-900">{t("用量记录", "Usage history")}</h2>
+          <p className="mb-2 text-xs text-gray-500">{t("最近 12 个开过单的月份，点一个月看明细。", "The last 12 billed months — tap one for the details.")}</p>
+          <ul className="divide-y divide-gray-100">
+            {history.map((h) => {
+              const max = Math.max(...history.map((x) => x.total), 1);
+              const used = UTILITY_KINDS.filter((k) => h.kwh[k] > 0).map((k) => `${kindLabel(k)} ${h.kwh[k]} ${t("度", "kWh")}`);
+              return (
+                <li key={h.period}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      load(h.period, true);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    aria-current={h.period === data.period ? "true" : undefined}
+                    className={`block w-full py-2.5 text-left ${h.period === data.period ? "text-brand" : ""}`}
+                  >
+                    <span className="flex items-baseline justify-between gap-2">
+                      <b className="text-sm">{t(`${h.period.slice(0, 4)}年${monthZh(h.period)}`, h.period)}</b>
+                      <b className="tabular-nums">{fmtMoney(h.total)}</b>
+                    </span>
+                    <span className="mt-0.5 block text-xs text-gray-500">{used.join(" · ") || t("没有用电", "No usage")}</span>
+                    <span className="mt-0.5 block text-xs text-gray-500">
+                      {t(`租客 ${fmtMoney(h.billed)}`, `Tenants ${fmtMoney(h.billed)}`)}
+                      {h.credit > 0 ? t(` · 预付扣 ${fmtMoney(h.credit)}`, ` · prepaid ${fmtMoney(h.credit)}`) : ""}
+                      {t(` · 公司 ${fmtMoney(h.company)} · 已付 ${h.paid}/${h.bills}`, ` · company ${fmtMoney(h.company)} · paid ${h.paid}/${h.bills}`)}
+                    </span>
+                    <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-gray-100" aria-hidden>
+                      <span className="block h-full rounded-full bg-brand/50" style={{ width: `${(h.total / max) * 100}%` }} />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {data && isAdmin && <MeterSetupSheet open={setupOpen} onClose={() => setSetupOpen(false)} data={data} initialKind={setupKind} onChanged={() => load(data.period, false)} />}
       {data && (
         <ExemptionSheet
           key={exemptFor ?? "none"}
@@ -592,6 +711,34 @@ export default function UnitBillingClient({
           onChanged={() => load(data.period, false)}
         />
       )}
+
+      <Sheet open={!!creditFor} onClose={() => !savingCredit && setCreditFor(null)} title={t("冷气预付余额", "Aircon prepaid balance")}>
+        {creditFor && (
+          <>
+            <p className="text-sm text-gray-600">
+              {t(
+                `${creditFor.tenantName} 以前充值还没用完的钱。开冷气账单时会先从这里扣，扣完为止。`,
+                `What ${creditFor.tenantName} topped up and hasn't used yet. Aircon bills are paid from it first until it runs out.`
+              )}
+            </p>
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+              RM
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={creditFor.value}
+                onChange={(e) => setCreditFor({ ...creditFor, value: e.target.value })}
+                className="input"
+              />
+            </label>
+            <button type="button" onClick={saveCredit} disabled={savingCredit || creditFor.value === "" || Number(creditFor.value) < 0} className="btn-primary mt-4 w-full py-2.5">
+              {savingCredit ? t("保存中…", "Saving…") : t("保存余额", "Save balance")}
+            </button>
+          </>
+        )}
+      </Sheet>
 
       <Sheet open={!!issued} onClose={() => setIssued(null)} title={t("账单已开好", "Bills issued")}>
         {issued && (

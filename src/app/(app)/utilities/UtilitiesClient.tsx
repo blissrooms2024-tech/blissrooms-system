@@ -20,13 +20,25 @@ type Overview = {
     name: string;
     kinds: UtilityKind[];
     meterCount: number;
-    /** YYYY-MM the first meter was registered */
+    /** YYYY-MM the unit's first meter starts */
     since: string;
-    /** Meters were registered after this month — not flagged as missing. */
-    registeredLater: boolean;
-    run: { runCode: string; billed: number; company: number; bills: number; paid: number } | null;
+    /** Its meters only start after this month — not flagged as missing. */
+    startsLater: boolean;
+    run: {
+      runCode: string;
+      total: number;
+      billed: number;
+      company: number;
+      credit: number;
+      bills: number;
+      paid: number;
+      collected: number;
+      kwh: Record<UtilityKind, number>;
+    } | null;
   }[];
   unitsWithoutMeters: { propertyCode: string; name: string }[];
+  /** Aircon rooms with no aircon meter yet — still on prepaid top-up. */
+  prepaidAc: { propertyCode: string; name: string; rooms: string[] }[];
 };
 
 const thisMonthMY = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 7);
@@ -82,9 +94,23 @@ export default function UtilitiesClient({ isAdmin, initialPeriod }: { isAdmin: b
     }
   }
 
-  const todo = data?.units.filter((u) => !u.run && !u.registeredLater) ?? [];
+  const todo = data?.units.filter((u) => !u.run && !u.startsLater) ?? [];
   const done = data?.units.filter((u) => u.run) ?? [];
-  const later = data?.units.filter((u) => !u.run && u.registeredLater) ?? [];
+  const later = data?.units.filter((u) => !u.run && u.startsLater) ?? [];
+  const prepaidRooms = data?.prepaidAc.reduce((n, u) => n + u.rooms.length, 0) ?? 0;
+  // The month's totals across every billed unit.
+  const sum = (f: (r: NonNullable<Overview["units"][number]["run"]>) => number) => done.reduce((s, u) => s + (u.run ? f(u.run) : 0), 0);
+  const totals = done.length
+    ? {
+        billed: sum((r) => r.billed),
+        company: sum((r) => r.company),
+        credit: sum((r) => r.credit),
+        collected: sum((r) => r.collected),
+        bills: sum((r) => r.bills),
+        paid: sum((r) => r.paid),
+        kwh: UTILITY_KINDS.map((k) => [k, Math.round(sum((r) => r.kwh[k]) * 100) / 100] as const).filter(([, v]) => v > 0),
+      }
+    : null;
 
   return (
     <div className="app-type mx-auto max-w-3xl space-y-4">
@@ -134,6 +160,38 @@ export default function UtilitiesClient({ isAdmin, initialPeriod }: { isAdmin: b
             </div>
           )}
 
+          {totals && (
+            <section className="rounded-[20px] bg-white p-4 shadow-sm">
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="text-[15px] font-semibold text-gray-900">{t(`${Number(data.period.slice(5))}月合计`, `${data.period} totals`)}</h2>
+                <span className="text-xs text-gray-500">{t(`${done.length} 个单位已开单`, `${done.length} units billed`)}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
+                  <div className="text-[11px] text-gray-500">{t("租客要付", "Tenants owe")}</div>
+                  <div className="mt-0.5 font-semibold tabular-nums text-gray-900">{fmtMoney(totals.billed)}</div>
+                </div>
+                <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
+                  <div className="text-[11px] text-gray-500">{t("已收", "Collected")}</div>
+                  <div className="mt-0.5 font-semibold tabular-nums text-gray-900">{fmtMoney(totals.collected)}</div>
+                  <div className="text-[11px] text-gray-500">{t(`${totals.paid}/${totals.bills} 张`, `${totals.paid}/${totals.bills} bills`)}</div>
+                </div>
+                <div className="rounded-2xl bg-gray-50 px-3 py-2.5">
+                  <div className="text-[11px] text-gray-500">{t("公司承担", "Company pays")}</div>
+                  <div className="mt-0.5 font-semibold tabular-nums text-gray-900">{fmtMoney(totals.company)}</div>
+                </div>
+              </div>
+              {totals.credit > 0 && (
+                <p className="mt-2.5 text-xs text-gray-500">{t(`另外从租客的预付余额扣了 ${fmtMoney(totals.credit)}`, `Plus ${fmtMoney(totals.credit)} taken from tenants' prepaid balances`)}</p>
+              )}
+              {totals.kwh.length > 0 && (
+                <p className="mt-2.5 text-xs text-gray-500">
+                  {totals.kwh.map(([k, v]) => `${t(KIND_LABELS[k].zh, KIND_LABELS[k].en)} ${v.toLocaleString("en-US")} ${t("度", "kWh")}`).join(" · ")}
+                </p>
+              )}
+            </section>
+          )}
+
           {todo.length > 0 && (
             <section>
               <h2 className="mb-2 px-1 text-sm font-semibold text-gray-500">{t(`还没抄表 · ${todo.length}`, `Not billed yet · ${todo.length}`)}</h2>
@@ -156,11 +214,40 @@ export default function UtilitiesClient({ isAdmin, initialPeriod }: { isAdmin: b
           )}
           {later.length > 0 && (
             <section>
-              <h2 className="px-1 text-sm font-semibold text-gray-500">{t(`这个月之后才登记电表 · ${later.length}`, `Meters added after this month · ${later.length}`)}</h2>
-              <p className="mb-2 px-1 text-xs text-gray-400">{t("不算漏开。如果这个月也要用系统开单，点进去照样可以开。", "Not counted as missing. To bill this month in the system anyway, open the unit.")}</p>
+              <h2 className="px-1 text-sm font-semibold text-gray-500">{t(`电表之后才开始收 · ${later.length}`, `Meters start in a later month · ${later.length}`)}</h2>
+              <p className="mb-2 px-1 text-xs text-gray-400">{t("这个月不用开，不算漏开。", "Nothing to bill this month — not counted as missing.")}</p>
               <ul className="space-y-2.5">
                 {later.map((u) => (
                   <UnitRow key={u.propertyCode} u={u} period={data.period} />
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {data.prepaidAc.length > 0 && (
+            <section>
+              <h2 className="px-1 text-sm font-semibold text-gray-500">
+                {t(`冷气还在预付充值 · ${prepaidRooms} 间房`, `Aircon still on top-up · ${prepaidRooms} rooms`)}
+              </h2>
+              <p className="mb-2 px-1 text-xs text-gray-400">
+                {t("登记那间房的冷气电表，就改成月结，租客不能再充值。", "Register a room's aircon meter to bill it monthly; top-ups stop for that room.")}
+              </p>
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-[20px] bg-white shadow-sm">
+                {data.prepaidAc.map((u) => (
+                  <li key={u.propertyCode}>
+                    <Link href={`/utilities/${u.propertyCode}${isAdmin ? "?setup=ac" : ""}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-gray-50">
+                      <span className="min-w-0">
+                        <b>{u.propertyCode}</b> <span className="text-gray-500">{u.name}</span>
+                        <span className="mt-0.5 block text-xs text-gray-500">{u.rooms.join(t("、", ", "))}</span>
+                      </span>
+                      {isAdmin && (
+                        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-brand">
+                          <IconPlus size={15} />
+                          {t("登记冷气电表", "Add aircon meters")}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
                 ))}
               </ul>
             </section>
@@ -231,7 +318,7 @@ function UnitRow({ u, period }: { u: Overview["units"][number]; period: string }
         href={`/utilities/${u.propertyCode}?period=${period}`}
         className="flex items-center gap-3 rounded-[20px] bg-white p-4 shadow-[0_1px_2px_rgba(30,27,46,0.04),0_12px_28px_-18px_rgba(76,29,149,0.22)] hover:bg-gray-50"
       >
-        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${u.run ? "bg-teal-50 text-teal-700" : u.registeredLater ? "bg-gray-100 text-gray-500" : "bg-amber-50 text-amber-700"}`}>
+        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${u.run ? "bg-teal-50 text-teal-700" : u.startsLater ? "bg-gray-100 text-gray-500" : "bg-amber-50 text-amber-700"}`}>
           <IconBolt size={22} />
         </span>
         <span className="min-w-0 flex-1">
@@ -252,8 +339,8 @@ function UnitRow({ u, period }: { u: Overview["units"][number]; period: string }
         <span className="flex shrink-0 items-center gap-1">
           {u.run ? (
             <Pill tone="teal">{t("已开单", "Billed")}</Pill>
-          ) : u.registeredLater ? (
-            <Pill>{t(`${Number(u.since.slice(5))}月登记`, `Added ${u.since}`)}</Pill>
+          ) : u.startsLater ? (
+            <Pill>{t(`${Number(u.since.slice(5))}月起`, `From ${u.since}`)}</Pill>
           ) : (
             <Pill tone="amber">{t("还没抄表", "To do")}</Pill>
           )}

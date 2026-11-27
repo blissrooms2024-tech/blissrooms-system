@@ -246,6 +246,7 @@ export async function notifyTenantUtilityOverdue(tenant: { name: string; email: 
     `<p>Hi ${tenant.name},</p>
      <p>Your <b>${typeLabel(bill.type, bill.periodMonth)}</b> bill of <b>RM${bill.amountDue.toFixed(2)}</b>${bill.periodMonth ? ` (${bill.periodMonth})` : ""} for ${bill.roomCode} is now <b>${daysOverdue} day${daysOverdue === 1 ? "" : "s"} overdue</b>.</p>
      <p>Please pay and upload the transaction slip as soon as possible. The company may charge a late payment penalty under your tenancy agreement for bills that remain unpaid.</p>
+     ${bill.type === "AC" && bill.periodMonth ? `<p><b>Under the tenancy agreement, the company may also suspend the air-conditioner supply until this bill is paid.</b></p>` : ""}
      <p><a href="${APP_URL}/my-bills" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Pay Now</a></p>`,
     "#c0392b"
   );

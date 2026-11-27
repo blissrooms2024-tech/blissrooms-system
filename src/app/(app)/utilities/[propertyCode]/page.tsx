@@ -10,5 +10,13 @@ export default async function UnitBillingPage({ params, searchParams }: PageProp
   const { propertyCode } = await params;
   const sp = await searchParams;
   const period = typeof sp.period === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.period) ? sp.period : null;
-  return <UnitBillingClient propertyCode={propertyCode} initialPeriod={period} openSetup={sp.setup === "1"} isAdmin={session.role === "ADMIN"} />;
+  return (
+    <UnitBillingClient
+      propertyCode={propertyCode}
+      initialPeriod={period}
+      openSetup={sp.setup === "1" || sp.setup === "ac"}
+      setupKind={sp.setup === "ac" ? "AC" : undefined}
+      isAdmin={session.role === "ADMIN"}
+    />
+  );
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { myDay } from "@/lib/bills";
-import { billingOverview, defaultBillingPeriod, getRates, PERIOD_RE } from "@/lib/utilityBilling";
+import { billingOverview, defaultBillingPeriod, getRates, PERIOD_RE, prepaidAirconRooms } from "@/lib/utilityBilling";
 
 /** GET /api/utilities?period=YYYY-MM — every unit with meters and whether that month is billed. */
 export async function GET(req: NextRequest) {
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const period = req.nextUrl.searchParams.get("period") || defaultBillingPeriod(myDay());
   if (!PERIOD_RE.test(period)) return NextResponse.json({ success: false, message: "月份不对" }, { status: 400 });
 
-  const [units, rates, others] = await Promise.all([
+  const [units, rates, others, prepaidAc] = await Promise.all([
     billingOverview(period),
     getRates(),
     prisma.property.findMany({
@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
       select: { propertyCode: true, name: true },
       orderBy: { propertyCode: "asc" },
     }),
+    prepaidAirconRooms(),
   ]);
-  return NextResponse.json({ success: true, period, defaultPeriod: defaultBillingPeriod(myDay()), units, rates, unitsWithoutMeters: others });
+  return NextResponse.json({ success: true, period, defaultPeriod: defaultBillingPeriod(myDay()), units, rates, unitsWithoutMeters: others, prepaidAc });
 }

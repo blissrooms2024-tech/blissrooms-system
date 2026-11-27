@@ -12,38 +12,63 @@ import type { UnitBilling } from "@/lib/utilityBilling";
 type Meter = UnitBilling["meters"][number];
 
 const segBtn = (on: boolean) => `flex-1 rounded-[10px] px-2 py-2 text-sm font-medium ${on ? "bg-white text-brand shadow-sm" : "text-gray-500"}`;
+const thisMonthMY = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 7);
+const dayOfMonthMY = () => Number(new Date(Date.now() + 8 * 3600_000).toISOString().slice(8, 10));
+const shiftMonth = (period: string, n: number) => {
+  const d = new Date(`${period}-01T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + n);
+  return d.toISOString().slice(0, 7);
+};
+const monthZh = (period: string) => `${Number(period.slice(5, 7))}月`;
 
 /** 电表设定 — which meters this unit has, where each one is, and how it's read. */
 export default function MeterSetupSheet({
   open,
   onClose,
   data,
+  initialKind,
   onChanged,
 }: {
   open: boolean;
   onClose: () => void;
   data: UnitBilling;
+  initialKind?: UtilityKind;
   onChanged: () => void;
 }) {
   const { t } = useLanguage();
   const toast = useToast();
+  // First month to bill: last month, this month or next month. Starts on the month being
+  // viewed when that's one of them (adding a meter while billing that month).
+  const thisMonth = thisMonthMY();
+  const startChoices = [shiftMonth(thisMonth, -1), thisMonth, shiftMonth(thisMonth, 1)];
+  // An aircon meter is usually added when a room moves from top-up to monthly billing at a month
+  // end: late in the month that means next month, early in the month this one.
+  const acStart = dayOfMonthMY() >= 20 ? startChoices[2] : thisMonth;
+  const defaultStart = (kind: UtilityKind) => (kind === "AC" ? acStart : startChoices.includes(data.period) ? data.period : thisMonth);
+  const allMeters = [...data.meters, ...data.upcoming];
+  const roomsWithAc = new Set(allMeters.filter((m) => m.kind === "AC" && m.roomId).map((m) => m.roomId));
+  // Aircon meters belong to a room (an aircon room without one first); electricity and
+  // washer + dryer are usually one per unit.
+  const firstRoomFor = (kind: UtilityKind, used = roomsWithAc) =>
+    kind === "AC" ? (data.rooms.find((r) => r.hasAircon && !used.has(r.id)) ?? data.rooms.find((r) => !used.has(r.id)))?.id ?? "" : "";
   const blank = (kind: UtilityKind = "ELECTRIC") => ({
     kind,
-    roomId: "",
+    roomId: firstRoomFor(kind),
     inputMode: kind === "ELECTRIC" ? "USAGE" : "READING",
     startReading: "",
+    startPeriod: defaultStart(kind),
+    credit: "",
     meterNo: "",
     label: "",
   });
-  const [form, setForm] = useState(blank);
+  const [form, setForm] = useState(() => blank(initialKind));
+  // Who lives in the chosen room now — a leftover top-up balance is theirs.
+  const roomTenant = form.roomId ? (data.tenancies.find((x) => x.roomId === form.roomId && ["ACTIVE", "EXPIRING"].includes(x.status))?.tenantName ?? null) : null;
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState<Meter | null>(null);
 
-  const roomsWithAc = new Set(data.meters.filter((m) => m.kind === "AC" && m.roomId).map((m) => m.roomId));
   function pickKind(kind: UtilityKind) {
-    // Aircon meters belong to a room; electricity and washer + dryer are usually one per unit.
-    const firstRoom = kind === "AC" ? (data.rooms.find((r) => !roomsWithAc.has(r.id))?.id ?? "") : "";
-    setForm({ ...blank(kind), roomId: firstRoom });
+    setForm(blank(kind));
   }
 
   async function add() {
@@ -54,6 +79,8 @@ export default function MeterSetupSheet({
         roomId: form.roomId || null,
         inputMode: form.inputMode,
         startReading: form.inputMode === "READING" && form.startReading !== "" ? Number(form.startReading) : null,
+        startPeriod: form.startPeriod,
+        credit: form.kind === "AC" && form.roomId && form.credit !== "" ? Number(form.credit) : undefined,
         meterNo: form.meterNo || null,
         label: form.label || null,
       };
@@ -64,10 +91,9 @@ export default function MeterSetupSheet({
       }).then((r) => r.json());
       if (!d.success) return toast.danger(d.message);
       toast.success(d.message);
-      // Ready for the next one: an aircon meter moves on to the next room without one.
-      const used = new Set([...roomsWithAc, form.roomId]);
+      // Ready for the next one: an aircon meter moves on to the next room without one, same month.
       const kind = form.kind as UtilityKind;
-      setForm({ ...blank(kind), roomId: kind === "AC" ? (data.rooms.find((r) => !used.has(r.id))?.id ?? "") : "" });
+      setForm({ ...blank(kind), roomId: firstRoomFor(kind, new Set([...roomsWithAc, form.roomId])), startPeriod: form.startPeriod });
       onChanged();
     } finally {
       setSaving(false);
@@ -88,15 +114,16 @@ export default function MeterSetupSheet({
   return (
     <>
       <Sheet open={open} onClose={onClose} title={t(`${data.unit.propertyCode} 的电表`, `${data.unit.propertyCode} meters`)} tall>
-        {data.meters.length > 0 ? (
+        {allMeters.length > 0 ? (
           <ul className="mb-4 divide-y divide-gray-100 rounded-2xl border border-gray-100">
-            {data.meters.map((m) => (
+            {allMeters.map((m) => (
               <li key={m.id} className="flex items-center gap-3 px-3 py-2.5">
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium text-gray-900">
                     {t(KIND_LABELS[m.kind].zh, KIND_LABELS[m.kind].en)} · {where(m)}
                   </span>
                   <span className="block text-xs text-gray-500">
+                    {t(`${monthZh(m.startPeriod)}起`, `From ${m.startPeriod}`)} ·{" "}
                     {m.inputMode === "READING" ? t("抄读数", "Reading") : t("直接填度数", "kWh entered directly")}
                     {m.previous !== null && m.inputMode === "READING" ? t(` · 上次读数 ${m.previous}`, ` · last ${m.previous}`) : ""}
                     {m.meterNo ? ` · ${m.meterNo}` : ""}
@@ -151,11 +178,38 @@ export default function MeterSetupSheet({
                 : t("直接填这个月用了多少度（例如看 TNB 账单）。", "Type the kWh used this month (e.g. from the TNB bill).")}
             </p>
           </div>
+          <div>
+            <span className="mb-1 block text-sm text-gray-600">{t("从几月开始收", "First month billed")}</span>
+            <div className="flex rounded-xl bg-gray-100 p-0.5">
+              {startChoices.map((p) => (
+                <button key={p} type="button" onClick={() => setForm({ ...form, startPeriod: p })} className={segBtn(form.startPeriod === p)}>
+                  {t(monthZh(p), p)}
+                </button>
+              ))}
+            </div>
+            {form.kind === "AC" && (
+              <p className="mt-1 text-xs text-gray-500">
+                {t("冷气从预付充值改成月结：选下个月，起始读数填这个月底抄的读数。", "Aircon moving from top-up to monthly billing: pick next month and enter this month-end's reading.")}
+              </p>
+            )}
+          </div>
           {form.inputMode === "READING" && (
             <label className="block">
-              <span className="mb-1 block text-sm text-gray-600">{t("现在电表上的读数", "Reading on the meter now")}</span>
+              <span className="mb-1 block text-sm text-gray-600">
+                {t(`起始读数（${monthZh(form.startPeriod)}1号 / ${monthZh(shiftMonth(form.startPeriod, -1))}底）`, `Starting reading (on 1 ${form.startPeriod})`)}
+              </span>
               <input type="number" inputMode="decimal" min="0" value={form.startReading} onChange={(e) => setForm({ ...form, startReading: e.target.value })} className="input" placeholder="0" />
-              <span className="mt-1 block text-xs text-gray-500">{t("第一次开单会从这个读数开始算。", "The first bill counts from this reading.")}</span>
+              <span className="mt-1 block text-xs text-gray-500">{t(`${monthZh(form.startPeriod)}的账单从这个读数开始算。`, `The ${form.startPeriod} bill counts from this reading.`)}</span>
+            </label>
+          )}
+          {form.kind === "AC" && roomTenant && (
+            <label className="block">
+              <span className="mb-1 block text-sm text-gray-600">{t(`Smart Meter 还剩多少钱（${roomTenant}，可不填）`, `Left on the smart meter (${roomTenant}, optional)`)}</span>
+              <span className="flex items-center gap-2 text-sm text-gray-500">
+                RM
+                <input type="number" inputMode="decimal" min="0" step="0.01" value={form.credit} onChange={(e) => setForm({ ...form, credit: e.target.value })} className="input" placeholder="0.00" />
+              </span>
+              <span className="mt-1 block text-xs text-gray-500">{t("以前充值还没用完的钱，会从这位租客的冷气账单扣，扣完为止。", "Unused top-up; it comes off this tenant's aircon bills until it runs out.")}</span>
             </label>
           )}
           <div className="grid grid-cols-2 gap-2">

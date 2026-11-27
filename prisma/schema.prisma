@@ -355,6 +355,7 @@ model Contract {
   warningLetters      WarningLetter[]
   vouchers            Voucher[]
   utilityExemptions   UtilityExemption[]
+  utilityCredits      UtilityCredit[]
 
   @@index([status])
   @@index([agentId])
@@ -752,8 +753,12 @@ model UtilityMeter {
   /// READING: type the meter's reading and usage = this month − last month.
   /// USAGE: type the kWh used directly (e.g. off the TNB bill).
   inputMode    String         @default("READING")
-  /// Reading on the day the meter was registered — the "last reading" for its first bill.
+  /// Reading at the start of startPeriod — the "last reading" for its first bill.
   startReading Decimal?       @db.Decimal(12, 2)
+  /// First month (YYYY-MM) this meter is billed, e.g. aircon switching from prepaid top-up to
+  /// monthly billing from December. Null (meters added before this existed) = the month it was
+  /// registered.
+  startPeriod  String?
   active       Boolean        @default(true)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -817,13 +822,38 @@ model UtilityBillRun {
   totalAmount   Decimal        @db.Decimal(10, 2)
   billedAmount  Decimal        @db.Decimal(10, 2)
   companyAmount Decimal        @db.Decimal(10, 2)
+  /// Paid from tenants' prepaid balance (e.g. aircon top-up left over at the switch to monthly
+  /// billing): total = billed + credit + company.
+  creditAmount  Decimal        @default(0) @db.Decimal(10, 2)
   details       Json
   createdBy     String
   createdAt     DateTime       @default(now())
   readings      MeterReading[]
   payments      Payment[]
+  credits       UtilityCredit[]
 
   @@unique([propertyId, period])
+}
+
+/// A tenancy's prepaid balance for a usage charge, as a ledger: + money already paid in (e.g. what
+/// was left on the aircon smart meter when the room moved from top-up to monthly billing, or an
+/// Admin correction), − what a month's bills used (runId; undoing that month's bills removes the
+/// row and gives the balance back). Balance = sum of amount.
+model UtilityCredit {
+  id         String          @id @default(cuid())
+  contractId String
+  contract   Contract        @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  /// ELECTRIC | LAUNDRY | AC
+  kind       String
+  amount     Decimal         @db.Decimal(10, 2)
+  note       String
+  runId      String?
+  run        UtilityBillRun? @relation(fields: [runId], references: [id], onDelete: Cascade)
+  createdBy  String
+  createdAt  DateTime        @default(now())
+
+  @@index([contractId])
+  @@index([runId])
 }
 
 /// Small editable settings (e.g. RM per kWh for each usage charge), keyed by name.

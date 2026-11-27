@@ -270,7 +270,7 @@ export async function getDashboardData(viewer: { id: string; role: string }) {
       // Units with meters whose last month hasn't been billed yet (抄表开单).
       meterBilling: {
         period: defaultBillingPeriod(today),
-        units: meterUnits.filter((u) => !u.run && !u.registeredLater).map((u) => ({ propertyCode: u.propertyCode, name: u.name })),
+        units: meterUnits.filter((u) => !u.run && !u.startsLater).map((u) => ({ propertyCode: u.propertyCode, name: u.name })),
       },
     },
     claims: { pending: claimSum("PENDING"), toPay: claimSum("APPROVED") },

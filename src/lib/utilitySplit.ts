@@ -141,18 +141,30 @@ export function splitUsage(meters: MeterUsage[], tenancies: Tenancy[], splitBy: 
 export type Overrides = Record<string, number>;
 export const overrideKey = (contractId: string, kind: UtilityKind) => `${contractId}:${kind}`;
 
+/** Prepaid balance each tenancy still has, by kind — e.g. aircon top-up left on the smart meter
+ * when the room moved to monthly billing. It comes off that kind's bills until it's used up. */
+export type Credits = Record<string, Partial<Record<UtilityKind, number>>>;
+
 export interface FinalBill {
   contractId: string;
   kind: UtilityKind;
   /** What the rules worked out (BILL lines only). */
   computed: number;
-  /** What will actually be billed. */
+  /** What will actually be billed (after any manual change and prepaid balance). */
   amount: number;
   overridden: boolean;
+  /** Taken off from the tenant's prepaid balance. */
+  credit: number;
 }
 
-/** One bill per tenant per kind, after manual changes. Kinds with nothing to bill are left out. */
-export function finalBills(result: SplitResult, overrides: Overrides = {}): { bills: FinalBill[]; billed: number; company: number } {
+/** One bill per tenant per kind, after manual changes and prepaid balance. Kinds with nothing to
+ * bill are left out; one fully paid from the balance stays in (amount 0) so it can be shown and
+ * recorded, but gets no bill. */
+export function finalBills(
+  result: SplitResult,
+  overrides: Overrides = {},
+  credits: Credits = {}
+): { bills: FinalBill[]; billed: number; credited: number; company: number } {
   const bills: FinalBill[] = [];
   for (const t of result.tenants) {
     for (const kind of UTILITY_KINDS) {
@@ -161,10 +173,13 @@ export function finalBills(result: SplitResult, overrides: Overrides = {}): { bi
       const computed = round2(lines.filter((l) => l.status === "BILL").reduce((s, l) => s + l.amount, 0));
       const key = overrideKey(t.tenancy.contractId, kind);
       const overridden = key in overrides && Number.isFinite(overrides[key]);
-      const amount = overridden ? round2(Math.max(0, overrides[key])) : computed;
-      if (amount > 0 || overridden) bills.push({ contractId: t.tenancy.contractId, kind, computed, amount, overridden });
+      const due = overridden ? round2(Math.max(0, overrides[key])) : computed;
+      const credit = round2(Math.min(due, Math.max(0, credits[t.tenancy.contractId]?.[kind] ?? 0)));
+      const amount = round2(due - credit);
+      if (amount > 0 || credit > 0) bills.push({ contractId: t.tenancy.contractId, kind, computed, amount, overridden, credit });
     }
   }
   const billed = round2(bills.reduce((s, b) => s + b.amount, 0));
-  return { bills: bills.filter((b) => b.amount > 0), billed, company: round2(result.total - billed) };
+  const credited = round2(bills.reduce((s, b) => s + b.credit, 0));
+  return { bills, billed, credited, company: round2(result.total - billed - credited) };
 }

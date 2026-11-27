@@ -36,6 +36,14 @@ interface PaymentRow {
 
 /** Metered usage bills (抄表开单) carry a note explaining how the amount was worked out. */
 const usageNote = (b: PaymentRow) => (["ELECTRIC", "DRYER", "AC"].includes(b.type) && b.periodMonth && b.notes ? b.notes : null);
+/** Days a metered aircon bill is overdue (0 if not), Malaysia date. Under the agreement the
+ * company may suspend the aircon supply, so the tenant is warned on the bill. */
+const acOverdueDays = (b: PaymentRow) => {
+  if (b.type !== "AC" || !b.periodMonth || !b.dueDate || (b.status !== "PENDING" && b.status !== "REJECTED")) return 0;
+  const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
+  const due = b.dueDate.slice(0, 10);
+  return due < today ? Math.round((Date.parse(today) - Date.parse(due)) / 86_400_000) : 0;
+};
 
 
 const BILL_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
@@ -205,6 +213,14 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                       <div className="text-xs text-gray-500">
                         {t("到期日", "Due Date")}: {fmtDate(b.dueDate)}
                       </div>
+                      {acOverdueDays(b) > 0 && (
+                        <div className="mt-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700">
+                          {t(
+                            `已逾期 ${acOverdueDays(b)} 天。按合约，公司可以暂停冷气供电，直到账单付清，请尽快付款。`,
+                            `${acOverdueDays(b)} days overdue. Under the tenancy agreement, the company may suspend the air-cond supply until this is paid — please pay soon.`
+                          )}
+                        </div>
+                      )}
                       <Link
                         href={`/invoice/${b.paymentCode}`}
                         target="_blank"
