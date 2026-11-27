@@ -11,6 +11,7 @@ import ICUploadModal from "./ICUploadModal";
 import MoveFormModal from "./MoveFormModal";
 import PaymentModal from "./PaymentModal";
 import ContractPdfModal from "./ContractPdfModal";
+import RenewContractModal from "./RenewContractModal";
 
 export interface ActionableContract {
   contractCode: string;
@@ -51,6 +52,7 @@ export default function ContractActions({
   const [deleteReason, setDeleteReason] = useState<string | null>(null);
   const [forceDeletePassword, setForceDeletePassword] = useState("");
   const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
+  const [renewing, setRenewing] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [terminateReason, setTerminateReason] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
@@ -212,6 +214,9 @@ export default function ContractActions({
     items.push({ key: "approve", label: `✅ ${t("批准", "Approve")}`, color: "bg-green-700", onClick: () => doAction("approve"), primary: true });
   }
   if (role === "ADMIN" && c.status === "ACTIVE") {
+    items.push({ key: "renew", label: `🔄 ${t("续约", "Renew")}`, color: "bg-fuchsia-600", onClick: () => setRenewing(true), primary: true });
+  }
+  if (role === "ADMIN" && c.status === "ACTIVE") {
     items.push({
       key: "terminate",
       label: `🔒 ${t("终止+没收押金", "Terminate + Forfeit Deposit")}`,
@@ -277,6 +282,9 @@ export default function ContractActions({
           onClose={() => setPaying(false)}
           onChanged={onChanged}
         />
+      )}
+      {renewing && (
+        <RenewContractModal contractCode={c.contractCode} onClose={() => setRenewing(false)} onRenewed={onChanged} />
       )}
       <ConfirmDialog
         open={deleting}
