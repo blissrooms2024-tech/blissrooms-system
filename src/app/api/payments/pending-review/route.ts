@@ -12,7 +12,7 @@ export async function GET() {
 
   const payments = await prisma.payment.findMany({
     where: { status: "PENDING_REVIEW" },
-    orderBy: { paidDate: "asc" },
+    orderBy: { paidDate: "desc" },
     include: { contract: { select: { contractCode: true } } },
   });
 

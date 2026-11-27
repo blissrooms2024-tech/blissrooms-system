@@ -8,7 +8,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface Breakdown {
@@ -31,6 +31,11 @@ interface PaymentRow {
   reviewNote: string | null;
   periodMonth: string | null;
   customLabel: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  /** Full timestamps (paidDate / reviewedAt above are the day only) */
+  paidAt?: string | null;
+  reviewedAtTime?: string | null;
 }
 
 const BILL_TYPES = ["DEPOSIT", "UTILITIES", "RENTAL", "ADMIN_FEE", "ACCESS_CARD", "CARPARK", "AC", "DRYER", "ELECTRIC", "OTHER"];
@@ -786,13 +791,24 @@ export default function PaymentModal({
                       {b.status === "PENDING_REVIEW" && (
                         <div className="flex flex-col items-start gap-1.5">
                           {b.receiptLink && (
-                            <button
-                              type="button"
-                              onClick={() => setZoomUrl(b.receiptLink)}
-                              className="text-xs font-semibold text-brand underline"
-                            >
-                              🧾 {t("查看交易单", "View Transaction Slip")}
-                            </button>
+                            isPdfUrl(b.receiptLink) ? (
+                              <a
+                                href={b.receiptLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-semibold text-brand underline"
+                              >
+                                📄 {t("查看交易单 (PDF)", "View Transaction Slip (PDF)")}
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setZoomUrl(b.receiptLink)}
+                                className="text-xs font-semibold text-brand underline"
+                              >
+                                🧾 {t("查看交易单", "View Transaction Slip")}
+                              </button>
+                            )
                           )}
                           {role === "ADMIN" && (
                             <button type="button" onClick={() => startEditPeriod(b)} className="text-xs font-semibold text-brand underline">
@@ -911,6 +927,7 @@ export default function PaymentModal({
             <th className="px-2.5 py-1.5 font-semibold">{t("金额", "Amount")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("日期", "Date")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("方式", "Method")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("Admin 审核", "Reviewed By")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("收据", "Receipt")}</th>
             {role === "ADMIN" && <th className="px-2.5 py-1.5 font-semibold"></th>}
           </tr>
@@ -918,7 +935,7 @@ export default function PaymentModal({
         <tbody>
           {paidHistory.length === 0 && (
             <tr>
-              <td colSpan={role === "ADMIN" ? 6 : 5} className="py-3 text-center text-gray-400">
+              <td colSpan={role === "ADMIN" ? 7 : 6} className="py-3 text-center text-gray-400">
                 {t("还没有收款记录", "No payment records yet")}
               </td>
             </tr>
@@ -1029,7 +1046,7 @@ export default function PaymentModal({
                   </div>
                 ) : (
                   <span className="inline-flex items-center gap-1.5">
-                    {fmtDate(p.paidDate)}
+                    {fmtDateTime(p.paidAt ?? p.paidDate)}
                     {role === "ADMIN" && (
                       <button
                         type="button"
@@ -1056,6 +1073,17 @@ export default function PaymentModal({
                   </select>
                 ) : (
                   p.method || (p.receiptLink ? t("交易单上传", "Transaction Slip Uploaded") : "-")
+                )}
+              </td>
+              <td className="px-2.5 py-1.5 text-xs">
+                {p.reviewedBy ? (
+                  <>
+                    {p.reviewedBy}
+                    <br />
+                    {fmtDateTime(p.reviewedAtTime ?? p.reviewedAt)}
+                  </>
+                ) : (
+                  "-"
                 )}
               </td>
               <td className="px-2.5 py-1.5">

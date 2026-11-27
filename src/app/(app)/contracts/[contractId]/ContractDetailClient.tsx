@@ -43,6 +43,7 @@ interface ContractDetail extends ActionableContract {
   pdfLink: string | null;
   icFront: string | null;
   icBack: string | null;
+  renewedFromContractId: string | null;
   _due: number;
   _paid: number;
   _pendingReview: number;
@@ -94,6 +95,7 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
       moveInDone: c._moveInDone,
       outstanding: c._outstanding,
       isLegacy: c._isLegacy,
+      isRenewal: !!c.renewedFromContractId,
     },
     t
   );

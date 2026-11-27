@@ -23,6 +23,7 @@ interface Card {
   agentSigned: boolean;
   tenantSigned: boolean;
   isLegacy: boolean;
+  isRenewal: boolean;
   expiredDate: string | null;
   daysToExpiry: number | null;
   moveOutNoticeDate: string | null;
@@ -160,7 +161,7 @@ export default function MyTenancyClient() {
       <TenantWifiCard />
       {cards.map((c) => {
         const icDone = c.hasICFront && c.hasICBack;
-        const canSign = c.agentSigned && icDone && !c.tenantSigned;
+        const canSign = c.agentSigned && (c.isRenewal || icDone) && !c.tenantSigned;
         const flow = buildContractSteps(
           {
             status: c.status,
@@ -170,6 +171,7 @@ export default function MyTenancyClient() {
             moveInDone: c.moveInDone,
             outstanding: c.outstanding,
             isLegacy: c.isLegacy,
+            isRenewal: c.isRenewal,
           },
           t
         );
@@ -368,7 +370,7 @@ export default function MyTenancyClient() {
                     <Pill tone="done">{t("✅ 已签", "✅ Signed")}</Pill>
                   ) : !c.agentSigned ? (
                     <Pill tone="lock">{t("🔒 等 Agent 先签", "🔒 Waiting on Agent to sign first")}</Pill>
-                  ) : !icDone ? (
+                  ) : !c.isRenewal && !icDone ? (
                     <Pill tone="wait">{t("⚠️ 先上传 IC", "⚠️ Upload IC first")}</Pill>
                   ) : (
                     <Pill tone="wait">{t("待签名", "Awaiting Signature")}</Pill>

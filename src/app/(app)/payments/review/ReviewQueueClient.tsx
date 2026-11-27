@@ -8,7 +8,7 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { IconAlert, IconCheck, IconSearch, IconX } from "@/components/icons";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate, fmtMoney } from "@/lib/format";
+import { fmtDate, fmtMoney, isPdfUrl } from "@/lib/format";
 
 /**
  * 交易单审核 — one card per uploaded slip, the slip itself big enough to check against the
@@ -235,15 +235,27 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
                     aria-label={t("放大看交易单", "Open the slip")}
                     className="relative h-[124px] w-[92px] shrink-0 overflow-hidden rounded-xl bg-gray-100 ring-1 ring-black/5"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.receiptLink} alt={t("交易单", "Payment slip")} className="h-full w-full object-cover object-top" />
-                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent pb-1 pt-4 text-center text-[11px] font-medium text-white">
-                      {t("点我放大", "Tap to view")}
-                    </span>
+                    {isPdfUrl(p.receiptLink) ? (
+                      // Banking apps often give a PDF; browsers show those natively, full screen.
+                      <span className="grid h-full w-full place-items-center bg-rose-50 text-center">
+                        <span>
+                          <b className="block text-lg text-rose-700">PDF</b>
+                          <span className="text-[11px] text-rose-700/80">{t("点我打开", "Tap to open")}</span>
+                        </span>
+                      </span>
+                    ) : (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.receiptLink} alt={t("交易单", "Payment slip")} className="h-full w-full object-cover object-top" />
+                        <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent pb-1 pt-4 text-center text-[11px] font-medium text-white">
+                          {t("点我放大", "Tap to view")}
+                        </span>
+                      </>
+                    )}
                   </button>
                 ) : (
                   <div className="grid h-[124px] w-[92px] shrink-0 place-items-center rounded-xl bg-gray-50 px-2 text-center text-[11px] text-gray-400 ring-1 ring-black/5">
-                    {t("没有图片", "No image")}
+                    {t("没有交易单", "No slip")}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
@@ -317,8 +329,19 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
             </button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto px-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={viewing.receiptLink} alt={t("交易单", "Payment slip")} className="mx-auto h-full w-full object-contain" />
+            {isPdfUrl(viewing.receiptLink) ? (
+              <div className="flex h-full flex-col gap-3">
+                <iframe src={viewing.receiptLink} title={t("交易单 PDF", "Payment slip PDF")} className="min-h-0 w-full flex-1 rounded-xl bg-white" />
+                <a href={viewing.receiptLink} target="_blank" rel="noopener noreferrer" className="block rounded-xl bg-white/10 py-2.5 text-center text-sm font-semibold text-white hover:bg-white/20">
+                  {t("看不到？在新页面打开 PDF", "Can't see it? Open the PDF in a new tab")}
+                </a>
+              </div>
+            ) : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={viewing.receiptLink} alt={t("交易单", "Payment slip")} className="mx-auto h-full w-full object-contain" />
+              </>
+            )}
           </div>
           {canAct && (
             <div className="grid grid-cols-2 gap-2 px-4 pt-3" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>

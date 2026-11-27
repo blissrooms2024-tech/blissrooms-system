@@ -58,7 +58,7 @@ export default function BreakdownPayAllModal({
       return;
     }
     if (isOversized(file)) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
     setSubmitting(true);
@@ -76,6 +76,11 @@ export default function BreakdownPayAllModal({
         onClose();
       } else {
         toast.danger(data.message);
+        // A stale "nothing billed yet" total (e.g. Admin or the monthly-rent cron opened a
+        // formal bill on one of these items since the page was first loaded) is the most likely
+        // reason this specific call fails — refresh so the modal/page stop showing it as payable
+        // here once the tenant closes this and looks again.
+        onPaid();
       }
     } catch {
       toast.danger(t("系统出错，请稍后再试", "System error — please try again later"));
@@ -156,7 +161,7 @@ export default function BreakdownPayAllModal({
           <label className="mb-1.5 block text-sm text-gray-600">{t("付款证明", "Proof of Payment")}</label>
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf"
             disabled={submitting || total <= 0}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"

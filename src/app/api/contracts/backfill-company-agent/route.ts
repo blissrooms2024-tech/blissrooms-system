@@ -23,7 +23,12 @@ async function handlePOST() {
     where: { agentName: { not: COMPANY.NAME } },
     include: { agent: { select: { role: true } } },
   });
-  const toFix = contracts.filter((c) => c.agent.role !== "AGENT");
+  // A renewal is always company-signed, no matter who the carried-over agentId actually belongs
+  // to (even a real AGENT-role user) — Admin processes renewals directly, not the original
+  // referring Agent, who already earned their commission on the first signing. Older renewals
+  // created before that rule was unconditional can still be sitting stuck on a real Agent's
+  // signature that was never going to happen, same symptom as a fresh Admin-opened contract.
+  const toFix = contracts.filter((c) => c.agent.role !== "AGENT" || !!c.renewedFromContractId);
 
   let renamed = 0;
   let unblocked = 0;

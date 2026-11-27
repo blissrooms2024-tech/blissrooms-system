@@ -7,7 +7,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
-import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
 import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
@@ -32,6 +32,11 @@ interface PaymentRow {
   periodMonth: string | null;
   customLabel: string | null;
   notes?: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  /** Full timestamps (paidDate / reviewedAt above are the day only) */
+  paidAt?: string | null;
+  reviewedAtTime?: string | null;
 }
 
 /** Metered usage bills (抄表开单) carry a note explaining how the amount was worked out. */
@@ -61,10 +66,14 @@ function buildBillSteps(b: PaymentRow, t: (zh: string, en: string) => string): T
     { label: t("账单已开", "Bill Issued"), state: 0 < currentIndex ? "done" : currentIndex === 0 ? "active" : "pending" },
     {
       label: t("已上传交易单", "Slip Uploaded"),
-      sublabel: b.paidDate ? fmtDate(b.paidDate) : undefined,
+      sublabel: b.paidDate ? fmtDateTime(b.paidAt ?? b.paidDate) : undefined,
       state: 1 < currentIndex ? "done" : currentIndex === 1 ? "active" : "pending",
     },
-    { label: t("已批准", "Approved"), state: currentIndex === 2 ? "done" : "pending" },
+    {
+      label: t("已批准", "Approved"),
+      sublabel: currentIndex === 2 && b.reviewedBy ? `${b.reviewedBy} · ${fmtDateTime(b.reviewedAtTime ?? b.reviewedAt)}` : undefined,
+      state: currentIndex === 2 ? "done" : "pending",
+    },
   ];
 }
 
@@ -101,7 +110,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
 
   async function uploadSlip(paymentId: string, file: File) {
     if (isOversized(file)) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
     setUploadingId(paymentId);
@@ -234,19 +243,30 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                     </div>
                   </div>
                   {b.status === "PENDING_REVIEW" && b.receiptLink && (
-                    <button
-                      type="button"
-                      onClick={() => setZoomUrl(b.receiptLink)}
-                      className="mt-2 text-xs font-semibold text-brand underline"
-                    >
-                      {t("🧾 查看已上传的交易单", "🧾 View Uploaded Slip")}
-                    </button>
+                    isPdfUrl(b.receiptLink) ? (
+                      <a
+                        href={b.receiptLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block text-xs font-semibold text-brand underline"
+                      >
+                        {t("📄 查看已上传的交易单 (PDF)", "📄 View Uploaded Slip (PDF)")}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setZoomUrl(b.receiptLink)}
+                        className="mt-2 text-xs font-semibold text-brand underline"
+                      >
+                        {t("🧾 查看已上传的交易单", "🧾 View Uploaded Slip")}
+                      </button>
+                    )
                   )}
                   {(b.status === "PENDING" || b.status === "REJECTED") && (
                     <div className="mt-2">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,application/pdf"
                         disabled={uploadingId === b.id}
                         onChange={(e) => e.target.files?.[0] && uploadSlip(b.id, e.target.files[0])}
                         className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark disabled:opacity-50"
@@ -270,13 +290,14 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
             <th className="px-2.5 py-1.5 font-semibold">{t("项目", "Item")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("金额", "Amount")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("日期", "Date")}</th>
+            <th className="px-2.5 py-1.5 font-semibold">{t("Admin 审核", "Reviewed By")}</th>
             <th className="px-2.5 py-1.5 font-semibold">{t("收据", "Receipt")}</th>
           </tr>
         </thead>
         <tbody>
           {paidHistory.length === 0 && (
             <tr>
-              <td colSpan={4} className="py-3 text-center text-gray-400">
+              <td colSpan={5} className="py-3 text-center text-gray-400">
                 {t("还没有付款记录", "No payment history yet")}
               </td>
             </tr>
@@ -288,7 +309,18 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                 {p.periodMonth && <span className="text-gray-400"> ({p.periodMonth})</span>}
               </td>
               <td className="px-2.5 py-1.5">{fmt(p.amountPaid)}</td>
-              <td className="px-2.5 py-1.5">{fmtDate(p.paidDate)}</td>
+              <td className="px-2.5 py-1.5">{fmtDateTime(p.paidAt ?? p.paidDate)}</td>
+              <td className="px-2.5 py-1.5 text-xs">
+                {p.reviewedBy ? (
+                  <>
+                    {p.reviewedBy}
+                    <br />
+                    {fmtDateTime(p.reviewedAtTime ?? p.reviewedAt)}
+                  </>
+                ) : (
+                  "-"
+                )}
+              </td>
               <td className="px-2.5 py-1.5">
                 <Link href={`/receipt/${p.paymentCode}`} target="_blank" className="text-xs font-semibold text-brand underline">
                   {t("🧾 查看 Receipt", "🧾 View Receipt")}

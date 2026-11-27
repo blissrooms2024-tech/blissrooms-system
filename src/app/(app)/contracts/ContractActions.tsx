@@ -17,6 +17,7 @@ import {
   IconIdCard,
   IconLock,
   IconPen,
+  IconRefresh,
   IconSignature,
   IconTrash,
   IconUpload,
@@ -29,6 +30,7 @@ import ICUploadModal from "./ICUploadModal";
 import MoveFormModal from "./MoveFormModal";
 import PaymentModal from "./PaymentModal";
 import ContractPdfModal from "./ContractPdfModal";
+import RenewContractModal from "./RenewContractModal";
 
 export interface ActionableContract {
   contractCode: string;
@@ -39,6 +41,7 @@ export interface ActionableContract {
   status: string;
   agentSignature: string | null;
   tenantSignature: string | null;
+  renewedFromContractId?: string | null;
   _rentEscalated?: boolean;
 }
 
@@ -47,6 +50,7 @@ const ITEM_ICONS: Record<string, NavIcon> = {
   sign: IconSignature,
   submit: IconUpload,
   approve: IconCheck,
+  renew: IconRefresh,
   terminate: IconLock,
   ic: IconIdCard,
   pdf: IconFolder,
@@ -87,6 +91,7 @@ export default function ContractActions({
   const [deleteReason, setDeleteReason] = useState<string | null>(null);
   const [forceDeletePassword, setForceDeletePassword] = useState("");
   const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
+  const [renewing, setRenewing] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [terminateReason, setTerminateReason] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
@@ -249,6 +254,9 @@ export default function ContractActions({
     items.push({ key: "approve", label: `✅ ${t("批准", "Approve")}`, color: "bg-green-700", onClick: () => doAction("approve"), primary: true });
   }
   if (role === "ADMIN" && c.status === "ACTIVE") {
+    items.push({ key: "renew", label: `🔄 ${t("续约", "Renew")}`, color: "bg-fuchsia-600", onClick: () => setRenewing(true), primary: true });
+  }
+  if (role === "ADMIN" && c.status === "ACTIVE") {
     items.push({
       key: "terminate",
       label: `🔒 ${t("终止+没收押金", "Terminate + Forfeit Deposit")}`,
@@ -261,7 +269,7 @@ export default function ContractActions({
     items.push({ key: "ic", label: `🪪 ${t("查看IC", "View IC")}`, color: "bg-violet-600", onClick: () => setIcUploading(true) });
     items.push({ key: "pdf", label: `📎 ${t("旧合同 PDF", "Legacy Contract PDF")}`, color: "bg-teal-600", onClick: () => setUploadingPdf(true) });
   }
-  if (role === "ADMIN" && c.status === "ACTIVE") {
+  if (role === "ADMIN" && c.status === "ACTIVE" && !c.renewedFromContractId) {
     items.push({ key: "movein", label: "📋 Move-in", color: "bg-cyan-600", onClick: () => setMoveForm(true) });
   }
   if (role === "ADMIN" && notClosed) {
@@ -314,6 +322,9 @@ export default function ContractActions({
           onClose={() => setPaying(false)}
           onChanged={onChanged}
         />
+      )}
+      {renewing && (
+        <RenewContractModal contractCode={c.contractCode} onClose={() => setRenewing(false)} onRenewed={onChanged} />
       )}
       <ConfirmDialog
         open={deleting}
@@ -399,9 +410,9 @@ export default function ContractActions({
         <div className="flex flex-wrap items-center gap-2">
           {primaryItems.map((i) => {
             const Icon = ITEM_ICONS[i.key] ?? IconCheck;
-            // 收款 sits on every card, so it stays quiet; the one-off steps (approve, sign,
-            // submit, terminate) are the ones that should catch the eye.
-            const tone = i.key === "pay" ? "bg-brand-light text-brand" : i.key === "terminate" ? "bg-rose-600 text-white" : "bg-brand text-white";
+            // 收款 and 续约 sit on every active card, so they stay quiet; the one-off steps
+            // (approve, sign, submit, terminate) are the ones that should catch the eye.
+            const tone = i.key === "pay" || i.key === "renew" ? "bg-brand-light text-brand" : i.key === "terminate" ? "bg-rose-600 text-white" : "bg-brand text-white";
             return i.href ? (
               <Link key={i.key} href={i.href} className={`${btn} ${tone}`}>
                 <Icon size={16} />

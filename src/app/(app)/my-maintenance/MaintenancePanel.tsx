@@ -6,7 +6,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, isPdfUrl } from "@/lib/format";
 import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface MaintenanceRow {
@@ -70,7 +70,7 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
 
   async function addPhoto(file: File) {
     if (isOversized(file)) {
-      toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
+      toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }
     if (photos.length >= 3) {
@@ -136,16 +136,25 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
           <div>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               onChange={(e) => e.target.files?.[0] && addPhoto(e.target.files[0])}
               className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark"
             />
             {photos.length > 0 && (
               <div className="mt-2 flex gap-2">
-                {photos.map((p, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={i} src={p} alt="" className="h-14 w-14 rounded-lg object-cover" />
-                ))}
+                {photos.map((p, i) =>
+                  isPdfUrl(p) ? (
+                    <div
+                      key={i}
+                      className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-semibold text-brand"
+                    >
+                      📄 PDF
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={i} src={p} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                  )
+                )}
               </div>
             )}
           </div>
@@ -174,16 +183,28 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
             </div>
             {r.photos.length > 0 && (
               <div className="mb-2 flex gap-2">
-                {r.photos.map((p, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={p}
-                    alt=""
-                    onClick={() => setZoomUrl(p)}
-                    className="h-14 w-14 cursor-pointer rounded-lg object-cover"
-                  />
-                ))}
+                {r.photos.map((p, i) =>
+                  isPdfUrl(p) ? (
+                    <a
+                      key={i}
+                      href={p}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-semibold text-brand hover:bg-gray-100"
+                    >
+                      📄 PDF
+                    </a>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={i}
+                      src={p}
+                      alt=""
+                      onClick={() => setZoomUrl(p)}
+                      className="h-14 w-14 cursor-pointer rounded-lg object-cover"
+                    />
+                  )
+                )}
               </div>
             )}
             <StepTimeline steps={buildSteps(r, locale, t)} />
