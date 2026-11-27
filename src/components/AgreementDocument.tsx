@@ -71,19 +71,60 @@ const DOC_STYLE = `
 .contractDoc table tr{page-break-inside:avoid;break-inside:avoid;}
 .contractDoc p{orphans:3;widows:3;}
 .contractDoc .np{text-align:center;color:#b0b0b0;font-size:10px;letter-spacing:2px;border-top:2px dashed #d0d7e2;margin:34px 0 0;padding-top:6px;}
-@media print{.contractDoc .np{display:none;}}
+@media print{.contractDoc .np{display:none;}.contractDoc .signBtn{display:none;}}
+@media (max-width:640px){.contractDoc .sigrow{flex-direction:column;gap:18px;}.contractDoc td.lbl{width:auto;}}
+.contractDoc .signBtn{display:inline-block;margin-left:4px;padding:10px 16px;border-radius:8px;border:2px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-family:system-ui,sans-serif;font-size:14px;font-weight:600;cursor:pointer;}
 `;
 
-function Sig({ name, ic, img, date, role }: { name: string; ic: string | null; img: string | null; date: string | null; role: string }) {
+/** The tenant's signature spots, in document order. Each must be tapped by the tenant
+ * themself in the click-to-sign flow (one drawn signature, placed spot by spot). */
+export const TENANT_SIGN_SPOTS = [
+  { id: "confirmation", label: "确认信 Letter of Confirmation" },
+  { id: "agreement", label: "租约 Tenancy Agreement" },
+  { id: "houseRules", label: "House Rules" },
+  { id: "particulars", label: "个人资料 Personal Particulars" },
+] as const;
+export type TenantSignSpot = (typeof TENANT_SIGN_SPOTS)[number]["id"];
+
+/** Present only while the tenant is signing on the agreement page. */
+export interface TenantSigning {
+  /** The drawn signature (data URL), or null if they haven't drawn one yet. */
+  signature: string | null;
+  /** Spot id → ISO time the tenant tapped it. */
+  placed: Partial<Record<TenantSignSpot, string>>;
+  onSpot: (spot: TenantSignSpot) => void;
+}
+
+function Sig({
+  name,
+  ic,
+  img,
+  date,
+  role,
+  onSign,
+  spotId,
+}: {
+  name: string;
+  ic: string | null;
+  img: string | null;
+  date: string | null;
+  role: string;
+  onSign?: () => void;
+  spotId?: string;
+}) {
   // The company itself (no real external Agent, nothing to actually sign) — see
   // COMPANY_AUTO_SIGNATURE. It's a sentinel, never a real uploaded image, so it must never be
   // handed to <img src>.
   const isCompanyAuto = img === COMPANY_AUTO_SIGNATURE;
   return (
-    <div className="sigbox">
-      <div style={{ marginBottom: img ? 6 : 26 }}>
+    <div className="sigbox" id={spotId ? `sign-${spotId}` : undefined}>
+      <div style={{ marginBottom: img || onSign ? 6 : 26 }}>
         Signature :{" "}
-        {isCompanyAuto ? (
+        {!img && onSign ? (
+          <button type="button" className="signBtn" onClick={onSign}>
+            ✍️ 点击签名 Tap to sign
+          </button>
+        ) : isCompanyAuto ? (
           <i>(Authorized — {COMPANY.NAME})</i>
         ) : img ? (
           <img src={img} alt="signature" style={{ maxHeight: 50 }} />
@@ -114,7 +155,27 @@ function Sig({ name, ic, img, date, role }: { name: string; ic: string | null; i
   );
 }
 
-export default function AgreementDocument({ c }: { c: AgreementContract }) {
+export default function AgreementDocument({
+  c,
+  signing,
+  showAppendix = true,
+}: {
+  c: AgreementContract;
+  signing?: TenantSigning;
+  /** The old 10-notice appendix. New contracts move it to 入住指南 (/my-guide) instead; only
+   * contracts the tenant already signed under the old flow (which included it) still show it. */
+  showAppendix?: boolean;
+}) {
+  // Tenant signature props for one spot — live click-to-sign while signing, stored image otherwise.
+  const tenantSig = (spot: TenantSignSpot) =>
+    signing
+      ? {
+          img: signing.placed[spot] ? signing.signature : null,
+          date: signing.placed[spot] ?? null,
+          onSign: () => signing.onSpot(spot),
+          spotId: spot,
+        }
+      : { img: c.tenantSignature, date: c.tenantSignDate };
   const utilItems = utilExcludedItems(c);
   const NP = <div className="np">— NEW PAGE 新的一页 —</div>;
   // Either the main room itself IS the carpark, or there's a separate linked carpark add-on.
@@ -220,7 +281,7 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
         </tbody>
       </table>
       <div className="sigrow">
-        <Sig name={c.tenantName} ic={c.tenantIc} img={c.tenantSignature} date={c.tenantSignDate} role="Tenant" />
+        <Sig name={c.tenantName} ic={c.tenantIc} role="Tenant" {...tenantSig("confirmation")} />
         <Sig name={c.agentName} ic={c.agentIc} img={c.agentSignature} date={c.agentSignDate} role="Negotiator" />
       </div>
 
@@ -347,7 +408,7 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
         </li>
       </ol>
       <div className="sigrow">
-        <Sig name={c.tenantName} ic={c.tenantIc} img={c.tenantSignature} date={c.tenantSignDate} role="Tenant" />
+        <Sig name={c.tenantName} ic={c.tenantIc} role="Tenant" {...tenantSig("agreement")} />
         <Sig name={c.agentName} ic={c.agentIc} img={c.agentSignature} date={c.agentSignDate} role="Negotiator" />
       </div>
       <p style={{ fontSize: 11 }}>
@@ -377,7 +438,7 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
         <i>I hereby agree as Tenant of the room and premise,</i>
       </p>
       <div className="sigrow">
-        <Sig name={c.tenantName} ic={c.tenantIc} img={c.tenantSignature} date={c.tenantSignDate} role="Tenant" />
+        <Sig name={c.tenantName} ic={c.tenantIc} role="Tenant" {...tenantSig("houseRules")} />
         <div />
       </div>
 
@@ -458,13 +519,15 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
         <ICBox label="背面 Back" url={c.icBack} />
       </div>
       <div className="sigrow">
-        <Sig name={c.tenantName} ic={c.tenantIc} img={c.tenantSignature} date={c.tenantSignDate} role="Tenant" />
+        <Sig name={c.tenantName} ic={c.tenantIc} role="Tenant" {...tenantSig("particulars")} />
         <Sig name={c.agentName} ic={c.agentIc} img={c.agentSignature} date={c.agentSignDate} role="Negotiator" />
       </div>
 
-      {NP}
+      {showAppendix && NP}
 
-      {/* ===== APPENDIX ===== */}
+      {/* ===== APPENDIX (legacy contracts only — new ones use 入住指南 /my-guide) ===== */}
+      {showAppendix && (
+        <>
       <h2 style={{ pageBreakBefore: "always" }}>APPENDIX — HOUSE RULES &amp; PROPERTY NOTICES</h2>
       <p>
         The following notices form an integral part of the House Rules of this Tenancy. By signing each section
@@ -503,6 +566,8 @@ export default function AgreementDocument({ c }: { c: AgreementContract }) {
           </div>
         </div>
       ))}
+        </>
+      )}
     </div>
   );
 }

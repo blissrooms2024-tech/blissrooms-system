@@ -9,6 +9,7 @@ import ChangePasswordModal from "./ChangePasswordModal";
 import LanguageToggle from "./LanguageToggle";
 import { useLanguage } from "./LanguageProvider";
 import LeaseExpiryReminder from "./LeaseExpiryReminder";
+import SupportButton from "./SupportContact";
 
 const MAINTENANCE_SEEN_KEY = "mtce_seen_resolved_at";
 
@@ -95,6 +96,7 @@ export default function AppShell({
       });
   }, [user.role, pathname]);
 
+  const isTenantView = user.role === "TENANT";
   const menu = MENUS[user.role] ?? [];
   const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT] : menu;
   const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料", labelEn: "👤 My Profile" }];
@@ -189,6 +191,7 @@ export default function AppShell({
       <div className="flex min-h-[calc(100vh-48px)]">
         <div className="hidden w-[190px] shrink-0 border-r border-gray-200 bg-white py-3.5 md:block">
           {sidebarLinks}
+          {!isTenantView && <SupportButton variant="inline" />}
         </div>
 
         {menuOpen && (
@@ -212,6 +215,7 @@ export default function AppShell({
                 <div>{ROLE_LABELS[user.role] ?? user.role}</div>
               </div>
               {sidebarLinks}
+              {!isTenantView && <SupportButton variant="inline" />}
               <div className="mt-3 space-y-2 border-t border-gray-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
                 <button
                   onClick={() => {
@@ -230,8 +234,10 @@ export default function AppShell({
           </div>
         )}
 
-        <div className="min-w-0 flex-1 overflow-x-auto p-3 sm:p-5">{children}</div>
+        <div className={`min-w-0 flex-1 overflow-x-auto p-3 sm:p-5 ${isTenantView ? "pb-24" : ""}`}>{children}</div>
       </div>
+      {/* Tenants get a floating 联系客服 button on every page; staff get it as a sidebar row. */}
+      {isTenantView && <SupportButton />}
 
       {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
     </div>

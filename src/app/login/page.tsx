@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
 import ForgotPasswordModal from "./ForgotPasswordModal";
+import { SupportList } from "@/components/SupportContact";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -94,6 +95,14 @@ export default function LoginPage() {
             {t("注册", "Sign Up")}
           </Link>
         </div>
+        <details className="mt-4 rounded-lg border border-gray-200 px-3 py-2 text-sm">
+          <summary className="cursor-pointer py-1 font-semibold text-gray-600">
+            🎧 {t("登录不了 / 需要帮忙？联系客服", "Can't log in / need help? Contact support")}
+          </summary>
+          <div className="mt-2">
+            <SupportList compact />
+          </div>
+        </details>
       </div>
 
       {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}

@@ -10,11 +10,15 @@ export default function SignatureModal({
   who,
   onClose,
   onSigned,
+  onCapture,
 }: {
   contractCode: string;
   who: "agent" | "tenant";
   onClose: () => void;
   onSigned: () => void;
+  /** Capture-only mode (tenant click-to-sign flow): hand the drawn PNG back instead of
+   * submitting it — the agreement page places it spot by spot and submits at the end. */
+  onCapture?: (dataUrl: string) => void;
 }) {
   const toast = useToast();
   const tt = useT();
@@ -98,6 +102,11 @@ export default function SignatureModal({
       return;
     }
     const dataUrl = canvasRef.current!.toDataURL("image/png");
+    if (onCapture) {
+      onCapture(dataUrl);
+      onClose();
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/contracts/${contractCode}/sign`, {
@@ -128,10 +137,15 @@ export default function SignatureModal({
         ✍️ {who === "agent" ? tt("Agent 签名", "Agent Signature") : tt("租客签名", "Tenant Signature")} — {contractCode}
       </h3>
       <p className="mt-1 text-sm text-gray-500">
-        {tt(
-          "在下面框里签名（手机用手指，电脑按住鼠标画）。签一次会自动套用到合同全部签名位。",
-          "Sign in the box below (finger on mobile, mouse on desktop). One signature is automatically applied to every signature spot on the contract."
-        )}
+        {onCapture
+          ? tt(
+              "在下面框里签名（手机用手指，电脑按住鼠标画）。签好后，合同里每个签名位都要你自己点一下才会签上。",
+              "Sign in the box below (finger on mobile, mouse on desktop). After that, tap each signature spot in the agreement yourself to place it."
+            )
+          : tt(
+              "在下面框里签名（手机用手指，电脑按住鼠标画）。签一次会自动套用到合同全部签名位。",
+              "Sign in the box below (finger on mobile, mouse on desktop). One signature is automatically applied to every signature spot on the contract."
+            )}
       </p>
       <canvas
         ref={canvasRef}
@@ -144,7 +158,7 @@ export default function SignatureModal({
           {tt("清除重签", "Clear & Redo")}
         </button>
         <button onClick={submit} disabled={loading} className="btn-primary flex-1 sm:flex-none">
-          {tt("确定签名", "Confirm Signature")}
+          {onCapture ? tt("用这个签名", "Use This Signature") : tt("确定签名", "Confirm Signature")}
         </button>
       </div>
     </Modal>

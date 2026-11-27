@@ -6,7 +6,6 @@ import { RULES, contractStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
-import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import TenantInfoEditModal from "./TenantInfoEditModal";
 import WarningLettersModal from "./WarningLettersModal";
@@ -59,7 +58,6 @@ export default function MyTenancyClient() {
   const { locale, t } = useLanguage();
   const [cards, setCards] = useState<Card[] | null>(null);
   const [error, setError] = useState("");
-  const [signing, setSigning] = useState<string | null>(null);
   const [icUploading, setIcUploading] = useState<string | null>(null);
   const [editingInfo, setEditingInfo] = useState<Card | null>(null);
   const [viewingLetters, setViewingLetters] = useState<string | null>(null);
@@ -374,9 +372,9 @@ export default function MyTenancyClient() {
                 }
                 action={
                   canSign && (
-                    <button onClick={() => setSigning(c.contractCode)} className="btn-primary px-3.5 py-2.5 text-xs sm:py-1.5">
-                      {t("签名", "Sign")}
-                    </button>
+                    <Link href={`/agreement/${c.contractCode}?sign=1`} className="btn-primary px-3.5 py-2.5 text-xs sm:py-1.5">
+                      {t("阅读并签名", "Read & Sign")}
+                    </Link>
                   )
                 }
               />
@@ -430,9 +428,6 @@ export default function MyTenancyClient() {
         );
       })}
 
-      {signing && (
-        <SignatureModal contractCode={signing} who="tenant" onClose={() => setSigning(null)} onSigned={load} />
-      )}
       {icUploading && (
         <ICUploadModal contractCode={icUploading} onClose={() => setIcUploading(null)} onUploaded={load} />
       )}
