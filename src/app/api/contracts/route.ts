@@ -6,6 +6,7 @@ import { serialize } from "@/lib/serialize";
 import { contractFormSchema } from "@/lib/schemas/contract";
 import { RULES, COMPANY } from "@/lib/config";
 import { notifyTenantBillCreated } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -35,7 +36,7 @@ export async function GET() {
   return NextResponse.json({ success: true, contracts: list });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || (user.role !== "AGENT" && user.role !== "ADMIN")) {
     return NextResponse.json({ success: false, message: "只有 Agent 或 Admin 可建合同" }, { status: 403 });
@@ -216,3 +217,5 @@ export async function POST(req: NextRequest) {
     id: contract.contractCode,
   });
 }
+
+export const POST = withActivity(handlePOST);

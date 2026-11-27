@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
+import { withActivity } from "@/lib/activity";
 
 const SETTLE_TYPES = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "RENTAL", "CARPARK"] as const;
 
@@ -12,7 +13,7 @@ const SETTLE_TYPES = ["DEPOSIT", "UTILITIES", "ADMIN_FEE", "ACCESS_CARD", "RENTA
  * whatever's already status=Paid), so an item that's already been fixed contributes 0 and
  * nothing is double-created. Only touches legacy contracts (ACTIVE, never digitally signed by
  * either side) — a real new contract's deposit stays genuinely collectible. */
-export async function POST() {
+async function handlePOST() {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以执行这个操作" }, { status: 403 });
@@ -85,3 +86,5 @@ export async function POST() {
     details,
   });
 }
+
+export const POST = withActivity(handlePOST);

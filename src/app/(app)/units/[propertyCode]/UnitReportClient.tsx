@@ -7,6 +7,7 @@ import {
   PAYMENT_TYPE_LABELS,
   paymentTypeLabelLocale,
   expenseCategoryLabelLocale,
+  MANUAL_EXPENSE_CATEGORIES,
   isDepositLiabilityType,
 } from "@/lib/config";
 import { fmtMoney, fmtDate } from "@/lib/format";
@@ -59,7 +60,7 @@ interface Report {
   netProfit: number | null;
 }
 
-const EXPENSE_CATEGORIES = ["WATER", "ELECTRIC", "WIFI", "CLEANING", "MAINTENANCE", "OTHER"] as const;
+const EXPENSE_CATEGORIES = MANUAL_EXPENSE_CATEGORIES;
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);

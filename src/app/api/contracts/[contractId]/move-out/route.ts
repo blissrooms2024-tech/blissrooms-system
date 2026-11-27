@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 /** Admin manually ends a contract because the tenant moved out early (for whatever reason,
  * well before expiredDate) — sets it MOVED_OUT and frees the room immediately, same as
@@ -8,7 +9,7 @@ import { getCurrentUser } from "@/lib/auth/session";
  * since this isn't a punitive termination. Also disables the tenant's own login, the same way
  * the daily lease-expiry check does — but only if they're a pure Tenant (not an Agent who
  * happens to be the tenant on their own contract) with no other ACTIVE contract elsewhere. */
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -60,3 +61,5 @@ export async function POST(
     message: `✅ 合同已标记搬出, 房间已放回空房${tenantDisabled ? ", 租客账号已停用" : ""}`,
   });
 }
+
+export const POST = withActivity(handlePOST);

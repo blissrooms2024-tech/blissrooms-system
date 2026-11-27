@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { COMPANY, COMPANY_AUTO_SIGNATURE } from "@/lib/config";
+import { withActivity } from "@/lib/activity";
 
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -43,3 +44,5 @@ export async function POST(
     message: isCompanyAgent ? "✅ 已批准, Agent 是公司本身, 已自动完成, 现在等租客签名" : "✅ 已批准, 现在可以签名了",
   });
 }
+
+export const POST = withActivity(handlePOST);

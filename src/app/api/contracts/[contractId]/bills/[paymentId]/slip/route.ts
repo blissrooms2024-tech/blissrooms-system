@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
 import { notifyAdminsSlipUploaded } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({ dataUrl: z.string().min(1) });
 
 /** Tenant uploads a payment slip against a bill Admin issued. Allowed while the bill is
  * PENDING (first upload) or REJECTED (re-upload after Admin rejected the previous slip). */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string; paymentId: string }> }
 ) {
@@ -58,6 +59,7 @@ export async function POST(
         type: payment.type,
         amountDue: Number(payment.amountDue),
         amountPaid: Number(payment.amountDue),
+        periodMonth: payment.periodMonth,
       },
       c.tenantName,
       user.name
@@ -71,3 +73,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withActivity(handlePOST);

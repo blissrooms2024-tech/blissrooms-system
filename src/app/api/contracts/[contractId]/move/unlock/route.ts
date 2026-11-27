@@ -3,11 +3,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { MoveType } from "@/generated/prisma/enums";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({ type: z.enum(["MoveIn", "MoveOut"]) });
 
 /** Admin reopens a tenant-submitted Move-in/Move-out form for editing. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -36,3 +37,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 已允许租客重新修改这张表单" });
 }
+
+export const POST = withActivity(handlePOST);

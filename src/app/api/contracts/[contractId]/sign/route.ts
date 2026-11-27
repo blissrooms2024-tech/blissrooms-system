@@ -3,13 +3,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   who: z.enum(["agent", "tenant"]),
   dataUrl: z.string().min(1),
 });
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -101,3 +102,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message, signUrl });
 }
+
+export const POST = withActivity(handlePOST);

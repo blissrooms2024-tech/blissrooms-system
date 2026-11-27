@@ -12,11 +12,13 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "没有权限" }, { status: 403 });
   }
 
-  const [pendingApprove, pendingReview, pendingUsers] = await Promise.all([
+  const [pendingApprove, pendingReview, pendingUsers, pendingClaims] = await Promise.all([
     prisma.contract.count({ where: { status: "PENDING_APPROVE" } }),
     prisma.payment.count({ where: { status: "PENDING_REVIEW" } }),
     prisma.user.count({ where: { status: "PENDING" } }),
+    // Claims this reviewer can act on: waiting for approval or for pay-back, excluding their own.
+    prisma.expenseClaim.count({ where: { status: { in: ["PENDING", "APPROVED"] }, submittedById: { not: user.sub } } }),
   ]);
 
-  return NextResponse.json({ success: true, pendingApprove, pendingReview, pendingUsers });
+  return NextResponse.json({ success: true, pendingApprove, pendingReview, pendingUsers, pendingClaims });
 }

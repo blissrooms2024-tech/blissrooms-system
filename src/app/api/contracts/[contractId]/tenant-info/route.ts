@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 // Personal-info fields the tenant may correct themselves, regardless of contract status —
 // rental amounts, dates, and the tenant identity itself stay Admin-only (edited via the
@@ -18,7 +19,7 @@ const schema = z.object({
   emergencyRelationship: z.string().trim().optional().default(""),
 });
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -56,3 +57,5 @@ export async function PATCH(
 
   return NextResponse.json({ success: true, message: "✅ 资料已更新" });
 }
+
+export const PATCH = withActivity(handlePATCH);

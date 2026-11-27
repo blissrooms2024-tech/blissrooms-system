@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { COMPANY } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface AcPayment {
   id: string;
@@ -18,18 +19,11 @@ interface AcPayment {
   paidDate: string | null;
   receiptLink: string | null;
   reviewNote: string | null;
+  periodMonth: string | null;
 }
 
 function monthOf(v: string | null, t: (zh: string, en: string) => string) {
   return v ? v.slice(0, 7) : t("未知月份", "Unknown month");
-}
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 const AC_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
@@ -80,7 +74,8 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
       return;
     }
     setHasAircon(!!data.contract?.room?.hasAircon);
-    setPayments((data.payments as AcPayment[]).filter((p) => p.type === "AC"));
+    // Only prepaid top-ups; metered aircon bills (with a billing month) are on the bills page.
+    setPayments((data.payments as AcPayment[]).filter((p) => p.type === "AC" && !p.periodMonth));
   }, [contractCode, toast]);
 
   useEffect(() => {
@@ -99,7 +94,7 @@ export default function AcTopupPanel({ contractCode }: { contractCode: string })
       toast.warning(t("请上传转账证明", "Please upload proof of transfer"));
       return;
     }
-    if (topupFile.size > 3 * 1024 * 1024) {
+    if (isOversized(topupFile)) {
       toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }

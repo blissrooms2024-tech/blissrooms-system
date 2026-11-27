@@ -6,6 +6,7 @@ import { MOVE_ITEMS, CARPARK_MOVE_ITEMS } from "@/lib/moveItems";
 import { RULES } from "@/lib/config";
 import { newId } from "@/lib/id";
 import type { MoveType } from "@/generated/prisma/enums";
+import { withActivity } from "@/lib/activity";
 
 function typeToEnum(t: string | null): MoveType {
   return t === "MoveOut" ? "MOVE_OUT" : "MOVE_IN";
@@ -131,7 +132,7 @@ interface MovePayload {
   remarks: Record<string, string>;
 }
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -228,3 +229,5 @@ export async function POST(
     message: `✅ ${type === "MOVE_IN" ? "Move-in" : "Move-out"} 表单已提交`,
   });
 }
+
+export const POST = withActivity(handlePOST);

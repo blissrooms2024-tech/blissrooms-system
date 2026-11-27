@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import BreakdownPayAllModal from "./BreakdownPayAllModal";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface BreakdownRow {
   item: string;
@@ -30,16 +31,12 @@ interface PaymentRow {
   reviewNote: string | null;
   periodMonth: string | null;
   customLabel: string | null;
+  notes?: string | null;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+/** Metered usage bills (抄表开单) carry a note explaining how the amount was worked out. */
+const usageNote = (b: PaymentRow) => (["ELECTRIC", "DRYER", "AC"].includes(b.type) && b.periodMonth && b.notes ? b.notes : null);
+
 
 const BILL_FLOW = ["PENDING", "PENDING_REVIEW", "Paid"];
 
@@ -81,7 +78,9 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
       return;
     }
     // AC top-ups live on their own 冷气充值 page now, not here.
-    setPayments((data.payments as PaymentRow[]).filter((p) => p.type !== "AC"));
+    // Prepaid aircon top-ups (no billing month) live on the aircon page; metered aircon bills
+    // from 抄表开单 carry a month and are paid here like any other bill.
+    setPayments((data.payments as PaymentRow[]).filter((p) => !(p.type === "AC" && !p.periodMonth)));
     setBreakdown(data.breakdown ?? []);
     setTotals({ due: data.totalDue, paid: data.totalPaid, outstanding: data.totalOutstanding });
   }, [contractCode, toast]);
@@ -93,7 +92,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
   }, [load]);
 
   async function uploadSlip(paymentId: string, file: File) {
-    if (file.size > 3 * 1024 * 1024) {
+    if (isOversized(file)) {
       toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }
@@ -202,6 +201,7 @@ export default function BillsPanel({ contractCode }: { contractCode: string }) {
                       <b className="text-sm">{paymentTypeLabelLocale(b.type, b.customLabel, locale)}</b>{" "}
                       <span className="text-sm text-gray-600">{fmt(b.amountDue)}</span>
                       {b.periodMonth && <span className="ml-1.5 text-xs text-gray-400">({b.periodMonth})</span>}
+                      {usageNote(b) && <div className="text-xs text-gray-500">{usageNote(b)}</div>}
                       <div className="text-xs text-gray-500">
                         {t("到期日", "Due Date")}: {fmtDate(b.dueDate)}
                       </div>
