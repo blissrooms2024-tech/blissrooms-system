@@ -10,6 +10,22 @@ interface Box {
   href?: string;
 }
 
+export interface TodoItem {
+  key: string;
+  count: number;
+  label: string;
+  labelEn: string;
+  sub?: string;
+  subEn?: string;
+  href: string;
+  tone: "red" | "amber";
+}
+
+const TONE = {
+  red: { num: "text-red-600", bar: "border-red-500" },
+  amber: { num: "text-amber-600", bar: "border-amber-400" },
+};
+
 interface LeaderboardRow {
   userCode: string;
   name: string;
@@ -18,11 +34,13 @@ interface LeaderboardRow {
 }
 
 export default function DashboardClient({
+  todos,
   revBoxes,
   roomBoxes,
   carparkBoxes,
   leaderboard,
 }: {
+  todos: TodoItem[];
   revBoxes: Box[];
   roomBoxes: Box[];
   carparkBoxes: Box[];
@@ -33,6 +51,36 @@ export default function DashboardClient({
 
   return (
     <div className="space-y-4">
+      <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+        <h3 className="mb-3 text-base font-semibold text-brand">✅ {t("今日待办", "Today's To-Do")}</h3>
+        {todos.length === 0 ? (
+          <div className="rounded-lg bg-gray-50 py-4 text-center text-sm text-gray-500">
+            {t("今天没有待办，全部处理完了 👍", "Nothing waiting — all caught up 👍")}
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {todos.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={`flex min-h-[52px] items-center gap-3 rounded-lg border-l-4 bg-gray-50 px-3 py-2.5 transition hover:bg-brand-light ${TONE[item.tone].bar}`}
+              >
+                <span className={`min-w-[2ch] text-2xl font-bold leading-none ${TONE[item.tone].num}`}>{item.count}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm text-gray-800">{locale === "en" ? item.labelEn : item.label}</span>
+                  {item.sub && (
+                    <span className="block text-xs text-gray-500">{locale === "en" ? item.subEn : item.sub}</span>
+                  )}
+                </span>
+                <span className="text-gray-400" aria-hidden>
+                  ›
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <h3 className="mb-3.5 text-base font-semibold text-brand">💰 {t("营业额", "Revenue")}</h3>
         <div className="flex flex-wrap gap-3.5">
