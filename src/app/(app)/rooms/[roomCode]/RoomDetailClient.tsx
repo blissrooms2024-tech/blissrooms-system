@@ -4,9 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
-import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel } from "@/lib/config";
+import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel, contractStatusTone } from "@/lib/config";
+import { PILL } from "@/components/Pill";
 import { fmtDate, isPdfUrl } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import UnitNotes from "@/components/UnitNotes";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface RoomDetail {
   roomCode: string;
@@ -26,14 +29,6 @@ interface RoomDetail {
   currentTenant: { name: string; email: string; phone: string | null } | null;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 interface ContractRow {
   contractCode: string;
   tenantName: string;
@@ -75,7 +70,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
   }, [load]);
 
   async function uploadPhoto(file: File) {
-    if (file.size > 3 * 1024 * 1024) {
+    if (isOversized(file)) {
       toast.warning(t("文件太大(超过3MB)，请压缩", "File is too large (over 3MB) — please compress it"));
       return;
     }
@@ -122,6 +117,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
+      {room.propertyCode && <UnitNotes propertyCode={room.propertyCode} variant="compact" />}
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex items-center justify-between">
           <h3 className="text-base font-semibold text-brand">
@@ -260,7 +256,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
                     </div>
                   )}
                 </div>
-                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${PILL[contractStatusTone(c.status)]}`}>
                   {contractStatusLabel(c.status, locale) ?? c.status}
                 </span>
               </div>

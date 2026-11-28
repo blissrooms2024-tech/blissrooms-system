@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ROOM_STATUS_BADGE, roomStatusLabel } from "@/lib/config";
 import { fmtMoney } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import UnitNotes from "@/components/UnitNotes";
 
 interface RoomRow {
   roomCode: string;
@@ -82,9 +83,7 @@ export default function UnitDetailClient({ propertyCode }: { propertyCode: strin
         <Info label={t("状态", "Status")}>{property.status || "-"}</Info>
       </div>
 
-      {property.notes && (
-        <div className="mt-3.5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">📝 {property.notes}</div>
-      )}
+      <UnitNotes propertyCode={property.propertyCode} variant="embedded" />
 
       <div className="mt-4 border-t border-gray-100 pt-3.5">
         <h4 className="mb-2.5 text-sm font-semibold text-brand">

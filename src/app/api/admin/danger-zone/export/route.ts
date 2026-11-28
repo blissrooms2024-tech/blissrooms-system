@@ -11,7 +11,7 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "只有 Admin 可以看" }, { status: 403 });
   }
 
-  const [users, properties, rooms, contracts, payments, commissions, moveForms, maintenance, warningLetters, logs] =
+  const [users, properties, rooms, contracts, payments, commissions, moveForms, maintenance, warningLetters, logs, expenses, claims, vouchers, unitInfo, accessCards, utilityAccounts, activity, meters, meterReadings, utilityExemptions, utilityRuns, utilityCredits, meetings, todos, buildings, propertyNotes, settings] =
     await Promise.all([
       prisma.user.findMany({ where: { role: { not: "ADMIN" } } }),
       prisma.property.findMany(),
@@ -23,6 +23,23 @@ export async function GET() {
       prisma.maintenanceRequest.findMany(),
       prisma.warningLetter.findMany(),
       prisma.log.findMany(),
+      prisma.expense.findMany(),
+      prisma.expenseClaim.findMany(),
+      prisma.voucher.findMany(),
+      prisma.propertyInfo.findMany(),
+      prisma.accessCard.findMany(),
+      prisma.utilityAccount.findMany(),
+      prisma.activityLog.findMany({ orderBy: { createdAt: "asc" } }),
+      prisma.utilityMeter.findMany(),
+      prisma.meterReading.findMany(),
+      prisma.utilityExemption.findMany(),
+      prisma.utilityBillRun.findMany(),
+      prisma.utilityCredit.findMany(),
+      prisma.meeting.findMany({ include: { attendees: true, notes: true, issues: true } }),
+      prisma.todo.findMany(),
+      prisma.building.findMany(),
+      prisma.propertyNote.findMany(),
+      prisma.appSetting.findMany(),
     ]);
 
   return NextResponse.json(
@@ -38,6 +55,23 @@ export async function GET() {
       maintenance,
       warningLetters,
       logs,
+      expenses,
+      claims,
+      vouchers,
+      unitInfo,
+      accessCards,
+      utilityAccounts,
+      activity,
+      meters,
+      meterReadings,
+      utilityExemptions,
+      utilityRuns,
+      utilityCredits,
+      meetings,
+      todos,
+      buildings,
+      propertyNotes,
+      settings,
     })
   );
 }

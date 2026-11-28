@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { allocateLumpSum, allocationMessage } from "@/lib/allocatePayment";
+import { withActivity } from "@/lib/activity";
 
 /** Redeem a voucher — the tenant it belongs to, or Admin on their behalf. This is the ONLY
  * point where a voucher touches money: spends exactly like cash against whatever the contract
@@ -11,7 +12,7 @@ import { allocateLumpSum, allocationMessage } from "@/lib/allocatePayment";
  * full voucher amount as a VOUCHER-category Expense against the room's property — right here,
  * at redemption, not when the voucher was issued, because a voucher that instead expires
  * unused never costs the company anything and should never have been booked at all. */
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ voucherId: string }> }
 ) {
@@ -86,3 +87,5 @@ export async function POST(
     message: `✅ 代金券已兑换: RM${Number(voucher.amount).toFixed(2)} | ${allocationMessage(result)}`,
   });
 }
+
+export const POST = withActivity(handlePOST);

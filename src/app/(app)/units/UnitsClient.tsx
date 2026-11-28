@@ -20,6 +20,9 @@ interface PropertyRow {
   status: string | null;
   notes: string | null;
   roomCount: number;
+  /** The condo / apartment it's in, and how many 注意事项 it shows (its own + the building's). */
+  building: string | null;
+  noteCount: number;
   carparkCount: number;
 }
 
@@ -115,6 +118,7 @@ export default function UnitsClient({ role }: { role: string }) {
       return (
         p.propertyCode.toLowerCase().includes(q) ||
         p.name.toLowerCase().includes(q) ||
+        (p.building ?? "").toLowerCase().includes(q) ||
         (p.landlord ?? "").toLowerCase().includes(q)
       );
     }) ?? [];
@@ -175,6 +179,12 @@ export default function UnitsClient({ role }: { role: string }) {
                       {p.propertyCode}
                     </Link>
                     <div className="text-sm text-gray-700">{p.name}</div>
+                    {p.building && p.building !== p.name && <div className="text-xs text-gray-400">{p.building}</div>}
+                    {p.noteCount > 0 && (
+                      <Link href={`/units/${p.propertyCode}`} className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                        ⚠ {t(`${p.noteCount} 条注意事项`, `${p.noteCount} to keep in mind`)}
+                      </Link>
+                    )}
                   </div>
                   <div className="shrink-0 text-right text-xs text-gray-500">
                     <div>
@@ -265,7 +275,11 @@ export default function UnitsClient({ role }: { role: string }) {
                         {p.propertyCode}
                       </Link>
                     </Td>
-                    <Td>{p.name}</Td>
+                    <Td>
+                      {p.name}
+                      {p.building && p.building !== p.name && <div className="text-xs text-gray-400">{p.building}</div>}
+                      {p.noteCount > 0 && <div className="text-[11px] font-medium text-amber-700">⚠ {t(`${p.noteCount} 条注意事项`, `${p.noteCount} to keep in mind`)}</div>}
+                    </Td>
                     <Td>{p.roomCount}</Td>
                     <Td>{p.carparkCount}</Td>
                     <Td>

@@ -12,6 +12,7 @@ import TenantInfoEditModal from "./TenantInfoEditModal";
 import WarningLettersModal from "./WarningLettersModal";
 import StepTimeline from "@/components/StepTimeline";
 import { buildContractSteps } from "@/lib/contractSteps";
+import TenantWifiCard from "@/components/TenantWifiCard";
 
 interface Card {
   contractCode: string;
@@ -157,6 +158,7 @@ export default function MyTenancyClient() {
 
   return (
     <div className="space-y-5">
+      <TenantWifiCard />
       {cards.map((c) => {
         const icDone = c.hasICFront && c.hasICBack;
         const canSign = c.agentSigned && (c.isRenewal || icDone) && !c.tenantSigned;

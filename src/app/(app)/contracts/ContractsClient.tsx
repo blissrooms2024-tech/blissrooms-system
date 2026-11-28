@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { contractStatusLabel } from "@/lib/config";
+import { contractStatusLabel, contractStatusTone } from "@/lib/config";
+import { PILL } from "@/components/Pill";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/Toast";
 import ContractActions, { type ActionableContract } from "./ContractActions";
 
-interface Contract extends ActionableContract {
+export interface Contract extends ActionableContract {
   roomCode?: string;
   expiredDate: string | null;
   remarks: string | null;
@@ -22,7 +23,7 @@ interface Contract extends ActionableContract {
   room?: { roomCode: string };
 }
 
-const NOT_SIGNED_STATUSES = ["DRAFT", "PENDING_APPROVE", "PENDING_SIGN"];
+export const NOT_SIGNED_STATUSES = ["DRAFT", "PENDING_APPROVE", "PENDING_SIGN"];
 
 
 export default function ContractsClient({ role }: { role: string }) {
@@ -259,7 +260,7 @@ export default function ContractsClient({ role }: { role: string }) {
   );
 }
 
-function ContractsTable({
+export function ContractsTable({
   contracts,
   role,
   locale,
@@ -340,7 +341,7 @@ function ContractsTable({
                     ⛔ {t("已过期", "Expired")}
                   </span>
                 ) : (
-                  <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${PILL[contractStatusTone(c.status)]}`}>
                     {contractStatusLabel(c.status, locale)}
                   </span>
                 )}

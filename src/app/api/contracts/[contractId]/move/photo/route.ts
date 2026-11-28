@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   itemKey: z.string().min(1),
   dataUrl: z.string().min(1),
 });
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -34,3 +35,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withActivity(handlePOST);
