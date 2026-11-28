@@ -62,7 +62,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ cla
           amount: claim.amount,
           periodMonth: claim.periodMonth,
           expenseDate: claim.expenseDate,
-          notes: [`报销 ${claim.claimCode} · ${claim.submittedByName}`, claim.notes].filter(Boolean).join(" — "),
+          notes: [`报销 ${claim.claimCode} · ${claim.submittedByName}`, claim.merchant, claim.notes].filter(Boolean).join(" — "),
           recordedBy: user.name,
         },
       });

@@ -572,6 +572,13 @@ model ExpenseClaim {
   notes           String?
   /// Receipt photos / PDFs (Vercel Blob URLs via /api/blob).
   receipts        String[]        @default([])
+  /// Shop / company / person paid, as on the receipt (read off the photo, staff can correct it).
+  merchant        String?
+  /// Receipt / invoice / bill number on the receipt — spots the same receipt claimed twice.
+  receiptNo       String?
+  /// The total the receipt photo shows, as read when the claim was made. Never edited, so a
+  /// reviewer can see when the claimed amount differs from the receipt. Null = not read.
+  receiptAmount   Decimal?        @db.Decimal(10, 2)
   status          ClaimStatus     @default(PENDING)
   reviewedById    String?
   reviewedByName  String?
@@ -591,6 +598,7 @@ model ExpenseClaim {
   @@index([status])
   @@index([submittedById])
   @@index([propertyId])
+  @@index([receiptNo])
 }
 
 model WarningLetter {

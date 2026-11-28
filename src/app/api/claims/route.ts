@@ -13,6 +13,7 @@ import {
   MAX_RECEIPTS_PER_CLAIM,
 } from "@/lib/claims";
 import { withActivity } from "@/lib/activity";
+import { amountFromToken, findSameReceipt, receiptReaderOn } from "@/lib/receiptReader";
 
 const claimInclude = {
   property: { select: { propertyCode: true, name: true } },
@@ -54,7 +55,13 @@ export async function GET(req: NextRequest) {
     }),
     prisma.property.findMany({
       where: { OR: [{ status: null }, { status: { not: "Inactive" } }] },
-      select: { propertyCode: true, name: true, rooms: { select: { roomCode: true }, orderBy: { roomCode: "asc" } } },
+      select: {
+        propertyCode: true,
+        name: true,
+        building: { select: { name: true } },
+        info: { select: { unitNo: true } },
+        rooms: { select: { roomCode: true }, orderBy: { roomCode: "asc" } },
+      },
       orderBy: { propertyCode: "asc" },
     }),
     canReviewClaims(user)
@@ -70,6 +77,8 @@ export async function GET(req: NextRequest) {
     me: user.sub,
     canSubmit: canSubmitClaims(user),
     canReview: canReviewClaims(user),
+    // The form reads receipt photos for you (ANTHROPIC_API_KEY set).
+    canRead: canSubmitClaims(user) && receiptReaderOn(),
     claims: serialize(
       claims.map((c) => ({
         claimCode: c.claimCode,
@@ -86,6 +95,9 @@ export async function GET(req: NextRequest) {
         periodMonth: c.periodMonth,
         notes: c.notes,
         receipts: c.receipts,
+        merchant: c.merchant,
+        receiptNo: c.receiptNo,
+        receiptAmount: c.receiptAmount,
         reviewedByName: c.reviewedByName,
         reviewedAt: c.reviewedAt,
         rejectReason: c.rejectReason,
@@ -97,7 +109,8 @@ export async function GET(req: NextRequest) {
         createdAt: c.createdAt,
       }))
     ),
-    properties,
+    // The form picks a condo first, then the unit number in it.
+    properties: properties.map(({ building, info, ...p }) => ({ ...p, building: building?.name ?? null, unitNo: info?.unitNo ?? null })),
     summary,
   });
 }
@@ -112,6 +125,13 @@ const schema = z.object({
   expenseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   notes: z.string().trim().max(500).optional().default(""),
   receipts: z.array(z.string().min(1)).min(1).max(MAX_RECEIPTS_PER_CLAIM),
+  /** As read off the receipt (staff can correct them). */
+  merchant: z.string().trim().max(80).optional().default(""),
+  receiptNo: z.string().trim().max(40).optional().default(""),
+  /** From /api/claims/read: carries the total the photos were read as. */
+  readToken: z.string().max(2000).optional().default(""),
+  /** The person saw the "already claimed?" warning and is sure. */
+  allowDuplicate: z.boolean().optional().default(false),
 });
 
 async function handlePOST(req: NextRequest) {
@@ -157,6 +177,18 @@ async function handlePOST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "选房间前要先选单位" }, { status: 400 });
   }
 
+  // The same receipt claimed twice (same receipt no., or same shop, day and amount): ask first.
+  if (!d.allowDuplicate) {
+    const sameAs = await findSameReceipt({ merchant: d.merchant || null, receiptNo: d.receiptNo || null, amount: d.amount, date: d.expenseDate });
+    if (sameAs.length) {
+      return NextResponse.json(
+        { success: false, sameAs, message: `这张单据好像已经报过：${sameAs.map((c) => c.claimCode).join("、")}` },
+        { status: 409 }
+      );
+    }
+  }
+  const receiptAmount = d.readToken ? await amountFromToken(d.readToken, user.sub, d.receipts) : null;
+
   const claimCode = await newId("CL");
   await prisma.expenseClaim.create({
     data: {
@@ -172,6 +204,9 @@ async function handlePOST(req: NextRequest) {
       periodMonth: d.expenseDate.slice(0, 7),
       notes: d.notes || null,
       receipts: d.receipts,
+      merchant: d.merchant || null,
+      receiptNo: d.receiptNo || null,
+      receiptAmount,
     },
   });
 

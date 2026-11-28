@@ -7,8 +7,11 @@ import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { fmtDate, fmtMoney } from "@/lib/format";
-import { expenseCategoryLabelLocale, MANUAL_EXPENSE_CATEGORIES, type ManualExpenseCategory } from "@/lib/config";
-import { readAsDataURL, isOversized } from "@/lib/imageUpload";
+import { expenseCategoryLabelLocale } from "@/lib/config";
+import { isOversized } from "@/lib/imageUpload";
+import { FileThumb, isPdfUrl, todayStr, uploadClaimFile } from "./claimFiles";
+import NewClaimSheet, { type ClaimUnit } from "./NewClaimSheet";
+import { sameReceipt } from "@/lib/receiptMatch";
 
 type ClaimStatus = "PENDING" | "APPROVED" | "REJECTED" | "PAID";
 
@@ -27,6 +30,9 @@ interface Claim {
   periodMonth: string;
   notes: string | null;
   receipts: string[];
+  merchant: string | null;
+  receiptNo: string | null;
+  receiptAmount: number | null;
   reviewedByName: string | null;
   reviewedAt: string | null;
   rejectReason: string | null;
@@ -38,40 +44,7 @@ interface Claim {
   createdAt: string;
 }
 
-interface PropertyOption {
-  propertyCode: string;
-  name: string;
-  rooms: { roomCode: string }[];
-}
-
 type Tab = "review" | "topay" | "all" | "mine";
-
-const COMPANY = "__COMPANY__";
-const MAX_RECEIPTS = 6;
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
-function isPdfUrl(url: string) {
-  try {
-    return /\.pdf($|[^a-z])/i.test(decodeURIComponent(url));
-  } catch {
-    return /\.pdf/i.test(url);
-  }
-}
-
-async function uploadFile(file: File): Promise<string> {
-  const dataUrl = await readAsDataURL(file);
-  const res = await fetch("/api/claims/receipt", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dataUrl }),
-  });
-  const data = await res.json().catch(() => ({ success: false, message: "上传失败" }));
-  if (!data.success) throw new Error(data.message || "上传失败");
-  return data.url as string;
-}
 
 function StatusBadge({ status }: { status: ClaimStatus }) {
   const { t } = useLanguage();
@@ -85,27 +58,6 @@ function StatusBadge({ status }: { status: ClaimStatus }) {
   return <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${m.cls}`}>{m.label}</span>;
 }
 
-function FileThumb({ url, onView }: { url: string; onView: (u: string) => void }) {
-  if (isPdfUrl(url)) {
-    return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        className="flex h-16 w-16 flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600"
-      >
-        <span className="text-2xl">📄</span>PDF
-      </a>
-    );
-  }
-  return (
-    <button type="button" onClick={() => onView(url)} className="h-16 w-16 overflow-hidden rounded-lg border border-gray-200">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="" className="h-full w-full object-cover" />
-    </button>
-  );
-}
-
 export default function ClaimsClient({ role, openNew = false }: { role: string; openNew?: boolean }) {
   const { t, locale } = useLanguage();
   const toast = useToast();
@@ -116,32 +68,19 @@ export default function ClaimsClient({ role, openNew = false }: { role: string; 
   const [canReview, setCanReview] = useState(false);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [mine, setMine] = useState<Claim[]>([]);
-  const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [properties, setProperties] = useState<ClaimUnit[]>([]);
+  const [canRead, setCanRead] = useState(false);
   const [summary, setSummary] = useState<Record<string, { count: number; amount: number }>>({});
   const [tab, setTab] = useState<Tab>(role === "WORKER" ? "mine" : "review");
   const [search, setSearch] = useState("");
   const [viewing, setViewing] = useState<string | null>(null);
 
-  // submit form
-  const emptyForm = {
-    propertyCode: "",
-    roomCode: "",
-    category: "MAINTENANCE" as ManualExpenseCategory,
-    customLabel: "",
-    amount: "",
-    expenseDate: todayStr(),
-    notes: "",
-  };
   // /claims?new=1 (the home page's "+" → 提交报销) opens the form straight away.
   const [showForm, setShowForm] = useState(openNew && (role === "ADMIN" || role === "WORKER"));
   useEffect(() => {
     // Drop ?new=1 so a refresh or Back doesn't pop the form open again.
     if (openNew) window.history.replaceState(null, "", "/claims");
   }, [openNew]);
-  const [form, setForm] = useState(emptyForm);
-  const [receipts, setReceipts] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(0);
-  const [saving, setSaving] = useState(false);
 
   // review actions
   const [busy, setBusy] = useState<string | null>(null);
@@ -166,6 +105,7 @@ export default function ClaimsClient({ role, openNew = false }: { role: string; 
       setCanReview(mineRes.canReview);
       setMine(mineRes.claims);
       setProperties(mineRes.properties);
+      setCanRead(!!mineRes.canRead);
       if (allRes) {
         setClaims(allRes.claims);
         setSummary(allRes.summary);
@@ -183,11 +123,6 @@ export default function ClaimsClient({ role, openNew = false }: { role: string; 
     load();
   }, [load]);
 
-  const roomsForProperty = useMemo(
-    () => properties.find((p) => p.propertyCode === form.propertyCode)?.rooms ?? [],
-    [properties, form.propertyCode]
-  );
-
   const tabClaims = useMemo(() => {
     let list: Claim[];
     if (tab === "mine") list = mine;
@@ -197,73 +132,27 @@ export default function ClaimsClient({ role, openNew = false }: { role: string; 
     const q = search.trim().toLowerCase();
     if (!q) return list;
     return list.filter((c) =>
-      [c.claimCode, c.submittedByName, c.propertyCode, c.propertyName, c.roomCode, c.notes, c.customLabel]
+      [c.claimCode, c.submittedByName, c.propertyCode, c.propertyName, c.roomCode, c.notes, c.customLabel, c.merchant, c.receiptNo]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
   }, [tab, mine, claims, search]);
 
+  // Claims that look like the same receipt as another one on screen (someone pressed 还是提交,
+  // or two people claimed one receipt) — the reviewer should see that before approving.
+  const sameAs = useMemo(() => {
+    const seen = new Map<string, Claim>();
+    for (const c of [...claims, ...mine]) if (c.status !== "REJECTED" && (c.merchant || c.receiptNo)) seen.set(c.claimCode, c);
+    const list = [...seen.values()];
+    const key = (c: Claim) => ({ merchant: c.merchant, receiptNo: c.receiptNo, amount: c.amount, date: c.expenseDate.slice(0, 10) });
+    const out = new Map<string, string[]>();
+    for (const x of list)
+      for (const y of list) if (x.claimCode !== y.claimCode && sameReceipt(key(x), key(y))) out.set(x.claimCode, [...(out.get(x.claimCode) ?? []), y.claimCode]);
+    return out;
+  }, [claims, mine]);
+
   function categoryLabel(c: { category: string; customLabel: string | null }) {
     return expenseCategoryLabelLocale(c.category, c.customLabel, locale);
-  }
-
-  async function addReceipts(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    const list = Array.from(files).slice(0, MAX_RECEIPTS - receipts.length);
-    if (list.length < files.length) toast.warning(t(`最多 ${MAX_RECEIPTS} 个文件`, `Max ${MAX_RECEIPTS} files`));
-    for (const file of list) {
-      if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
-        toast.warning(t(`${file.name} 不是照片或 PDF，已跳过`, `${file.name} is not a photo or PDF — skipped`));
-        continue;
-      }
-      if (isOversized(file)) {
-        toast.warning(t(`${file.name} 超过 3MB，请压缩 PDF`, `${file.name} is over 3MB — please compress the PDF`));
-        continue;
-      }
-      setUploading((n) => n + 1);
-      try {
-        const url = await uploadFile(file);
-        setReceipts((r) => [...r, url]);
-      } catch (e) {
-        toast.danger((e as Error).message);
-      } finally {
-        setUploading((n) => n - 1);
-      }
-    }
-  }
-
-  async function submitClaim() {
-    if (!form.propertyCode) return toast.warning(t("请选择单位（或公司开销）", "Please choose a unit (or company overhead)"));
-    if (!form.amount || Number(form.amount) <= 0) return toast.warning(t("请填金额", "Please enter the amount"));
-    if (form.category === "OTHER" && !form.customLabel.trim())
-      return toast.warning(t("「其他」类型要填支出名称", "Please name the expense for \"Other\""));
-    if (receipts.length === 0) return toast.warning(t("请至少上传一张单据照片", "Please upload at least one receipt"));
-    if (uploading > 0) return toast.warning(t("单据还在上传，请稍等", "Receipts are still uploading"));
-
-    setSaving(true);
-    try {
-      const res = await fetch("/api/claims", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          propertyCode: form.propertyCode === COMPANY ? "" : form.propertyCode,
-          roomCode: form.propertyCode === COMPANY ? "" : form.roomCode,
-          receipts,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message);
-        setShowForm(false);
-        setForm(emptyForm);
-        setReceipts([]);
-        setTab("mine");
-        load();
-      } else toast.danger(data.message);
-    } finally {
-      setSaving(false);
-    }
   }
 
   async function act(claim: Claim, body: Record<string, string>) {
@@ -306,7 +195,7 @@ export default function ClaimsClient({ role, openNew = false }: { role: string; 
     if (isOversized(file)) return toast.warning(t("文件超过 3MB", "File is over 3MB"));
     setSlipUploading(true);
     try {
-      const url = await uploadFile(file);
+      const url = await uploadClaimFile(file);
       setPayForm((f) => ({ ...f, paidSlip: url }));
     } catch (e) {
       toast.danger((e as Error).message);
@@ -400,6 +289,19 @@ export default function ClaimsClient({ role, openNew = false }: { role: string; 
                       {c.claimCode} · {fmtDate(c.createdAt)}
                     </div>
                     <div className="text-lg font-bold">{fmtMoney(c.amount)}</div>
+                    {c.receiptAmount != null &&
+                      (Math.abs(c.amount - c.receiptAmount) >= 0.01 ? (
+                        <div className="mt-0.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                          {t(`⚠ 单据上是 ${fmtMoney(c.receiptAmount)}，报了 ${fmtMoney(c.amount)}`, `⚠ Receipt says ${fmtMoney(c.receiptAmount)}, claimed ${fmtMoney(c.amount)}`)}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-teal-700">{t("✓ 跟单据上的金额一样", "✓ Matches the receipt")}</div>
+                      ))}
+                    {c.status !== "REJECTED" && sameAs.get(c.claimCode) && (
+                      <div className="mt-0.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                        {t(`⚠ 可能跟 ${sameAs.get(c.claimCode)!.join("、")} 是同一张单据`, `⚠ May be the same receipt as ${sameAs.get(c.claimCode)!.join(", ")}`)}
+                      </div>
+                    )}
                   </div>
                   <StatusBadge status={c.status} />
                 </div>
@@ -416,7 +318,9 @@ export default function ClaimsClient({ role, openNew = false }: { role: string; 
                   </div>
                   <div>
                     <span className="text-gray-500">{t("类别", "Category")}: </span>
+                    {c.merchant && <b>{c.merchant} · </b>}
                     {categoryLabel(c)} · <span className="text-gray-500">{t("消费日期", "Spent on")}</span> {fmtDate(c.expenseDate)}
+                    {c.receiptNo && <span className="text-gray-400"> · {t(`单号 ${c.receiptNo}`, `No. ${c.receiptNo}`)}</span>}
                   </div>
                   {!c.isMine && (
                     <div>
@@ -530,148 +434,17 @@ export default function ClaimsClient({ role, openNew = false }: { role: string; 
       )}
 
       {showForm && (
-        <Modal onClose={() => !saving && setShowForm(false)}>
-          <h3 className="mb-3 text-base font-semibold text-brand">➕ {t("提交报销", "New expense claim")}</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1 block text-sm text-gray-600">{t("单位", "Unit")} *</label>
-              <select
-                className="input"
-                value={form.propertyCode}
-                onChange={(e) => setForm({ ...form, propertyCode: e.target.value, roomCode: "" })}
-              >
-                <option value="">{t("— 请选择 —", "— Choose —")}</option>
-                <option value={COMPANY}>{t("🏢 公司开销（不属于任何单位）", "🏢 Company overhead (no unit)")}</option>
-                {properties.map((p) => (
-                  <option key={p.propertyCode} value={p.propertyCode}>
-                    {p.propertyCode} · {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {form.propertyCode && form.propertyCode !== COMPANY && (
-              <div>
-                <label className="mb-1 block text-sm text-gray-600">{t("房间（可不选）", "Room (optional)")}</label>
-                <select className="input" value={form.roomCode} onChange={(e) => setForm({ ...form, roomCode: e.target.value })}>
-                  <option value="">{t("— 整个单位 —", "— Whole unit —")}</option>
-                  {roomsForProperty.map((r) => (
-                    <option key={r.roomCode} value={r.roomCode}>
-                      {r.roomCode}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div>
-              <label className="mb-1 block text-sm text-gray-600">{t("类别", "Category")} *</label>
-              <select
-                className="input"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value as ManualExpenseCategory })}
-              >
-                {MANUAL_EXPENSE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {expenseCategoryLabelLocale(c, undefined, locale)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {form.category === "OTHER" && (
-              <div>
-                <label className="mb-1 block text-sm text-gray-600">{t("支出名称", "Expense name")} *</label>
-                <input
-                  className="input"
-                  value={form.customLabel}
-                  maxLength={60}
-                  placeholder={t("例：灭虫费", "e.g. Pest control")}
-                  onChange={(e) => setForm({ ...form, customLabel: e.target.value })}
-                />
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm text-gray-600">{t("金额 (RM)", "Amount (RM)")} *</label>
-                <input
-                  className="input"
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm text-gray-600">{t("消费日期", "Date spent")} *</label>
-                <input
-                  className="input"
-                  type="date"
-                  max={todayStr()}
-                  value={form.expenseDate}
-                  onChange={(e) => setForm({ ...form, expenseDate: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-gray-600">{t("备注", "Notes")}</label>
-              <textarea
-                className="input"
-                rows={2}
-                maxLength={500}
-                placeholder={t("买了什么、为什么", "What was bought and why")}
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-gray-600">
-                {t("单据（拍照 / 相册 / PDF）", "Receipts (camera / gallery / PDF)")} *
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {receipts.map((u) => (
-                  <div key={u} className="relative">
-                    <FileThumb url={u} onView={setViewing} />
-                    <button
-                      type="button"
-                      onClick={() => setReceipts((r) => r.filter((x) => x !== u))}
-                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-xs text-white"
-                      aria-label={t("移除", "Remove")}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {uploading > 0 && (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-gray-400">
-                    {t("上传中…", "Uploading…")}
-                  </div>
-                )}
-                {receipts.length + uploading < MAX_RECEIPTS && (
-                  <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-brand/40 text-xs text-brand">
-                    <span className="text-xl">📷</span>
-                    {t("添加", "Add")}
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => {
-                        addReceipts(e.target.files);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                )}
-              </div>
-              <p className="mt-1 text-xs text-gray-400">
-                {t("照片会自动压缩，不用自己处理。", "Photos are compressed automatically.")}
-              </p>
-            </div>
-            <button onClick={submitClaim} disabled={saving || uploading > 0} className="btn-primary w-full py-2.5">
-              {saving ? t("提交中…", "Submitting…") : t("提交报销", "Submit claim")}
-            </button>
-          </div>
-        </Modal>
+        <NewClaimSheet
+          units={properties}
+          canRead={canRead}
+          showReason={role === "ADMIN"}
+          onClose={() => setShowForm(false)}
+          onSubmitted={() => {
+            setShowForm(false);
+            setTab("mine");
+            load();
+          }}
+        />
       )}
 
       {rejecting && (
