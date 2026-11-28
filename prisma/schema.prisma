@@ -199,6 +199,11 @@ model Property {
   utilities    UtilityAccount[]
   utilityMeters UtilityMeter[]
   utilityRuns   UtilityBillRun[]
+  /// The condo / apartment it's in; units in the same building share its 注意事项.
+  buildingId    String?
+  building      Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  /// 注意事项 about this unit only.
+  propertyNotes PropertyNote[]
 
   createdAt DateTime @default(now())
 }
@@ -982,4 +987,32 @@ model Todo {
 
   @@index([ownerId, status])
   @@index([status, dueDate])
+}
+
+/// A condo / apartment building. Every unit in it shows the building's 注意事项
+/// (e.g. "max 8 access cards per unit", "car plates are read by camera — register at management first").
+model Building {
+  id        String         @id @default(cuid())
+  name      String         @unique
+  units     Property[]
+  notes     PropertyNote[]
+  createdAt DateTime       @default(now())
+}
+
+/// 注意事项 — one thing to keep in mind, either about one unit (propertyId) or about a whole
+/// building (buildingId). Boss / Admin write them; staff see them on the unit, room and contract pages.
+model PropertyNote {
+  id            String    @id @default(cuid())
+  propertyId    String?
+  property      Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buildingId    String?
+  building      Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  text          String
+  createdByName String
+  updatedByName String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([propertyId])
+  @@index([buildingId])
 }

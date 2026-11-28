@@ -8,6 +8,7 @@ import { ROOM_STATUS_BADGE, roomStatusLabel, contractStatusLabel, contractStatus
 import { PILL } from "@/components/Pill";
 import { fmtDate, isPdfUrl } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import UnitNotes from "@/components/UnitNotes";
 import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface RoomDetail {
@@ -116,6 +117,7 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
+      {room.propertyCode && <UnitNotes propertyCode={room.propertyCode} variant="compact" />}
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex items-center justify-between">
           <h3 className="text-base font-semibold text-brand">

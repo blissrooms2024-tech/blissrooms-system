@@ -6,6 +6,7 @@ import { contractStatusLabel, contractStatusTone } from "@/lib/config";
 import { PILL } from "@/components/Pill";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import UnitNotes from "@/components/UnitNotes";
 import ContractActions, { type ActionableContract } from "../ContractActions";
 import StepTimeline from "@/components/StepTimeline";
 import { buildContractSteps } from "@/lib/contractSteps";
@@ -103,6 +104,7 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
+      {contract.room.propertyCode && <UnitNotes propertyCode={contract.room.propertyCode} variant="compact" />}
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-base font-semibold text-brand">

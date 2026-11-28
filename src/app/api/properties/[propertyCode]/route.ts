@@ -51,7 +51,7 @@ const editSchema = z.object({
   ownerRentalAmount: z.coerce.number().min(0).optional(),
   ownerDeposit: z.coerce.number().min(0).optional(),
   status: z.string().trim().optional().default("Active"),
-  notes: z.string().trim().optional().default(""),
+  notes: z.string().trim().optional(),
   roomCount: z.coerce.number().int().min(0).max(200).optional(),
   carparkCount: z.coerce.number().int().min(0).max(200).optional(),
 });
@@ -145,7 +145,8 @@ async function handlePATCH(
       ownerRentalAmount: d.ownerRentalAmount ?? null,
       ownerDeposit: d.ownerRentalAmount ? d.ownerDeposit ?? null : null,
       status: d.status,
-      notes: d.notes || null,
+      // Only when sent: the edit form no longer has 备注 (it carried over into 注意事项).
+      ...(d.notes !== undefined ? { notes: d.notes || null } : {}),
     },
   });
 

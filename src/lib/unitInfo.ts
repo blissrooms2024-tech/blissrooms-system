@@ -60,7 +60,6 @@ export const INFO_GROUPS: InfoGroup[] = [
       { key: "mgmtOfficePhone", zh: "管理处电话", en: "Management office phone", type: "text" },
       { key: "guardhousePhone", zh: "警卫室电话", en: "Guardhouse phone", type: "text" },
       { key: "visitorApp", zh: "访客登记方式", en: "Visitor registration", type: "text", placeholder: "i-Neighbour / Kiplink" },
-      { key: "buildingRules", zh: "装修 / 搬家规定", en: "Renovation / moving rules", type: "textarea" },
     ],
   },
   {

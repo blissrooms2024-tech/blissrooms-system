@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { withActivity } from "@/lib/activity";
+import { buildingByName } from "@/lib/propertyNotes";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -10,7 +11,10 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "没有权限" }, { status: 403 });
   }
 
-  const properties = await prisma.property.findMany({ orderBy: { name: "asc" } });
+  const properties = await prisma.property.findMany({
+    orderBy: { name: "asc" },
+    include: { building: { select: { name: true, _count: { select: { notes: true } } } }, _count: { select: { propertyNotes: true } } },
+  });
 
   // Room count and carpark count are tracked separately — a property's "房间数" must not
   // include its carpark slots, since those are a different kind of rentable unit.
@@ -40,6 +44,9 @@ export async function GET() {
       ownerDeposit: p.ownerDeposit ? Number(p.ownerDeposit) : null,
       status: p.status,
       notes: p.notes,
+      building: p.building?.name ?? null,
+      /** 注意事项 this unit shows: its own plus its building's. */
+      noteCount: p._count.propertyNotes + (p.building?._count.notes ?? 0),
       roomCount: roomCountByPropertyId.get(p.id) ?? 0,
       carparkCount: carparkCountByPropertyId.get(p.id) ?? 0,
     })),
@@ -89,6 +96,9 @@ async function handlePOST(req: NextRequest) {
       ownerRentalAmount: d.ownerRentalAmount ?? null,
       ownerDeposit: d.ownerRentalAmount ? d.ownerDeposit ?? null : null,
       notes: d.notes || null,
+      // A new unit joins the condo / apartment with the same name (or starts one) — its
+      // 注意事项 show up straight away; Admin can pick another building on the unit page.
+      buildingId: (await buildingByName(d.name)).id,
     },
   });
 

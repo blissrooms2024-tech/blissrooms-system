@@ -39,6 +39,8 @@ async function handlePOST(req: NextRequest) {
     const contracts = await tx.contract.deleteMany({});
     const rooms = await tx.room.deleteMany({});
     const properties = await tx.property.deleteMany({});
+    await tx.propertyNote.deleteMany({});
+    await tx.building.deleteMany({});
     const logs = await tx.log.deleteMany({});
     // Meeting records go too (their attendees, notes and issues with them).
     await tx.meeting.deleteMany({});

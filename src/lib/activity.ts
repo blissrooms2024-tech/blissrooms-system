@@ -36,6 +36,7 @@ const AREAS: [RegExp, string][] = [
   [/^\/api\/(maintenance|worker\/maintenance)/, "报修"],
   [/^\/api\/properties\/[^/]+\/info\/(owner-rent|utilities\/[^/]+\/paid)/, "付款提醒"],
   [/^\/api\/properties\/[^/]+\/info\/cards/, "单位资料·门卡"],
+  [/^\/api\/(properties\/[^/]+\/notes|property-notes|buildings)/, "注意事项"],
   [/^\/api\/properties\/[^/]+\/info\/utilities/, "单位资料·水电网"],
   [/^\/api\/properties\/[^/]+\/info\/photos/, "单位资料·照片"],
   [/^\/api\/properties\/[^/]+\/info\/reveal/, "单位资料·查看密码"],

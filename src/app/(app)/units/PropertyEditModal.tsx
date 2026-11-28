@@ -51,7 +51,7 @@ export default function PropertyEditModal({
     property.ownerRentalAmount !== null ? "MASTER_LEASE" : property.managementFeeRate ? "MANAGED" : "OWN"
   );
   const [status, setStatus] = useState(property.status ?? "Active");
-  const [notes, setNotes] = useState(property.notes ?? "");
+  const notes = property.notes ?? "";
   const [roomCount, setRoomCount] = useState(String(property.roomCount));
   const [carparkCount, setCarparkCount] = useState(String(property.carparkCount));
   const [saving, setSaving] = useState(false);
@@ -75,7 +75,6 @@ export default function PropertyEditModal({
           ownerRentalAmount: dealType === "MASTER_LEASE" && ownerRentalAmount ? Number(ownerRentalAmount) : undefined,
           ownerDeposit: dealType === "MASTER_LEASE" && ownerDeposit ? Number(ownerDeposit) : undefined,
           status,
-          notes,
           roomCount: Number(roomCount) || 0,
           carparkCount: Number(carparkCount) || 0,
         }),
@@ -205,10 +204,7 @@ export default function PropertyEditModal({
             <option value="Inactive">Inactive</option>
           </select>
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm text-gray-600">{t("备注 Notes", "Notes")}</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input" />
-        </div>
+        {/* 备注 moved into 注意事项 on the unit page; the old text still feeds "fill from notes" above. */}
         <div className="flex gap-3 rounded-lg bg-gray-50 p-3">
           <div className="flex-1">
             <label className="mb-1.5 block text-sm text-gray-600">{t("房间数量", "Room Count")}</label>
