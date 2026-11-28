@@ -51,19 +51,19 @@ export const COMPANY = {
  * international format without "+" or spaces. */
 export const SUPPORT = [
   {
-    key: "house",
-    label: "房屋 / 租约 / 系统问题",
-    labelEn: "Room / Tenancy / System",
-    name: "Bliss Rooms",
+    key: "service",
+    label: "入住 / 客服问题",
+    labelEn: "Move-in / Customer Service",
+    name: "Miss Tan",
     phone: "011-3654 7863",
     tel: "+601136547863",
     wa: "601136547863",
   },
   {
     key: "repair",
-    label: "维修问题",
-    labelEn: "Repairs / Maintenance",
-    name: "Yi Xuan",
+    label: "系统技术 / 屋内维修问题",
+    labelEn: "System / In-house Repairs",
+    name: "Miss Yi Xuan",
     phone: "012-439 2491",
     tel: "+60124392491",
     wa: "60124392491",

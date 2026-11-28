@@ -76,7 +76,7 @@ export default function SupportButton({
             <div className="mx-auto -mt-1 mb-3 h-1.5 w-10 rounded-full bg-gray-300 sm:hidden" />
             <h3 className="text-base font-bold text-brand">🎧 {t("联系客服", "Contact Support")}</h3>
             <p className="mb-3 mt-1 text-xs text-gray-500">
-              {t("维修问题找 Yi Xuan，其他问题（房屋、租约、系统）找 Bliss Rooms。", "Repairs → Yi Xuan. Everything else (room, tenancy, system) → Bliss Rooms.")}
+              {t("系统用不了或屋内要维修找 Miss Yi Xuan；入住和其他客服问题找 Miss Tan。两个号码都可以 WhatsApp。", "System or in-house repair issues → Miss Yi Xuan. Move-in and other enquiries → Miss Tan. Both numbers are on WhatsApp.")}
             </p>
             <SupportList />
             <button
