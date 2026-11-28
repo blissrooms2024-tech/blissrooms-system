@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { notifyAdminsRenewalRequested } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({ months: z.coerce.number().int().min(1).max(60) });
 
@@ -11,7 +12,7 @@ const schema = z.object({ months: z.coerce.number().int().min(1).max(60) });
  * to actually process it on the 续约管理 page (extends expiredDate + bills the RM200 fee).
  * The contract explicitly reserves Admin's right to decline, so this never auto-extends
  * anything itself. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -40,3 +41,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 已申请续约，Admin 会跟进处理" });
 }
+
+export const POST = withActivity(handlePOST);

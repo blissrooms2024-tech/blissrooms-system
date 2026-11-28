@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 const PRORATA_NOTE = "Pro-rata 租金 (提前入住)";
 
@@ -12,7 +13,7 @@ const PRORATA_NOTE = "Pro-rata 租金 (提前入住)";
  * this after new, already-correct pro-rata bills doesn't double-add anything). Does not touch
  * Payment rows — purely backfills the two Contract fields the newer code already keeps in
  * sync going forward. */
-export async function POST() {
+async function handlePOST() {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以执行" }, { status: 403 });
@@ -58,3 +59,5 @@ export async function POST() {
     updated,
   });
 }
+
+export const POST = withActivity(handlePOST);

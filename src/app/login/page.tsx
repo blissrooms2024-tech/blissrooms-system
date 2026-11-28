@@ -7,6 +7,7 @@ import { ROLE_HOME } from "@/lib/roleHome";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
+import { IconEye, IconEyeOff, IconHome, IconLock, IconMail } from "@/components/icons";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 
 export default function LoginPage() {
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
 
@@ -45,58 +47,120 @@ export default function LoginPage() {
     }
   }
 
+  // Inputs stay at 16px: iPhone Safari zooms the whole page into any smaller input on focus.
+  const inputCls =
+    "w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-11 text-base text-gray-900 placeholder:text-gray-400 focus:border-brand focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand/10";
+
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-50 to-violet-100 p-5">
-      <RoomsBackdrop />
-      <LanguageToggle className="absolute right-4 top-4 z-10 !bg-white !text-gray-600 shadow-sm ring-1 ring-black/5 hover:!bg-gray-100" />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-black/5">
-        <div className="text-center text-2xl font-bold text-brand">🏠 Bliss Rooms</div>
-        <div className="mb-6 text-center text-sm text-gray-400">{t("租房管理系统", "Rental Management System")}</div>
+    <div className="app-type relative flex min-h-dvh flex-col bg-white md:items-center md:justify-center md:bg-violet-50 md:p-5">
+      <div className="hidden md:block">
+        <RoomsBackdrop />
+      </div>
+      <LanguageToggle className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 !bg-black/30 !text-white backdrop-blur hover:!bg-black/40 md:!bg-white md:!text-gray-600 md:shadow-sm md:ring-1 md:ring-black/5 md:backdrop-blur-none md:hover:!bg-gray-100" />
 
-        <form onSubmit={doLogin}>
-          <label className="mb-1.5 mt-3 block text-sm text-gray-600">{t("用户名 / Email", "Username / Email")}</label>
-          <input
-            type="text"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@bliss.com"
-            className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none"
-          />
-          <label className="mb-1.5 mt-3.5 block text-sm text-gray-600">{t("密码", "Password")}</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••"
-            className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-5 w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-violet-300"
-          >
-            {loading ? t("登录中...", "Logging in...") : t("登录", "Login")}
-          </button>
-        </form>
-
-        <div className="mt-3 text-center">
-          <button
-            onClick={() => setShowForgot(true)}
-            className="text-sm text-brand hover:underline"
-          >
-            {t("忘记密码？", "Forgot password?")}
-          </button>
-        </div>
-        <div className="mt-2 text-center text-sm text-gray-500">
-          {t("我是 Agent，还没有账号？", "I'm an Agent without an account yet?")}{" "}
-          <Link href="/signup" className="text-brand hover:underline">
-            {t("注册", "Sign Up")}
-          </Link>
+      {/* Phone: one of our own rooms across the top, the form sliding up over it like an app sheet */}
+      <div className="relative h-[36dvh] min-h-[230px] shrink-0 md:hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/login-bg/room-2.jpg" alt="" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#4c1d95]/85 via-[#4c1d95]/25 to-black/10" />
+        <div className="absolute bottom-11 left-6 right-6 text-white">
+          <Brand light />
         </div>
       </div>
 
+      <main className="relative -mt-7 flex-1 rounded-t-[28px] bg-white px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-7 md:mt-0 md:w-full md:max-w-[400px] md:flex-none md:rounded-[28px] md:p-8 md:shadow-2xl md:ring-1 md:ring-black/5">
+        <div className="mb-6 hidden md:block">
+          <Brand />
+        </div>
+        <h1 className="text-xl font-semibold text-gray-900">{t("欢迎回来", "Welcome back")}</h1>
+        <p className="mt-0.5 text-sm text-gray-500">{t("登录 Bliss Rooms 租房管理系统", "Log in to the Bliss Rooms rental system")}</p>
+
+        <form onSubmit={doLogin} className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-gray-700">
+              {t("用户名 / Email", "Username / Email")}
+            </label>
+            <div className="relative">
+              <IconMail size={19} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                id="login-email"
+                type="text"
+                inputMode="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@bliss.com"
+                className={`${inputCls} pr-3.5`}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label htmlFor="login-password" className="block text-sm font-medium text-gray-700">
+                {t("密码", "Password")}
+              </label>
+              <button type="button" onClick={() => setShowForgot(true)} className="text-sm font-medium text-brand hover:underline">
+                {t("忘记密码？", "Forgot password?")}
+              </button>
+            </div>
+            <div className="relative">
+              <IconLock size={19} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••"
+                className={`${inputCls} pr-12`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? t("隐藏密码", "Hide password") : t("显示密码", "Show password")}
+                aria-pressed={showPassword}
+                className="absolute right-1.5 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                {showPassword ? <IconEyeOff size={19} /> : <IconEye size={19} />}
+              </button>
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="!mt-6 w-full rounded-xl bg-brand py-3.5 text-base font-semibold text-white shadow-[0_12px_24px_-12px_rgba(109,40,217,0.7)] hover:bg-brand-dark disabled:bg-violet-300"
+          >
+            {loading ? t("登录中...", "Logging in...") : t("登录", "Log in")}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          {t("我是 Agent，还没有账号？", "I'm an Agent without an account yet?")}{" "}
+          <Link href="/signup" className="font-medium text-brand hover:underline">
+            {t("注册", "Sign up")}
+          </Link>
+        </p>
+      </main>
+
       {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
+    </div>
+  );
+}
+
+function Brand({ light = false }: { light?: boolean }) {
+  const { t } = useLanguage();
+  return (
+    <div className="flex items-center gap-3">
+      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${light ? "bg-white/20 text-white backdrop-blur" : "bg-brand text-white"}`}>
+        <IconHome size={26} />
+      </span>
+      <span>
+        <span className={`block text-[28px] font-semibold leading-none tracking-tight ${light ? "text-white" : "text-gray-900"}`}>Bliss Rooms</span>
+        <span className={`mt-1 block text-sm ${light ? "text-white/80" : "text-gray-500"}`}>{t("租房管理系统", "Rental Management System")}</span>
+      </span>
     </div>
   );
 }

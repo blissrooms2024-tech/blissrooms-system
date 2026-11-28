@@ -5,6 +5,7 @@ import { getCurrentUser, type SessionPayload } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
 import { newId } from "@/lib/id";
 import { sendWarningLetter } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
@@ -40,7 +41,7 @@ const schema = z.object({ message: z.string().trim().min(1) });
 
 /** Admin sends a formal warning letter to the tenant (House Rules violation, repeated
  * lateness, etc.) — free-text body, emailed straight to the tenant's login address. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -71,3 +72,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: `✅ 警告信已发给 ${c.tenant.name}` });
 }
+
+export const POST = withActivity(handlePOST);

@@ -9,8 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ propertyCode: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以看" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以看" }, { status: 403 });
   }
   const { propertyCode } = await params;
   const property = await prisma.property.findUnique({ where: { propertyCode } });

@@ -4,11 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { MENUS } from "@/lib/menus";
+import { NAV_GROUPS, navMeta } from "./navMeta";
 import { ROLE_LABELS } from "@/lib/config";
 import ChangePasswordModal from "./ChangePasswordModal";
 import LanguageToggle from "./LanguageToggle";
 import { useLanguage } from "./LanguageProvider";
 import LeaseExpiryReminder from "./LeaseExpiryReminder";
+import MobileTabBar from "./MobileTabBar";
+import { IconHome } from "./icons";
 
 const MAINTENANCE_SEEN_KEY = "mtce_seen_resolved_at";
 
@@ -46,6 +49,9 @@ export default function AppShell({
   }
 
   const mtceHref = user.role === "TENANT" ? "/my-maintenance" : user.role === "ADMIN" || user.role === "BOSS" ? "/maintenance" : null;
+  // Boss/Admin get the app-style phone layout: bottom tabs instead of the hamburger drawer,
+  // with password/logout moved into 更多. Other roles keep the current layout for now.
+  const appNav = user.role === "ADMIN" || user.role === "BOSS";
 
   useEffect(() => {
     if (!mtceHref) return;
@@ -91,6 +97,7 @@ export default function AppShell({
           "/contracts": data.pendingApprove,
           "/payments/review": data.pendingReview,
           "/users": data.pendingUsers,
+          "/claims": data.pendingClaims,
         });
       });
   }, [user.role, pathname]);
@@ -136,22 +143,57 @@ export default function AppShell({
     );
   });
 
+  // Boss / Admin: the side menu in labelled groups (the same groups as 更多 on the phone).
+  // Everyone else keeps their short flat list.
+  const sidebarNav = (() => {
+    if (user.role !== "BOSS" && user.role !== "ADMIN") return sidebarLinks;
+    const linkFor = new Map(menuWithProfile.map((m, i) => [m.href, sidebarLinks[i]]));
+    const used = new Set(["/dashboard"]);
+    const out = [linkFor.get("/dashboard")];
+    for (const g of NAV_GROUPS) {
+      const hrefs = menu.map((m) => m.href).filter((h) => !used.has(h) && navMeta(h).group === g.key);
+      if (!hrefs.length) continue;
+      hrefs.forEach((h) => used.add(h));
+      out.push(
+        <p key={`group-${g.key}`} className="px-5 pb-1 pt-4 text-[11.5px] font-semibold text-gray-400">
+          {locale === "en" ? g.en : g.zh}
+        </p>,
+        ...hrefs.map((h) => linkFor.get(h))
+      );
+    }
+    const rest = menuWithProfile.filter((m) => !used.has(m.href));
+    if (rest.length) out.push(<div key="group-rest" className="mt-3 border-t border-gray-100" />, ...rest.map((m) => linkFor.get(m.href)));
+    return out;
+  })();
+
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-brand px-3 py-3 text-white sm:px-5">
+      <div
+        className={`sticky top-0 z-20 flex items-center justify-between gap-2 bg-brand px-3 text-white sm:px-5 ${appNav ? "pb-2 md:pb-3" : "pb-3"}`}
+        style={{ paddingTop: appNav ? "max(0.5rem, env(safe-area-inset-top))" : "max(0.75rem, env(safe-area-inset-top))" }}
+      >
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => setMenuOpen(true)}
             aria-label={t("打开菜单", "Open menu")}
-            className="rounded-lg p-1.5 hover:bg-white/15 md:hidden"
+            className={`rounded-lg p-1.5 hover:bg-white/15 ${appNav ? "hidden" : "md:hidden"}`}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
             </svg>
           </button>
-          <span className="truncate text-sm sm:text-base">
-            🏠 <b>Bliss Rooms</b>
-          </span>
+          {appNav ? (
+            <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/15">
+                <IconHome size={17} />
+              </span>
+              <b className="truncate text-sm tracking-tight sm:text-base">Bliss Rooms</b>
+            </Link>
+          ) : (
+            <span className="truncate text-sm sm:text-base">
+              🏠 <b>Bliss Rooms</b>
+            </span>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-sm sm:gap-3">
           <span className="hidden truncate md:inline">
@@ -163,13 +205,13 @@ export default function AppShell({
           <LanguageToggle />
           <button
             onClick={() => setShowChangePw(true)}
-            className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"
+            className={`rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3 ${appNav ? "hidden md:block" : ""}`}
           >
             {t("改密码", "Password")}
           </button>
           <button
             onClick={logout}
-            className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3"
+            className={`rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3 ${appNav ? "hidden md:block" : ""}`}
           >
             {t("登出", "Logout")}
           </button>
@@ -187,7 +229,7 @@ export default function AppShell({
 
       <div className="flex min-h-[calc(100vh-48px)]">
         <div className="hidden w-[190px] shrink-0 border-r border-gray-200 bg-white py-3.5 md:block">
-          {sidebarLinks}
+          {sidebarNav}
         </div>
 
         {menuOpen && (
@@ -206,15 +248,24 @@ export default function AppShell({
                   </svg>
                 </button>
               </div>
-              {sidebarLinks}
+              {sidebarNav}
             </div>
           </div>
         )}
 
-        <div className="min-w-0 flex-1 overflow-x-auto p-3 sm:p-5">{children}</div>
+        <div
+          className={`min-w-0 flex-1 overflow-x-auto p-3 sm:p-5 ${
+            appNav ? "pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-5" : ""
+          }`}
+        >
+          {children}
+        </div>
       </div>
 
+      {appNav && <MobileTabBar alerts={sidebarAlerts} />}
       {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
+      {/* Once per login: "your lease ends in N days — renew or move out?" */}
+      {(user.role === "TENANT" || isAlsoTenant) && <LeaseExpiryReminder />}
     </div>
   );
 }

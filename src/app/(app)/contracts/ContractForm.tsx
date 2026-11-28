@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useCallback, useMemo, useState, FormEvent } from "react";
 import { monthsBetween, endDateFromTenure } from "@/lib/tenure";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
 import TenantPicker, { TenantOption } from "./TenantPicker";
+import UnitRoomSelect, { EMPTY_PICK, roomLabel, useUnitTree, type PickRoom, type UnitRoomValue } from "@/components/UnitRoomSelect";
 
 interface VacantRoom {
   roomCode: string;
@@ -56,6 +57,11 @@ export default function ContractForm({
   const toast = useToast();
   const t = useT();
   const [form, setForm] = useState(initialForm);
+  // 楼盘 → 单位号码 → 空房; the room chosen is form.roomCode.
+  const tree = useUnitTree();
+  const [roomPick, setRoomPick] = useState<UnitRoomValue>(EMPTY_PICK);
+  const vacantSet = useMemo(() => new Set(vacantRooms.map((r) => r.roomCode)), [vacantRooms]);
+  const isVacant = useCallback((r: PickRoom) => vacantSet.has(r.roomCode), [vacantSet]);
   const [tenant, setTenant] = useState<TenantOption | null>(null);
   const [utils, setUtils] = useState({ electric: false, aircond: false, dryer: false });
   const [loading, setLoading] = useState(false);
@@ -113,6 +119,7 @@ export default function ContractForm({
       if (data.success) {
         toast.success(data.message);
         setForm(initialForm);
+        setRoomPick(EMPTY_PICK);
         setTenant(null);
         setUtils({ electric: false, aircond: false, dryer: false });
         onCreated();
@@ -130,21 +137,21 @@ export default function ContractForm({
     <div className="rounded-xl bg-white p-5 shadow-sm">
       <h3 className="mb-3.5 text-base font-semibold text-brand">📝 {t("开新合同", "New Contract")}</h3>
       <form onSubmit={submit} className="space-y-2.5">
+        <UnitRoomSelect
+          units={tree ?? []}
+          value={roomPick}
+          onChange={(v) => {
+            setRoomPick(v);
+            set("roomCode", v.room);
+          }}
+          rooms="required"
+          roomFilter={isVacant}
+          hideEmpty
+          invalid={!!errors.roomCode}
+          roomLabelText={t("空房", "Vacant room")}
+          roomText={(r, u) => `${roomLabel(r.roomCode, u.propertyCode)}${r.isCarpark ? ` · ${t("车位", "carpark")}` : ""}`}
+        />
         <Row>
-          <Field label={t("选空房", "Select Vacant Room")}>
-            <select
-              className={`input ${errors.roomCode ? "border-red-500 ring-1 ring-red-500" : ""}`}
-              value={form.roomCode}
-              onChange={(e) => set("roomCode", e.target.value)}
-            >
-              <option value="">-- {t("选房间", "Select Room")} --</option>
-              {vacantRooms.map((r) => (
-                <option key={r.roomCode} value={r.roomCode}>
-                  {r.roomCode} ({r.propertyName})
-                </option>
-              ))}
-            </select>
-          </Field>
           {role === "ADMIN" && (
             <Field label={t("负责 Agent", "Assigned Agent")}>
               <select className="input" value={form.agentId} onChange={(e) => set("agentId", e.target.value)}>

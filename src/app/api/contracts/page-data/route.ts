@@ -25,7 +25,7 @@ export async function GET() {
       prisma.contract.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        include: { room: { select: { roomCode: true, isCarpark: true } } },
+        include: { room: { select: { roomCode: true, isCarpark: true, property: { select: { propertyCode: true, name: true } } } } },
       }),
       prisma.payment.findMany({
         select: { contractId: true, type: true, status: true, amountDue: true, amountPaid: true },
@@ -79,6 +79,8 @@ export async function GET() {
       const expired = c.status === "ACTIVE" && !!c.expiredDate && c.expiredDate < startOfToday;
       return serialize({
         ...c,
+        // Which unit it's in, flat, for the 楼盘 filter and the unit page's 合同 tab.
+        room: { roomCode: c.room.roomCode, isCarpark: c.room.isCarpark, propertyCode: c.room.property?.propertyCode ?? null, propertyName: c.room.property?.name ?? null },
         _due: totalDue,
         _paid: paid,
         _outstanding: outstanding,

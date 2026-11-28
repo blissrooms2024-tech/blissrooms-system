@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
+import { buildingByName } from "@/lib/propertyNotes";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -9,7 +11,10 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "没有权限" }, { status: 403 });
   }
 
-  const properties = await prisma.property.findMany({ orderBy: { name: "asc" } });
+  const properties = await prisma.property.findMany({
+    orderBy: { name: "asc" },
+    include: { building: { select: { name: true, _count: { select: { notes: true } } } }, _count: { select: { propertyNotes: true } } },
+  });
 
   // Room count and carpark count are tracked separately — a property's "房间数" must not
   // include its carpark slots, since those are a different kind of rentable unit.
@@ -24,6 +29,9 @@ export async function GET() {
     _count: { _all: true },
   });
   const roomCountByPropertyId = new Map(roomGroups.map((g) => [g.propertyId, g._count._all]));
+  // How full each unit is, for the 楼盘 list (rooms only, not carpark slots).
+  const statusGroups = await prisma.room.groupBy({ by: ["propertyId", "status"], where: { isCarpark: false }, _count: { _all: true } });
+  const roomsIn = (id: string, status: string) => statusGroups.find((g) => g.propertyId === id && g.status === status)?._count._all ?? 0;
   const carparkCountByPropertyId = new Map(carparkGroups.map((g) => [g.propertyId, g._count._all]));
 
   return NextResponse.json({
@@ -39,7 +47,12 @@ export async function GET() {
       ownerDeposit: p.ownerDeposit ? Number(p.ownerDeposit) : null,
       status: p.status,
       notes: p.notes,
+      building: p.building?.name ?? null,
+      /** 注意事项 this unit shows: its own plus its building's. */
+      noteCount: p._count.propertyNotes + (p.building?._count.notes ?? 0),
       roomCount: roomCountByPropertyId.get(p.id) ?? 0,
+      occupiedCount: roomsIn(p.id, "OCCUPIED"),
+      vacantCount: roomsIn(p.id, "VACANT"),
       carparkCount: carparkCountByPropertyId.get(p.id) ?? 0,
     })),
   });
@@ -59,7 +72,7 @@ const createSchema = z.object({
   carparkCount: z.coerce.number().int().min(0).max(200).optional().default(0),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以建楼盘" }, { status: 403 });
@@ -88,6 +101,9 @@ export async function POST(req: NextRequest) {
       ownerRentalAmount: d.ownerRentalAmount ?? null,
       ownerDeposit: d.ownerRentalAmount ? d.ownerDeposit ?? null : null,
       notes: d.notes || null,
+      // A new unit joins the condo / apartment with the same name (or starts one) — its
+      // 注意事项 show up straight away; Admin can pick another building on the unit page.
+      buildingId: (await buildingByName(d.name)).id,
     },
   });
 
@@ -124,3 +140,5 @@ export async function POST(req: NextRequest) {
       : "";
   return NextResponse.json({ success: true, message: `✅ 楼盘已建: ${d.propertyCode} (${d.name})${extra}` });
 }
+
+export const POST = withActivity(handlePOST);

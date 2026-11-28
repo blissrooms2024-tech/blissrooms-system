@@ -19,11 +19,13 @@ export async function GET(req: NextRequest) {
   const unitFilter = req.nextUrl.searchParams.get("unit") || "";
   const now = new Date();
 
-  let propertyId: string | undefined;
+  // One unit, or every unit of a 楼盘 (comma-separated codes).
+  let propertyIds: string[] | undefined;
   if (unitFilter) {
-    const property = await prisma.property.findUnique({ where: { propertyCode: unitFilter }, select: { id: true } });
-    if (!property) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
-    propertyId = property.id;
+    const codes = unitFilter.split(",").map((c) => c.trim()).filter(Boolean);
+    const found = await prisma.property.findMany({ where: { propertyCode: { in: codes } }, select: { id: true } });
+    if (!found.length) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
+    propertyIds = found.map((p) => p.id);
   }
 
   let rangeStart: Date | null = null;
@@ -54,7 +56,7 @@ export async function GET(req: NextRequest) {
       status: "Paid",
       type: { in: types },
       ...(rangeStart && rangeEnd ? { paidDate: { gte: rangeStart, lt: rangeEnd } } : {}),
-      ...(propertyId ? { contract: { room: { propertyId } } } : {}),
+      ...(propertyIds ? { contract: { room: { propertyId: { in: propertyIds } } } } : {}),
     },
     orderBy: [{ roomCode: "asc" }, { paidDate: "asc" }],
     include: { contract: { select: { contractCode: true } } },

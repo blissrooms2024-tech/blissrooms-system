@@ -6,16 +6,9 @@ import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { MOVE_ITEMS, MoveItem } from "@/lib/moveItems";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 import { isPdfUrl } from "@/lib/format";
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 type MoveType = "MoveIn" | "MoveOut";
 
@@ -108,7 +101,7 @@ export function MoveFormPanel({
   }
 
   async function uploadPhoto(item: MoveItem, file: File) {
-    if (file.size > 3 * 1024 * 1024) {
+    if (isOversized(file)) {
       toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }

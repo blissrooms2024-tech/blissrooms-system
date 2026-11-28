@@ -3,10 +3,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { notifyTenantBillReviewed } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({ reason: z.string().trim().min(1) });
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
 ) {
@@ -59,3 +60,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: `已拒绝 ${payment.paymentCode}，租客需要重新上传` });
 }
+
+export const POST = withActivity(handlePOST);

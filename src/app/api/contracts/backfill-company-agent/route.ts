@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { COMPANY, COMPANY_AUTO_SIGNATURE } from "@/lib/config";
+import { withActivity } from "@/lib/activity";
 
 /** One-time (idempotent) backfill for contracts created before Admin-self-created contracts
  * started using COMPANY.NAME as the "Agent" — those still show whichever Admin happened to
@@ -12,7 +13,7 @@ import { COMPANY, COMPANY_AUTO_SIGNATURE } from "@/lib/config";
  * to pick from that role's list — anything else means Admin opened it directly) and isn't
  * already fixed, renames it to COMPANY.NAME, and auto-completes the Agent-sign step the same
  * way /approve and /renew do going forward if it's still waiting on it. */
-export async function POST() {
+async function handlePOST() {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以执行" }, { status: 403 });
@@ -51,3 +52,5 @@ export async function POST() {
     unblocked,
   });
 }
+
+export const POST = withActivity(handlePOST);

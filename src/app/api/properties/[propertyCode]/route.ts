@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 export async function GET(
   _req: NextRequest,
@@ -50,7 +51,7 @@ const editSchema = z.object({
   ownerRentalAmount: z.coerce.number().min(0).optional(),
   ownerDeposit: z.coerce.number().min(0).optional(),
   status: z.string().trim().optional().default("Active"),
-  notes: z.string().trim().optional().default(""),
+  notes: z.string().trim().optional(),
   roomCount: z.coerce.number().int().min(0).max(200).optional(),
   carparkCount: z.coerce.number().int().min(0).max(200).optional(),
 });
@@ -114,7 +115,7 @@ async function shrinkRooms(propertyId: string, propertyCode: string, isCarpark: 
   return { removed: toRemove.length, kept: toRemoveCount - toRemove.length };
 }
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ propertyCode: string }> }
 ) {
@@ -144,7 +145,8 @@ export async function PATCH(
       ownerRentalAmount: d.ownerRentalAmount ?? null,
       ownerDeposit: d.ownerRentalAmount ? d.ownerDeposit ?? null : null,
       status: d.status,
-      notes: d.notes || null,
+      // Only when sent: the edit form no longer has 备注 (it carried over into 注意事项).
+      ...(d.notes !== undefined ? { notes: d.notes || null } : {}),
     },
   });
 
@@ -221,7 +223,7 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: `✅ 楼盘已更新: ${d.name}${extra}` });
 }
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ propertyCode: string }> }
 ) {
@@ -247,3 +249,6 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: `✅ 楼盘已删除: ${existing.name}` });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);

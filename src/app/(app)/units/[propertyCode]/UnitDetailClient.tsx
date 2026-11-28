@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ROOM_STATUS_BADGE, roomStatusLabel } from "@/lib/config";
+import { useCallback, useEffect, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import { IconPen } from "@/components/icons";
+import PropertyEditModal from "../PropertyEditModal";
 
 interface RoomRow {
   roomCode: string;
@@ -26,47 +26,57 @@ interface PropertyDetail {
   rooms: RoomRow[];
 }
 
-export default function UnitDetailClient({ propertyCode }: { propertyCode: string }) {
-  const { locale, t } = useLanguage();
+/** 基本资料 on the unit's 资料 tab: code, address, owner deal, status — and (Admin) the edit form
+ * for them. Rooms, notes and money each have their own tab now. */
+export default function UnitDetailClient({ propertyCode, canEdit, onChanged }: { propertyCode: string; canEdit: boolean; onChanged?: () => void }) {
+  const { t } = useLanguage();
   const [property, setProperty] = useState<PropertyDetail | null>(null);
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`/api/properties/${propertyCode}`);
-        const data = await res.json();
-        if (!data.success) {
-          setError(data.message);
-          return;
-        }
-        setProperty(data.property);
-      } catch {
-        setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/properties/${propertyCode}`);
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.message);
+        return;
       }
-    })();
+      setProperty(data.property);
+    } catch {
+      setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
+    }
   }, [propertyCode, t]);
 
-  if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!property)
-    return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- first load; state is set after the fetch resolves
+    void load();
+  }, [load]);
+
+  if (error) return <div className="rounded-2xl bg-white p-4 text-sm text-rose-600 shadow-sm">{error}</div>;
+  if (!property) return <div className="h-32 animate-pulse rounded-2xl bg-white/80 motion-reduce:animate-none" />;
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <div className="mb-3.5 flex items-center justify-between">
-        <h3 className="text-base font-semibold text-brand">🏢 {property.name}</h3>
-        <Link href="/units" className="text-sm text-gray-500 hover:underline">
-          {t("← 返回楼盘清单", "← Back to Property List")}
-        </Link>
+    <section className="rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="text-[15px] font-semibold text-gray-900">{t("基本资料", "Basics")}</h2>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="flex h-8 items-center gap-1 rounded-lg bg-brand-light px-2.5 text-[12px] font-semibold text-brand hover:bg-violet-100"
+          >
+            <IconPen size={14} />
+            {t("编辑", "Edit")}
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
         <Info label={t("楼盘号", "Property Code")}>{property.propertyCode}</Info>
         <Info label={t("地址", "Address")}>{property.address || "-"}</Info>
         <Info label={t("地区", "Region")}>{property.region || "-"}</Info>
-        <Info label={property.ownerRentalAmount !== null ? "Owner" : "Landlord"}>
-          {property.landlord || t("自己名下", "Self-owned")}
-        </Info>
+        <Info label={property.ownerRentalAmount !== null ? "Owner" : "Landlord"}>{property.landlord || t("自己名下", "Self-owned")}</Info>
         <Info label={property.ownerRentalAmount !== null ? t("付 Owner 租金", "Rent to Owner") : t("管理费", "Management Fee")}>
           {property.ownerRentalAmount !== null
             ? fmtMoney(property.ownerRentalAmount)
@@ -74,54 +84,34 @@ export default function UnitDetailClient({ propertyCode }: { propertyCode: strin
               ? `${(property.managementFeeRate * 100).toFixed(1)}%`
               : "-"}
         </Info>
-        {property.ownerRentalAmount !== null && (
-          <Info label={t("付 Owner 押金 (可退还)", "Deposit to Owner (Refundable)")}>
-            {fmtMoney(property.ownerDeposit)}
-          </Info>
-        )}
+        {property.ownerRentalAmount !== null && <Info label={t("付 Owner 押金 (可退还)", "Deposit to Owner (Refundable)")}>{fmtMoney(property.ownerDeposit)}</Info>}
         <Info label={t("状态", "Status")}>{property.status || "-"}</Info>
       </div>
 
-      {property.notes && (
-        <div className="mt-3.5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">📝 {property.notes}</div>
+      {editing && (
+        <PropertyEditModal
+          property={{
+            ...property,
+            roomCount: property.rooms.filter((r) => !r.isCarpark).length,
+            carparkCount: property.rooms.filter((r) => r.isCarpark).length,
+          }}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            void load();
+            onChanged?.();
+          }}
+        />
       )}
-
-      <div className="mt-4 border-t border-gray-100 pt-3.5">
-        <h4 className="mb-2.5 text-sm font-semibold text-brand">
-          {t("🏠 房间 / 车位", "🏠 Rooms / Parking")} ({property.rooms.length})
-        </h4>
-        {property.rooms.length === 0 ? (
-          <div className="py-4 text-center text-sm text-gray-400">
-            {t("这个楼盘还没有房间", "This property has no rooms yet")}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {property.rooms.map((r) => (
-              <Link
-                key={r.roomCode}
-                href={`/rooms/${r.roomCode}`}
-                className="flex items-center justify-between rounded-lg border border-gray-100 px-2.5 py-2 text-sm hover:border-brand hover:bg-brand-light/20"
-              >
-                <span className="font-semibold text-brand">
-                  {r.isCarpark ? "🅿️" : "🏠"} {r.roomCode}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ROOM_STATUS_BADGE[r.status]}`}>
-                  {roomStatusLabel(r.status, locale)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </section>
   );
 }
 
 function Info({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-xs text-gray-400">{label}</div>
-      <div>{children}</div>
+      <div className="break-words">{children}</div>
     </div>
   );
 }

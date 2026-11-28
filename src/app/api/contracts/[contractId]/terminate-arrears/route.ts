@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { notifyTenantContractTerminated } from "@/lib/mail";
 import { fmtDate } from "@/lib/format";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   reason: z.string().trim().optional().default(""),
@@ -15,7 +16,7 @@ const schema = z.object({
  * treats any TERMINATED contract's deposit as forfeited rather than held). Deliberately not
  * gated on any system-detected condition (e.g. rent arrears) — Admin needs to be able to act
  * the moment they find out a tenant is gone, not wait for a threshold to trip. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -64,3 +65,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 合同已终止, 押金已标记没收, 房间放回空房" });
 }
+
+export const POST = withActivity(handlePOST);

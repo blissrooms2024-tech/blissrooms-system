@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { verifyPassword } from "@/lib/auth/password";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({ password: z.string().min(1, "请输入密码") });
 
@@ -13,7 +14,7 @@ const schema = z.object({ password: z.string().min(1, "请输入密码") });
  * accident. Deletes every one of those related records for this contract, then the contract
  * itself — there is no undo, and every bit of that financial/history record is gone for
  * good. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -62,3 +63,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 合同已强制删除 (含所有收款/佣金/报修/警告信记录), 房间放回空房" });
 }
+
+export const POST = withActivity(handlePOST);

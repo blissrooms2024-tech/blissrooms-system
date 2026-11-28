@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { paymentTypeLabelLocale } from "@/lib/config";
+import UnitRoomSelect, { EMPTY_PICK, unitsIn, useUnitTree, type UnitRoomValue } from "@/components/UnitRoomSelect";
 import { fmtMoney, fmtDate } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -30,11 +31,6 @@ interface Report {
 
 const UTILITY_TYPES: UtilityType[] = ["AC", "DRYER", "ELECTRIC", "OTHER"];
 
-interface PropertyOption {
-  propertyCode: string;
-  name: string;
-}
-
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
@@ -53,19 +49,15 @@ export default function UtilityReportClient() {
   const [month, setMonth] = useState(currentMonth());
   const [year, setYear] = useState(new Date().getFullYear());
   const [typeFilter, setTypeFilter] = useState<UtilityType | "">("");
-  const [unitFilter, setUnitFilter] = useState("");
-  const [properties, setProperties] = useState<PropertyOption[]>([]);
+  // 楼盘 → 单位: one unit, a whole 楼盘, or all.
+  const tree = useUnitTree();
+  const [pick, setPick] = useState<UnitRoomValue>(EMPTY_PICK);
+  const unitFilter = useMemo(() => {
+    const set = tree ? unitsIn(tree, pick) : null;
+    return set ? [...set].sort().join(",") : "";
+  }, [tree, pick]);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch("/api/properties")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setProperties(data.properties);
-      })
-      .catch(() => {});
-  }, []);
 
   const load = useCallback(async () => {
     setError("");
@@ -148,18 +140,9 @@ export default function UtilityReportClient() {
               </option>
             ))}
           </select>
-          <select
-            value={unitFilter}
-            onChange={(e) => setUnitFilter(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
-          >
-            <option value="">{t("全部楼盘", "All Units")}</option>
-            {properties.map((p) => (
-              <option key={p.propertyCode} value={p.propertyCode}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <div className="w-full sm:w-80">
+            <UnitRoomSelect units={tree ?? []} value={pick} onChange={setPick} mode="filter" rooms="none" bare />
+          </div>
         </div>
       </div>
 
