@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { runDeactivateExpiredTenants } from "@/lib/deactivateExpiredTenants";
+import { withActivity } from "@/lib/activity";
 
 /** Admin-triggered catch-up for the scheduled deactivate-expired-tenants cron — same job,
  * same idempotency (already-disabled tenants are left alone), for whenever Admin wants to
  * run it immediately instead of waiting for the daily schedule. */
-export async function POST() {
+async function handlePOST() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以手动执行" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以手动执行" }, { status: 403 });
   }
 
   const result = await runDeactivateExpiredTenants();
@@ -19,3 +20,5 @@ export async function POST() {
 
   return NextResponse.json({ success: true, message, ...result });
 }
+
+export const POST = withActivity(handlePOST);

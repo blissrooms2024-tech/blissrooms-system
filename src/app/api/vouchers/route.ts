@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { serialize } from "@/lib/serialize";
 import { newId } from "@/lib/id";
 import { notifyTenantVoucherIssued } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 /** Every voucher Admin has ever issued, newest first — for the 代金券 admin page. */
 export async function GET() {
@@ -58,7 +59,7 @@ const schema = z.object({
  * /api/vouchers/[voucherId]/redeem. Takes a whole batch of contracts at once (Admin picking a
  * handful of rooms to reward together is the common case), issuing one identical voucher per
  * contract rather than making Admin repeat the same form once per room. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") {
     return NextResponse.json({ success: false, message: "只有 Admin 可以发放代金券" }, { status: 403 });
@@ -133,3 +134,5 @@ export async function POST(req: NextRequest) {
     message: `✅ 已发放 ${issuedCount} 张代金券 (每张 RM${d.amount.toFixed(2)})${missingMsg}`,
   });
 }
+
+export const POST = withActivity(handlePOST);

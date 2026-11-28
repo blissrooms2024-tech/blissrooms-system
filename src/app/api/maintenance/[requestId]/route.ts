@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
 import { newId } from "@/lib/id";
 import { notifyTenantMaintenanceUpdated, notifyTenantMaintenanceNoteAdded } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   title: z.string().trim().min(1).optional(),
@@ -23,7 +24,7 @@ const schema = z.object({
  * outsourced contractor name), and record the cost once it's done — either an in-house wage or
  * an outsourced invoice. Every field is independently optional so Admin can e.g. just assign a
  * worker without also changing status, or just record cost when finalizing. */
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ requestId: string }> }
 ) {
@@ -129,7 +130,7 @@ export async function PATCH(
 /** Admin-only: remove a maintenance request outright (e.g. a duplicate or test entry). If the
  * job's cost was already paid out, the Expense it booked is left untouched — same convention
  * as deleting a Payment record elsewhere in the app, which never un-books anything either. */
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ requestId: string }> }
 ) {
@@ -146,3 +147,6 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: `✅ 报修单 ${requestId} 已删除` });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 /** Self-service profile — unlike /api/users/[userId] (Admin-only, any user), this only ever
  * reads/writes the caller's own row, and only the fields that are safe for someone to change
@@ -38,7 +39,7 @@ const editSchema = z.object({
   bankAccountNumber: z.string().trim().optional().default(""),
 });
 
-export async function PATCH(req: NextRequest) {
+async function handlePATCH(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "请重新登录" }, { status: 401 });
 
@@ -62,3 +63,5 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: "✅ 资料已更新" });
 }
+
+export const PATCH = withActivity(handlePATCH);

@@ -4,14 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { sendVerifyEmail } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const admin = await getCurrentUser();
-  if (!admin || admin.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以发" }, { status: 403 });
+  if (!admin || (admin.role !== "ADMIN" && admin.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以发" }, { status: 403 });
   }
   const { userId } = await params;
   const user = await prisma.user.findUnique({ where: { userCode: userId } });
@@ -51,3 +52,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: `✅ 验证邮件已发去 ${user.email}（登录密码: ${password}）` });
 }
+
+export const POST = withActivity(handlePOST);

@@ -12,6 +12,8 @@ function canView(user: SessionPayload, contract: { agentId: string; tenantId: st
   return false;
 }
 
+const stamp = (d: Date | null) => (d && !isNaN(d.getTime()) ? d.toISOString() : null);
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
@@ -47,7 +49,9 @@ export async function GET(
   return NextResponse.json({
     success: true,
     contract: serialize({ ...contractRest, agentIc: agent.ic, creditBalance }),
-    payments: serialize(payments),
+    // serialize() keeps only the day; when a slip was uploaded and when Admin reviewed it are
+    // shown with their time of day, so those two also go out as full timestamps.
+    payments: serialize(payments).map((p, i) => ({ ...p, paidAt: stamp(payments[i].paidDate), reviewedAtTime: stamp(payments[i].reviewedAt) })),
     breakdown,
     totalDue,
     totalPaid,

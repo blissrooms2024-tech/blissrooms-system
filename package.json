@@ -12,6 +12,7 @@
     "backfill-properties": "npx tsx prisma/backfill-properties.ts"
   },
   "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@vercel/blob": "^2.7.0",

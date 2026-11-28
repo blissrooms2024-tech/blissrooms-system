@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -27,3 +28,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 已提交, 等 Admin 批" });
 }
+
+export const POST = withActivity(handlePOST);

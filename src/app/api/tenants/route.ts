@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { newId } from "@/lib/id";
+import { withActivity } from "@/lib/activity";
 
 /**
  * Search existing tenant profiles by IC/name/email, so Agent/Admin pick the tenant that
@@ -45,7 +46,7 @@ const createSchema = z.object({
 });
 
 /** Creates a tenant profile up-front (Agent or Admin), separate from filling a contract. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "请重新登录" }, { status: 401 });
   if (!["ADMIN", "AGENT"].includes(user.role)) {
@@ -92,3 +93,5 @@ export async function POST(req: NextRequest) {
     tenant: { userCode: created.userCode, name: created.name, ic: created.ic, email: created.email, phone: created.phone },
   });
 }
+
+export const POST = withActivity(handlePOST);

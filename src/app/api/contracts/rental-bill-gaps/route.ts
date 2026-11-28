@@ -10,7 +10,7 @@ import { getCurrentUser } from "@/lib/auth/session";
  * notification email) just because nobody's formally terminated/moved them out yet. */
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
     return NextResponse.json({ success: false, message: "没有权限" }, { status: 403 });
   }
 

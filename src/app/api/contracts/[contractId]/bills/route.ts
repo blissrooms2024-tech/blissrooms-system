@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
 import { tryApplyCreditToNewBill } from "@/lib/creditBalance";
+import { withActivity } from "@/lib/activity";
 
 /** Bill types Admin can issue through the tenant-uploads-slip → Admin-approves flow.
  * Covers the move-in Outstanding (DEPOSIT/ADMIN_FEE/ACCESS_CARD/first RENTAL) as well as
@@ -36,13 +37,13 @@ const createSchema = z
 
 /** Admin issues a bill (a Payment row with status PENDING) for the tenant to pay and upload
  * proof against — used for the recurring RENTAL/UTILITIES/AC/DRYER charges. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以开账单" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以开账单" }, { status: 403 });
   }
   const { contractId } = await params;
   const c = await prisma.contract.findUnique({
@@ -107,3 +108,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: `✅ 账单已开: ${label} RM${d.amountDue.toFixed(2)}` });
 }
+
+export const POST = withActivity(handlePOST);

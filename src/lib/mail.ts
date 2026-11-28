@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { newId } from "@/lib/id";
 import { fmtDate } from "@/lib/format";
+import { longDateZh, type Digest } from "@/lib/todoText";
 
 // English labels for email content — the in-app UI stays Chinese (see lib/config.ts), but
 // all outbound email is English-only.
@@ -13,7 +14,9 @@ const PAYMENT_TYPE_LABELS_EN: Record<string, string> = {
   ADMIN_FEE: "Admin Fee",
   ACCESS_CARD: "Access Card Deposit",
   AC: "Air-Cond Top-Up",
-  DRYER: "Dryer",
+  DRYER: "Washer & Dryer",
+  ELECTRIC: "Electricity",
+  CARPARK: "Car Park Rental",
   LATE_FEE: "Late Payment Penalty",
   OTHER: "Other",
 };
@@ -111,7 +114,9 @@ function wrap(title: string, bodyHtml: string, accentColor = "#0b5394") {
     <p style="color:#888;font-size:12px;">Bliss Rooms Enterprise</p></div>`;
 }
 
-function typeLabel(type: string) {
+function typeLabel(type: string, periodMonth?: string | null) {
+  // An AC bill with a billing month is metered usage (抄表开单), not a prepaid top-up.
+  if (type === "AC" && periodMonth) return "Air-Con Usage";
   return PAYMENT_TYPE_LABELS_EN[type] ?? type;
 }
 
@@ -132,16 +137,16 @@ export async function notifyAdminsSlipUploaded(bill: BillInfo, tenantName: strin
   const link = `${APP_URL}/payments/review`;
   // Aircon top-ups block the tenant's AC immediately, so flag these orange to catch Admin's
   // eye in the inbox and get handled faster than an ordinary slip review.
-  const isAcTopup = bill.type === "AC";
+  const isAcTopup = bill.type === "AC" && !bill.periodMonth;
   const accentColor = isAcTopup ? "#e67e22" : "#0b5394";
   const html = wrap(
     "New Transaction Slip Pending Review",
     `<p>${tenantName} uploaded a transaction slip that needs review:</p>
-     <p><b style="${isAcTopup ? `color:${accentColor};` : ""}">${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type)} · RM${bill.amountPaid.toFixed(2)}</p>
+     <p><b style="${isAcTopup ? `color:${accentColor};` : ""}">${bill.contractCode}</b> · ${bill.roomCode} · ${typeLabel(bill.type, bill.periodMonth)} · RM${bill.amountPaid.toFixed(2)}</p>
      <p><a href="${link}" style="background:${accentColor};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Go Review</a></p>`,
     accentColor
   );
-  const subject = `${isAcTopup ? "🟠 " : ""}Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type)} RM${bill.amountPaid.toFixed(2)}`;
+  const subject = `${isAcTopup ? "🟠 " : ""}Bliss Rooms — Pending Review: ${bill.contractCode} ${typeLabel(bill.type, bill.periodMonth)} RM${bill.amountPaid.toFixed(2)}`;
   return Promise.all(admins.map((a) => send(a.email, subject, html, "SlipUploaded", bill.paymentCode, triggeredBy)));
 }
 
@@ -151,12 +156,16 @@ export async function notifyTenantBillCreated(tenant: { name: string; email: str
     "New Bill",
     `<p>Hi ${tenant.name},</p>
      <p>You have a new bill. Please pay and upload your transaction slip as soon as possible:</p>
-     <p><b>${typeLabel(bill.type)}</b> · RM${bill.amountDue.toFixed(2)}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
+     <p><b>${typeLabel(bill.type, bill.periodMonth)}</b> · RM${bill.amountDue.toFixed(2)}${bill.periodMonth ? ` · ${bill.periodMonth}` : ""}</p>
      <p>Due date: ${fmtDate(bill.dueDate)}</p>
-     <p style="color:#c0392b;">A late payment penalty of RM30.00/day applies if the transaction slip isn't uploaded by the due date.</p>
+     <p style="color:#c0392b;">${
+       ["ELECTRIC", "DRYER", "AC"].includes(bill.type)
+         ? "If it stays unpaid after the due date, the company may charge a late payment penalty under your tenancy agreement."
+         : "A late payment penalty of RM30.00/day applies if the transaction slip isn't uploaded by the due date."
+     }</p>
      <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Upload Transaction Slip</a></p>`
   );
-  return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type)} RM${bill.amountDue.toFixed(2)}`, html, "BillCreated", bill.paymentCode, triggeredBy);
+  return send(tenant.email, `Bliss Rooms — New Bill: ${typeLabel(bill.type, bill.periodMonth)} RM${bill.amountDue.toFixed(2)}`, html, "BillCreated", bill.paymentCode, triggeredBy);
 }
 
 /** Admin issues a voucher ahead of time — tenant redeems it themselves later from 我的代金券. */
@@ -184,22 +193,65 @@ export async function notifyTenantBillReviewed(
   reason: string | null,
   triggeredBy: string
 ) {
-  const label = approved ? (bill.type === "AC" ? "Topped Up" : "Approved") : "Rejected";
+  const label = approved ? (bill.type === "AC" && !bill.periodMonth ? "Topped Up" : "Approved") : "Rejected";
   const html = wrap(
     `Bill ${approved ? "Approved" : "Rejected"}`,
     `<p>Hi ${tenant.name},</p>
-     <p>Your bill <b>${typeLabel(bill.type)} RM${bill.amountPaid.toFixed(2)}</b> has been ${label}.</p>
+     <p>Your bill <b>${typeLabel(bill.type, bill.periodMonth)} RM${bill.amountPaid.toFixed(2)}</b> has been ${label}.</p>
      ${!approved ? `<p style="color:#c0392b;">Reason: ${reason}</p><p>Please re-upload the correct transaction slip.</p>` : ""}
      <p><a href="${APP_URL}/my-tenancy" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View My Tenancy</a></p>`
   );
   return send(
     tenant.email,
-    `Bliss Rooms — Bill ${approved ? "Approved" : "Rejected"}: ${typeLabel(bill.type)}`,
+    `Bliss Rooms — Bill ${approved ? "Approved" : "Rejected"}: ${typeLabel(bill.type, bill.periodMonth)}`,
     html,
     "BillReviewed",
     bill.paymentCode,
     triggeredBy
   );
+}
+
+/** 抄表开单 — one email per tenant listing this month's electricity / washer & dryer / aircon
+ * bills with how each was worked out. These bills don't get the automatic RM30/day penalty,
+ * but the email still warns that the company may charge one under the agreement if unpaid. */
+export async function notifyTenantUtilityBills(
+  tenant: { name: string; email: string },
+  info: { period: string; roomCode: string; dueDate: string; lines: { label: string; amount: number; note: string }[]; runCode: string },
+  triggeredBy: string
+) {
+  const total = info.lines.reduce((s, l) => s + l.amount, 0);
+  const rows = info.lines
+    .map(
+      (l) =>
+        `<tr><td style="padding:6px 10px 6px 0;vertical-align:top;"><b>${l.label}</b><br><span style="color:#666;font-size:12px;">${l.note}</span></td><td style="padding:6px 0;text-align:right;vertical-align:top;white-space:nowrap;">RM${l.amount.toFixed(2)}</td></tr>`
+    )
+    .join("");
+  const html = wrap(
+    `Utility Bill ${info.period}`,
+    `<p>Hi ${tenant.name},</p>
+     <p>Your utility usage bill for <b>${info.roomCode}</b>, ${info.period}:</p>
+     <table style="border-collapse:collapse;min-width:280px;">${rows}
+       <tr><td style="padding:8px 10px 0 0;border-top:1px solid #ddd;"><b>Total</b></td><td style="padding:8px 0 0;border-top:1px solid #ddd;text-align:right;"><b>RM${total.toFixed(2)}</b></td></tr>
+     </table>
+     <p>Please pay by <b>${fmtDate(info.dueDate)}</b> (put your room code in the transfer reference) and upload the transaction slip in the app.</p>
+     <p style="color:#c0392b;">If it stays unpaid after the due date, the company may charge a late payment penalty under your tenancy agreement.</p>
+     <p><a href="${APP_URL}/my-bills" style="background:#0b5394;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View &amp; Pay</a></p>`
+  );
+  return send(tenant.email, `Bliss Rooms — Utility Bill ${info.period}: RM${total.toFixed(2)}`, html, "UtilityBill", info.runCode, triggeredBy);
+}
+
+/** Daily cron, for an unpaid usage bill past its due date (every few days, not every day). */
+export async function notifyTenantUtilityOverdue(tenant: { name: string; email: string }, bill: BillInfo, daysOverdue: number) {
+  const html = wrap(
+    "Utility Bill Overdue",
+    `<p>Hi ${tenant.name},</p>
+     <p>Your <b>${typeLabel(bill.type, bill.periodMonth)}</b> bill of <b>RM${bill.amountDue.toFixed(2)}</b>${bill.periodMonth ? ` (${bill.periodMonth})` : ""} for ${bill.roomCode} is now <b>${daysOverdue} day${daysOverdue === 1 ? "" : "s"} overdue</b>.</p>
+     <p>Please pay and upload the transaction slip as soon as possible. The company may charge a late payment penalty under your tenancy agreement for bills that remain unpaid.</p>
+     ${bill.type === "AC" && bill.periodMonth ? `<p><b>Under the tenancy agreement, the company may also suspend the air-conditioner supply until this bill is paid.</b></p>` : ""}
+     <p><a href="${APP_URL}/my-bills" style="background:#c0392b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Pay Now</a></p>`,
+    "#c0392b"
+  );
+  return send(tenant.email, `Bliss Rooms — Overdue: ${typeLabel(bill.type, bill.periodMonth)} RM${bill.amountDue.toFixed(2)}`, html, "UtilityOverdue", bill.paymentCode, "system-cron");
 }
 
 /** Cron-generated late fee — lets the tenant know a penalty was charged and why. */
@@ -473,3 +525,121 @@ export async function notifyAgentApproved(agent: { userCode: string; name: strin
   );
   return send(agent.email, "Bliss Rooms — Your Agent Account Has Been Approved", html, "AgentApproved", agent.userCode, triggeredBy);
 }
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+/** 会议记录: someone was given an issue to handle (谁处理) or to follow up (谁跟进). Staff email, in Chinese. */
+export async function notifyMeetingIssue(
+  person: { name: string; email: string },
+  issue: { issueCode: string; title: string; detail: string | null; dueDate: string | null; owner: string | null; followUp: string | null },
+  meeting: { meetingCode: string; title: string },
+  as: "OWNER" | "FOLLOW_UP",
+  triggeredBy: string
+) {
+  const role = as === "OWNER" ? "处理" : "跟进";
+  const html = wrap(
+    "会议事项",
+    `<p>${esc(person.name)} 你好，</p>
+     <p>在会议「${esc(meeting.title)}」里，你被安排<b>${role}</b>这件事：</p>
+     <p style="border-left:3px solid #7c3aed;padding:6px 12px;background:#f6f3ff;"><b>${esc(issue.title)}</b>${issue.detail ? `<br><span style="color:#555;">${esc(issue.detail)}</span>` : ""}</p>
+     <p>处理：${esc(issue.owner ?? "—")}　跟进：${esc(issue.followUp ?? "—")}${issue.dueDate ? `　期限：${fmtDate(issue.dueDate)}` : ""}</p>
+     <p>做好之后，请在系统里把它标记为「已完成」。</p>
+     <p><a href="${APP_URL}/meetings?tab=mine" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">查看我的事项</a></p>`,
+    "#7c3aed"
+  );
+  return send(person.email, `Bliss Rooms — 会议事项（${role}）：${issue.title}`, html, "MeetingIssue", issue.issueCode, triggeredBy);
+}
+
+// --- 待办 -----------------------------------------------------------------------------------------
+
+const TODO_BTN = (href: string, label: string) =>
+  `<p><a href="${APP_URL}${href}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">${label}</a></p>`;
+
+/** Boss / Admin gave someone a to-do. Staff email, in Chinese. */
+export async function notifyTodoAssigned(
+  person: { name: string; email: string },
+  todo: { todoCode: string; title: string; note: string | null; dueDate: string | null },
+  givenBy: string
+) {
+  const html = wrap(
+    "新待办",
+    `<p>${esc(person.name)} 你好，</p>
+     <p>${esc(givenBy)} 给你一项待办：</p>
+     <p style="border-left:3px solid #7c3aed;padding:6px 12px;background:#f6f3ff;"><b>${esc(todo.title)}</b>${todo.note ? `<br><span style="color:#555;">${esc(todo.note)}</span>` : ""}</p>
+     <p>${todo.dueDate ? `期限：<b>${longDateZh(todo.dueDate)}</b>` : "没有期限"}</p>
+     <p>做好之后请在系统里打勾。${todo.dueDate ? "到期那天早上还没打勾的话，系统会再寄 email 提醒你。" : ""}</p>
+     ${TODO_BTN("/todos", "打开我的待办")}`,
+    "#7c3aed"
+  );
+  return send(person.email, `Bliss Rooms — 新待办：${todo.title}`, html, "TodoAssigned", todo.todoCode, givenBy);
+}
+
+/** The 8am email: what's due today or late, for one person. `key` stops a second send that day. */
+export async function sendTodoDigest(person: { name: string; email: string }, d: Digest, key: string) {
+  const li = (title: string, extra: string, color = "#555") => `<li style="margin:4px 0;"><b>${esc(title)}</b> <span style="color:${color};">${extra}</span></li>`;
+  const block = (heading: string, color: string, items: string[]) =>
+    items.length ? `<p style="margin:14px 0 4px;color:${color};font-weight:bold;">${heading}</p><ul style="margin:0;padding-left:20px;">${items.join("")}</ul>` : "";
+  const late = d.overdue.length + d.issues.filter((i) => i.daysLate > 0).length;
+  const html = wrap(
+    "今天的待办",
+    `<p>${esc(person.name)} 早安，</p>
+     <p>这些事情今天到期，或者已经过了期限：</p>
+     ${block(
+       `已经过期（${d.overdue.length}）`,
+       "#e11d48",
+       d.overdue.map((t) => li(t.title, `— 迟了 ${t.daysLate} 天（期限 ${fmtDate(t.dueDate)}）${t.givenBy ? ` · ${esc(t.givenBy)} 给的` : ""}`, "#e11d48"))
+     )}
+     ${block(
+       `今天到期（${d.dueToday.length}）`,
+       "#b45309",
+       d.dueToday.map((t) => li(t.title, t.givenBy ? `— ${esc(t.givenBy)} 给的` : ""))
+     )}
+     ${block(
+       `会议事项（${d.issues.length}）`,
+       "#7c3aed",
+       d.issues.map((i) =>
+         li(
+           i.title,
+           `— 你${i.as === "OWNER" ? "处理" : "跟进"} · 会议「${esc(i.meetingTitle)}」 · ${i.daysLate > 0 ? `迟了 ${i.daysLate} 天` : "今天到期"}`,
+           i.daysLate > 0 ? "#e11d48" : "#555"
+         )
+       )
+     )}
+     <p style="margin-top:16px;">做好了就在系统里打勾，明天就不会再提醒。还没办法做的，可以在系统里改期限。</p>
+     ${TODO_BTN("/todos", "打开我的待办")}`,
+    "#7c3aed"
+  );
+  const subject = `Bliss Rooms — 今天的待办：${d.total} 项${late ? `（${late} 项已过期）` : ""}`;
+  return send(person.email, subject, html, "TodoDigest", key, "system");
+}
+
+/** Monday's email to the Boss: everyone's late to-dos and meeting items, one block per person. */
+export async function sendTodoTeamWeekly(
+  boss: { name: string; email: string },
+  groups: { name: string; role: string; items: { title: string; dueDate: string; daysLate: number; kind: "TODO" | "MEETING" }[] }[],
+  key: string
+) {
+  const ROLE: Record<string, string> = { BOSS: "Boss", ADMIN: "Admin", AGENT: "Agent", WORKER: "师傅" };
+  const total = groups.reduce((n, g) => n + g.items.length, 0);
+  const body = groups
+    .map(
+      (g) => `<p style="margin:14px 0 4px;font-weight:bold;">${esc(g.name)}（${ROLE[g.role] ?? g.role}）· ${g.items.length} 项</p>
+       <ul style="margin:0;padding-left:20px;">${g.items
+         .map(
+           (i) =>
+             `<li style="margin:4px 0;">${esc(i.title)} <span style="color:#e11d48;">— 迟了 ${i.daysLate} 天</span> <span style="color:#888;">（期限 ${fmtDate(i.dueDate)}）</span></li>`
+         )
+         .join("")}</ul>`
+    )
+    .join("");
+  const html = wrap(
+    "团队逾期待办",
+    `<p>${esc(boss.name)} 早安，</p>
+     <p>到今天为止，团队还有 <b>${total}</b> 项待办过了期限还没完成：</p>
+     ${body}
+     ${TODO_BTN("/todos?tab=team", "打开团队待办")}`,
+    "#7c3aed"
+  );
+  return send(boss.email, `Bliss Rooms — 团队逾期待办：${total} 项`, html, "TodoTeamWeekly", key, "system");
+}
+
