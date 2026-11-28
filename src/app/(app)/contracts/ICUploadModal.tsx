@@ -5,15 +5,8 @@ import Modal from "@/components/Modal";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function ICUploadModal({
   contractCode,
@@ -45,7 +38,7 @@ export default function ICUploadModal({
   }, [contractCode]);
 
   async function upload(side: "front" | "back", file: File) {
-    if (file.size > 3 * 1024 * 1024) {
+    if (isOversized(file)) {
       toast.warning(t("图片太大(超过3MB)，请压缩", "Image too large (over 3MB) — please compress it"));
       return;
     }

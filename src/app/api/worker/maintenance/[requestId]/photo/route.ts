@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   slot: z.enum(["before", "after"]),
@@ -12,7 +13,7 @@ const schema = z.object({
 /** Worker uploads a before/after photo for their own assigned job. Uploading the first
  * "before" photo auto-moves an ACKNOWLEDGED job to IN_PROGRESS — a low-risk transition since
  * it doesn't touch money or the tenant relationship, just signals work has actually started. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ requestId: string }> }
 ) {
@@ -59,3 +60,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 照片已上传" });
 }
+
+export const POST = withActivity(handlePOST);

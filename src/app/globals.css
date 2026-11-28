@@ -14,6 +14,9 @@
   --color-brand: var(--color-brand);
   --color-brand-dark: var(--color-brand-dark);
   --color-brand-light: var(--color-brand-light);
+  /* Figures and Latin headings on the app-style pages (home, 更多, login). Chinese text falls
+     through to the system font, so only numbers, RM amounts and room codes change face. */
+  --font-display: "Bricolage Grotesque Variable", "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 body {
@@ -22,9 +25,18 @@ body {
   font-family: "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
 }
 
+/* App-style pages (home, 更多, login): Latin letters and figures in Bricolage Grotesque,
+   Chinese in the phone's own CJK font — the variable font only covers Latin, so the browser
+   falls through to the next family for every Chinese character. */
+.app-type {
+  font-family: "Bricolage Grotesque Variable", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Roboto, Arial, sans-serif;
+}
+
 @layer components {
+  /* 16px on phones: iPhone Safari zooms the whole page into any input smaller than that the
+     moment it's tapped, and doesn't zoom back out. */
   .input {
-    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none;
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-brand focus:outline-none sm:text-sm;
   }
   .btn-primary {
     @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-violet-300;
@@ -46,6 +58,41 @@ body {
 }
 .toast-pop {
   animation: toast-in 0.2s ease-out;
+}
+
+/* Bottom sheet: rises from the bottom edge on phones, fades in place on larger screens. */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.sheet-up {
+  animation: sheet-up 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (min-width: 640px) {
+  .sheet-up {
+    animation: sheet-fade 0.16s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-up,
+  .toast-pop {
+    animation: none;
+  }
 }
 
 @media print {

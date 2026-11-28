@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { notifyAdminsMoveOutNotice } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({ date: z.string().trim().min(1, "请选日期") });
 
@@ -10,7 +11,7 @@ const schema = z.object({ date: z.string().trim().min(1, "请选日期") });
  * (renew or move out) on the tenant, so this just records their declared intent and pings
  * Admin, rather than trying to automate anything about the actual move-out (that's still the
  * separate MoveInOutForm condition report, filled once they're actually checking out). */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -39,3 +40,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 已登记，Admin 会跟进" });
 }
+
+export const POST = withActivity(handlePOST);

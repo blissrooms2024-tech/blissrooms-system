@@ -10,6 +10,7 @@ import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useLanguage } from "@/components/LanguageProvider";
 import { maintenanceStatusLabel } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
+import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface MaintenanceRow {
   requestCode: string;
@@ -77,14 +78,6 @@ function unitCodeOf(roomCode: string): string {
   return i > 0 ? roomCode.slice(0, i) : roomCode;
 }
 
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 interface AssignDraft {
   workerType: "IN_HOUSE" | "OUTSOURCED";
@@ -94,7 +87,9 @@ interface AssignDraft {
   note: string;
 }
 
-export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
+/** `propertyCode`: the 维修 tab on a unit's page — only that unit's requests, and new ones are
+ * opened for its rooms. */
+export default function MaintenanceClient({ canAct, propertyCode }: { canAct: boolean; propertyCode?: string }) {
   const toast = useToast();
   const { locale, t } = useLanguage();
   const [items, setItems] = useState<MaintenanceRow[] | null>(null);
@@ -131,15 +126,17 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         return;
       }
       setItems(
-        data.requests.map((r: MaintenanceRow & { contract: { contractCode: string } }) => ({
-          ...r,
-          contractCode: r.contract.contractCode,
-        }))
+        data.requests
+          .map((r: MaintenanceRow & { contract: { contractCode: string } }) => ({
+            ...r,
+            contractCode: r.contract.contractCode,
+          }))
+          .filter((r: MaintenanceRow) => !propertyCode || unitCodeOf(r.roomCode) === propertyCode)
       );
     } catch {
       setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
-  }, [t]);
+  }, [t, propertyCode]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -162,7 +159,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
         return;
       }
       const list: OccupiedContract[] = data.contracts
-        .filter((c: { status: string }) => c.status === "ACTIVE")
+        .filter((c: { status: string; room?: { roomCode: string } }) => c.status === "ACTIVE" && (!propertyCode || unitCodeOf(c.room?.roomCode ?? "") === propertyCode))
         .map((c: { contractCode: string; tenantName: string; room?: { roomCode: string } }) => ({
           contractCode: c.contractCode,
           roomCode: c.room?.roomCode ?? "",
@@ -176,7 +173,7 @@ export default function MaintenanceClient({ canAct }: { canAct: boolean }) {
   }
 
   async function addCreatePhoto(file: File) {
-    if (file.size > 3 * 1024 * 1024) {
+    if (isOversized(file)) {
       toast.warning(t("文件太大(超过3MB)，请压缩", "File too large (over 3MB) — please compress it"));
       return;
     }

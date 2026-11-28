@@ -3,10 +3,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
+import { withActivity } from "@/lib/activity";
 
 const postSchema = z.object({ dataUrl: z.string().min(1) });
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ roomCode: string }> }
 ) {
@@ -38,7 +39,7 @@ export async function POST(
 
 const deleteSchema = z.object({ url: z.string().min(1) });
 
-export async function DELETE(
+async function handleDELETE(
   req: NextRequest,
   { params }: { params: Promise<{ roomCode: string }> }
 ) {
@@ -59,3 +60,6 @@ export async function DELETE(
   await prisma.room.update({ where: { roomCode }, data: { photos } });
   return NextResponse.json({ success: true, message: "✅ 照片已删除", photos });
 }
+
+export const POST = withActivity(handlePOST);
+export const DELETE = withActivity(handleDELETE);
