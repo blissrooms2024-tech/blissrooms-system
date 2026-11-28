@@ -8,11 +8,11 @@ export default function MyAirconClient() {
   const { cards, error, selected, setSelected } = useTenantContracts();
   const t = useT();
 
-  if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
+  if (error) return <div className="rounded-xl bg-white p-4 sm:p-5 text-sm text-red-600 shadow-sm">{error}</div>;
+  if (!cards) return <div className="rounded-xl bg-white p-4 sm:p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
   if (cards.length === 0) {
     return (
-      <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-center text-gray-400 shadow-sm">
         {t("你还没有租约", "You don't have a tenancy yet")}
       </div>
     );
@@ -26,7 +26,7 @@ export default function MyAirconClient() {
             <button
               key={c.contractCode}
               onClick={() => setSelected(c.contractCode)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              className={`rounded-full px-3.5 py-2 text-xs font-semibold ${
                 selected === c.contractCode ? "bg-brand text-white" : "bg-gray-100 text-gray-600"
               }`}
             >

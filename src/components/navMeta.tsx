@@ -29,11 +29,16 @@ import {
   IconUsers,
   IconWallet,
   IconWrench,
+  IconBook,
+  IconSnow,
+  IconBox,
+  IconDoorIn,
+  IconHeadset,
 } from "./icons";
 
 export type NavIcon = ComponentType<{ size?: number; className?: string }>;
 export type Tone = "violet" | "teal" | "amber" | "rose" | "slate";
-export type NavGroup = "tenancy" | "money" | "team";
+export type NavGroup = "tenancy" | "money" | "team" | "lease" | "pay" | "living";
 
 export const TONE_CLASS: Record<Tone, string> = {
   violet: "bg-brand-light text-brand",
@@ -43,12 +48,23 @@ export const TONE_CLASS: Record<Tone, string> = {
   slate: "bg-slate-100 text-slate-600",
 };
 
-const GROUP_TONE: Record<NavGroup, Tone> = { tenancy: "violet", money: "teal", team: "slate" };
+const GROUP_TONE: Record<NavGroup, Tone> = {
+  tenancy: "violet",
+  money: "teal",
+  team: "slate",
+  // Tenant groups (租约 / 付款 / 居住服务) — same colour logic: paperwork violet, money teal.
+  lease: "violet",
+  pay: "teal",
+  living: "amber",
+};
 
 export const NAV_GROUPS: { key: NavGroup; zh: string; en: string }[] = [
   { key: "tenancy", zh: "租务", en: "Tenancy" },
   { key: "money", zh: "财务", en: "Money" },
   { key: "team", zh: "团队与系统", en: "Team & system" },
+  { key: "lease", zh: "租约", en: "My tenancy" },
+  { key: "pay", zh: "付款", en: "Payments" },
+  { key: "living", zh: "居住服务", en: "Living here" },
 ];
 
 const meta = (icon: NavIcon, group: NavGroup) => ({ icon, group, tone: GROUP_TONE[group] });
@@ -78,6 +94,18 @@ export const NAV_META: Record<string, { icon: NavIcon; group: NavGroup; tone: To
   "/meetings": meta(IconNotes, "team"),
   "/users": meta(IconUsers, "team"),
   "/profile": meta(IconUser, "team"),
+  // Tenant pages
+  "/my-home": meta(IconHome, "lease"),
+  "/my-tenancy": meta(IconContract, "lease"),
+  "/my-movein": meta(IconDoorIn, "lease"),
+  "/my-moveout": meta(IconBox, "lease"),
+  "/my-warnings": meta(IconAlert, "lease"),
+  "/my-bills": meta(IconWallet, "pay"),
+  "/my-aircon": meta(IconSnow, "pay"),
+  "/my-vouchers": meta(IconTicket, "pay"),
+  "/my-maintenance": meta(IconWrench, "living"),
+  "/my-guide": meta(IconBook, "living"),
+  "/support": meta(IconHeadset, "living"),
 };
 
 export const navMeta = (href: string) => NAV_META[href] ?? meta(IconChart, "team");

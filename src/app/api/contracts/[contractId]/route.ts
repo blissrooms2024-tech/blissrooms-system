@@ -40,7 +40,7 @@ export async function GET(
   startOfToday.setHours(0, 0, 0, 0);
   const escalationCutoff = new Date(startOfToday.getTime() - RENT_ARREARS.ESCALATION_DAYS * 24 * 3600 * 1000);
 
-  const [payments, pendingReviewAgg, escalatedBill, moveInForm] = await Promise.all([
+  const [payments, pendingReviewAgg, escalatedBill, moveInForm, signEvidence] = await Promise.all([
     prisma.payment.findMany({
       where: { contractId: contract.id },
       select: { type: true, amountDue: true, amountPaid: true, status: true },
@@ -60,6 +60,10 @@ export async function GET(
     prisma.moveInOutForm.findFirst({
       where: { contractId: contract.id, type: "MOVE_IN" },
       select: { id: true },
+    }),
+    prisma.log.findFirst({
+      where: { type: "TENANT_SIGN_EVIDENCE", relatedId: contract.contractCode },
+      select: { timestamp: true },
     }),
   ]);
   const pendingReview = Number(pendingReviewAgg._sum.amountPaid ?? 0);
@@ -88,6 +92,9 @@ export async function GET(
       // Legacy-imported contracts go straight to ACTIVE with no digital signature on either
       // side — they were signed on paper before import.
       _isLegacy: contract.status === "ACTIVE" && !contract.agentSignature && !contract.tenantSignature,
+      // The 10-notice appendix now lives in 入住指南. Only contracts the tenant already signed
+      // under the old flow (no click-to-sign evidence) keep showing it, exactly as they signed it.
+      _showAppendix: !!contract.tenantSignature && !signEvidence,
     }),
   });
 }

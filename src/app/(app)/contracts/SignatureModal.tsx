@@ -10,11 +10,15 @@ export default function SignatureModal({
   who,
   onClose,
   onSigned,
+  onCapture,
 }: {
   contractCode: string;
   who: "agent" | "tenant";
   onClose: () => void;
   onSigned: () => void;
+  /** Capture-only mode (tenant click-to-sign flow): hand the drawn PNG back instead of
+   * submitting it — the agreement page places it spot by spot and submits at the end. */
+  onCapture?: (dataUrl: string) => void;
 }) {
   const toast = useToast();
   const tt = useT();
@@ -25,8 +29,16 @@ export default function SignatureModal({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Match the canvas bitmap to its on-screen size so strokes aren't stretched on phones
+    // (the box is taller on mobile to give fingers room).
+    const dpr = window.devicePixelRatio || 1;
+    const box = canvas.getBoundingClientRect();
+    if (box.width > 0 && box.height > 0) {
+      canvas.width = Math.round(box.width * dpr);
+      canvas.height = Math.round(box.height * dpr);
+    }
     const ctx = canvas.getContext("2d")!;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2.5 * dpr;
     ctx.lineCap = "round";
     ctx.strokeStyle = "#111";
 
@@ -90,6 +102,11 @@ export default function SignatureModal({
       return;
     }
     const dataUrl = canvasRef.current!.toDataURL("image/png");
+    if (onCapture) {
+      onCapture(dataUrl);
+      onClose();
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/contracts/${contractCode}/sign`, {
@@ -120,23 +137,28 @@ export default function SignatureModal({
         ✍️ {who === "agent" ? tt("Agent 签名", "Agent Signature") : tt("租客签名", "Tenant Signature")} — {contractCode}
       </h3>
       <p className="mt-1 text-sm text-gray-500">
-        {tt(
-          "在下面框里签名（手机用手指，电脑按住鼠标画）。签一次会自动套用到合同全部签名位。",
-          "Sign in the box below (finger on mobile, mouse on desktop). One signature is automatically applied to every signature spot on the contract."
-        )}
+        {onCapture
+          ? tt(
+              "在下面框里签名（手机用手指，电脑按住鼠标画）。签好后，合同里每个签名位都要你自己点一下才会签上。",
+              "Sign in the box below (finger on mobile, mouse on desktop). After that, tap each signature spot in the agreement yourself to place it."
+            )
+          : tt(
+              "在下面框里签名（手机用手指，电脑按住鼠标画）。签一次会自动套用到合同全部签名位。",
+              "Sign in the box below (finger on mobile, mouse on desktop). One signature is automatically applied to every signature spot on the contract."
+            )}
       </p>
       <canvas
         ref={canvasRef}
         width={560}
         height={200}
-        className="mt-2 w-full touch-none rounded-lg border-2 border-dashed border-gray-300 bg-white"
+        className="mt-2 h-56 w-full touch-none rounded-lg border-2 border-dashed border-gray-300 bg-white sm:h-[200px]"
       />
       <div className="mt-2.5 flex gap-2">
-        <button onClick={clearSig} className="btn-soft">
+        <button onClick={clearSig} className="btn-soft flex-1 sm:flex-none">
           {tt("清除重签", "Clear & Redo")}
         </button>
-        <button onClick={submit} disabled={loading} className="btn-primary">
-          {tt("确定签名", "Confirm Signature")}
+        <button onClick={submit} disabled={loading} className="btn-primary flex-1 sm:flex-none">
+          {onCapture ? tt("用这个签名", "Use This Signature") : tt("确定签名", "Confirm Signature")}
         </button>
       </div>
     </Modal>

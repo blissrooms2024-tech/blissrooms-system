@@ -91,7 +91,7 @@ export default function BreakdownPayAllModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3 className="mb-1 text-lg font-bold text-brand">
+      <h3 className="mb-1 text-base font-bold text-brand sm:text-lg">
         {t("💰 一次过付款", "💰 Pay All at Once")} — {contractCode}
       </h3>
       <p className="mb-3.5 text-sm text-gray-500">

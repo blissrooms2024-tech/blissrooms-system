@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
 import { IconEye, IconEyeOff, IconHome, IconLock, IconMail } from "@/components/icons";
 import ForgotPasswordModal from "./ForgotPasswordModal";
+import { SupportList } from "@/components/SupportContact";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -66,6 +67,14 @@ export default function LoginPage() {
         <div className="absolute bottom-11 left-6 right-6 text-white">
           <Brand light />
         </div>
+        <details className="mt-4 rounded-lg border border-gray-200 px-3 py-2 text-sm">
+          <summary className="cursor-pointer py-1 font-semibold text-gray-600">
+            🎧 {t("登录不了 / 需要帮忙？联系客服", "Can't log in / need help? Contact support")}
+          </summary>
+          <div className="mt-2">
+            <SupportList compact />
+          </div>
+        </details>
       </div>
 
       <main className="relative -mt-7 flex-1 rounded-t-[28px] bg-white px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-7 md:mt-0 md:w-full md:max-w-[400px] md:flex-none md:rounded-[28px] md:p-8 md:shadow-2xl md:ring-1 md:ring-black/5">

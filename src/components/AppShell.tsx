@@ -5,12 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { MENUS } from "@/lib/menus";
 import { ROLE_LABELS } from "@/lib/config";
+import { ROLE_HOME } from "@/lib/roleHome";
 import ChangePasswordModal from "./ChangePasswordModal";
 import LanguageToggle from "./LanguageToggle";
 import { useLanguage } from "./LanguageProvider";
 import LeaseExpiryReminder from "./LeaseExpiryReminder";
 import MobileTabBar from "./MobileTabBar";
 import { IconHome } from "./icons";
+import SupportButton from "./SupportContact";
 
 const MAINTENANCE_SEEN_KEY = "mtce_seen_resolved_at";
 
@@ -48,9 +50,9 @@ export default function AppShell({
   }
 
   const mtceHref = user.role === "TENANT" ? "/my-maintenance" : user.role === "ADMIN" || user.role === "BOSS" ? "/maintenance" : null;
-  // Boss/Admin get the app-style phone layout: bottom tabs instead of the hamburger drawer,
-  // with password/logout moved into 更多. Other roles keep the current layout for now.
-  const appNav = user.role === "ADMIN" || user.role === "BOSS";
+  // Boss/Admin and Tenant get the app-style phone layout: bottom tabs instead of the hamburger
+  // drawer, with password/logout moved into 更多. Agent/Worker keep the current layout for now.
+  const appNav = user.role === "ADMIN" || user.role === "BOSS" || user.role === "TENANT";
 
   useEffect(() => {
     if (!mtceHref) return;
@@ -101,8 +103,34 @@ export default function AppShell({
       });
   }, [user.role, pathname]);
 
+  // Tenant tab-bar counts: unpaid bills, open repairs, a contract step waiting on them.
+  useEffect(() => {
+    if (user.role !== "TENANT") return;
+    fetch("/api/contracts/my-cards")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return;
+        type Card = {
+          unpaidBillCount: number;
+          openMaintenanceCount: number;
+          agentSigned: boolean;
+          tenantSigned: boolean;
+          isLegacy: boolean;
+        };
+        const cards: Card[] = data.cards;
+        setSidebarAlerts({
+          "/my-bills": cards.reduce((n, c) => n + c.unpaidBillCount, 0),
+          "/my-maintenance": cards.reduce((n, c) => n + c.openMaintenanceCount, 0),
+          "/my-tenancy": cards.filter((c) => !c.isLegacy && c.agentSigned && !c.tenantSigned).length,
+        });
+      })
+      .catch(() => {});
+  }, [user.role, pathname]);
+
+  const isTenantView = user.role === "TENANT";
   const menu = MENUS[user.role] ?? [];
-  const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT] : menu;
+  // An Agent who also rents a room gets the tenant pages, but not the tenant home.
+  const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT.filter((m) => m.href !== "/my-home")] : menu;
   const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料", labelEn: "👤 My Profile" }];
 
   const sidebarLinks = menuWithProfile.map((m) => {
@@ -159,7 +187,7 @@ export default function AppShell({
             </svg>
           </button>
           {appNav ? (
-            <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+            <Link href={ROLE_HOME[user.role] ?? "/dashboard"} className="flex min-w-0 items-center gap-2">
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/15">
                 <IconHome size={17} />
               </span>
@@ -179,6 +207,7 @@ export default function AppShell({
             {ROLE_LABELS[user.role] ?? user.role}
           </span>
           <LanguageToggle />
+          {/* Phone: password/logout live in the slide-out menu to keep the top bar uncluttered. */}
           <button
             onClick={() => setShowChangePw(true)}
             className={`rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/25 sm:px-3 ${appNav ? "hidden md:block" : ""}`}
@@ -206,12 +235,13 @@ export default function AppShell({
       <div className="flex min-h-[calc(100vh-48px)]">
         <div className="hidden w-[190px] shrink-0 border-r border-gray-200 bg-white py-3.5 md:block">
           {sidebarLinks}
+          <SupportButton variant="inline" />
         </div>
 
         {menuOpen && (
           <div className="fixed inset-0 z-30 md:hidden">
             <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
-            <div className="absolute inset-y-0 left-0 w-[230px] overflow-y-auto bg-white py-3.5 shadow-xl">
+            <div className="absolute inset-y-0 left-0 w-[260px] max-w-[85vw] overflow-y-auto bg-white py-3.5 shadow-xl">
               <div className="flex items-center justify-between px-5 pb-3">
                 <span className="text-sm font-semibold text-brand">🏠 Bliss Rooms</span>
                 <button
@@ -224,7 +254,26 @@ export default function AppShell({
                   </svg>
                 </button>
               </div>
+              <div className="mx-5 mb-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                <div className="truncate font-semibold text-gray-800">{user.name}</div>
+                <div>{ROLE_LABELS[user.role] ?? user.role}</div>
+              </div>
               {sidebarLinks}
+              {!isTenantView && <SupportButton variant="inline" />}
+              <div className="mt-3 space-y-2 border-t border-gray-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowChangePw(true);
+                  }}
+                  className="w-full rounded-lg bg-brand-light px-3 py-2.5 text-sm font-semibold text-brand"
+                >
+                  🔑 {t("改密码", "Change Password")}
+                </button>
+                <button onClick={logout} className="w-full rounded-lg bg-gray-100 px-3 py-2.5 text-sm font-semibold text-gray-700">
+                  🚪 {t("登出", "Logout")}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -237,8 +286,12 @@ export default function AppShell({
           {children}
         </div>
       </div>
-
-      {appNav && <MobileTabBar alerts={sidebarAlerts} />}
+      {appNav && (
+        <MobileTabBar
+          role={user.role}
+          alerts={isTenantView ? { ...sidebarAlerts, "/my-warnings": warningCount } : sidebarAlerts}
+        />
+      )}
       {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
     </div>
   );

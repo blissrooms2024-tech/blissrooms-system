@@ -33,16 +33,24 @@ body {
 }
 
 @layer components {
-  /* 16px on phones: iPhone Safari zooms the whole page into any input smaller than that the
-     moment it's tapped, and doesn't zoom back out. */
+  /* Phone: 16px text stops iOS Safari auto-zooming on focus; taller tap targets. */
   .input {
-    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-brand focus:outline-none sm:text-sm;
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-brand focus:outline-none sm:py-2 sm:text-sm;
   }
   .btn-primary {
-    @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-violet-300;
+    @apply rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:bg-violet-300 sm:py-2;
   }
   .btn-soft {
-    @apply rounded-lg bg-brand-light px-4 py-2 text-sm font-semibold text-brand hover:bg-violet-100;
+    @apply rounded-lg bg-brand-light px-4 py-2.5 text-sm font-semibold text-brand hover:bg-violet-100 sm:py-2;
+  }
+}
+
+/* Phone: any raw input/select/textarea also at 16px so iOS doesn't zoom the page on focus. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
   }
 }
 

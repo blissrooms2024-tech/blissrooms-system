@@ -112,8 +112,8 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
   }
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-bold text-brand">
+    <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+      <h3 className="text-base font-bold text-brand sm:text-lg">
         {t("🔧 报修", "🔧 Maintenance")} — {contractCode}
       </h3>
 
@@ -138,7 +138,7 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
               type="file"
               accept="image/*,application/pdf"
               onChange={(e) => e.target.files?.[0] && addPhoto(e.target.files[0])}
-              className="block text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark"
+              className="block w-full text-sm text-gray-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand file:px-3.5 file:py-2.5 sm:file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark"
             />
             {photos.length > 0 && (
               <div className="mt-2 flex gap-2">
@@ -171,8 +171,8 @@ export default function MaintenancePanel({ contractCode }: { contractCode: strin
       <div className="space-y-3">
         {requests.map((r) => (
           <div key={r.requestCode} className="rounded-lg border border-gray-200 p-3">
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div>
+            <div className="mb-2 flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+              <div className="min-w-0">
                 <div className="text-xs text-gray-400">🧾 {r.requestCode}</div>
                 <b className="text-sm">{r.title}</b>
                 {r.description && <div className="text-xs text-gray-500">{r.description}</div>}

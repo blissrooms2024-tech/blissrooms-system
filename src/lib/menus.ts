@@ -58,11 +58,13 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/meetings", label: "📝 会议记录", labelEn: "📝 Meetings" },
   ],
   TENANT: [
+    { href: "/my-home", label: "🏠 首页", labelEn: "🏠 Home" },
     { href: "/my-tenancy", label: "📄 我的租约", labelEn: "📄 My Tenancy" },
     { href: "/my-warnings", label: "⚠️ 警告信", labelEn: "⚠️ Warning Letters" },
     { href: "/my-bills", label: "💳 我的账单", labelEn: "💳 My Bills" },
     { href: "/my-vouchers", label: "🎟️ 我的代金券", labelEn: "🎟️ My Vouchers" },
     { href: "/my-aircon", label: "❄️ 冷气", labelEn: "❄️ Air-Cond" },
+    { href: "/my-guide", label: "📘 入住指南", labelEn: "📘 Move-in Guide" },
     { href: "/my-movein", label: "📋 Move-in", labelEn: "📋 Move-in" },
     { href: "/my-moveout", label: "📦 Move-out", labelEn: "📦 Move-out" },
     { href: "/my-maintenance", label: "🔧 报修", labelEn: "🔧 Maintenance" },

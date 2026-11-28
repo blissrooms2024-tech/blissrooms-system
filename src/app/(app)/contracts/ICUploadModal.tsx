@@ -126,7 +126,7 @@ function Slot({
         {url ? (
           <button type="button" onClick={() => onZoom(url)} className="cursor-zoom-in">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={label} className="max-h-[120px] rounded border border-gray-300 hover:opacity-90" />
+            <img src={url} alt={label} className="max-h-[160px] max-w-full rounded border border-gray-300 hover:opacity-90 sm:max-h-[120px]" />
           </button>
         ) : (
           <span className="text-sm text-gray-400">{t("还没上传", "Not uploaded yet")}</span>

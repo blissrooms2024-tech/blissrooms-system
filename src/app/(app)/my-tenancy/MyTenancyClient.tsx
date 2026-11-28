@@ -6,7 +6,6 @@ import { RULES, contractStatusLabel } from "@/lib/config";
 import { fmtDate } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
-import SignatureModal from "../contracts/SignatureModal";
 import ICUploadModal from "../contracts/ICUploadModal";
 import TenantInfoEditModal from "./TenantInfoEditModal";
 import WarningLettersModal from "./WarningLettersModal";
@@ -61,7 +60,6 @@ export default function MyTenancyClient() {
   const { locale, t } = useLanguage();
   const [cards, setCards] = useState<Card[] | null>(null);
   const [error, setError] = useState("");
-  const [signing, setSigning] = useState<string | null>(null);
   const [icUploading, setIcUploading] = useState<string | null>(null);
   const [editingInfo, setEditingInfo] = useState<Card | null>(null);
   const [viewingLetters, setViewingLetters] = useState<string | null>(null);
@@ -146,11 +144,11 @@ export default function MyTenancyClient() {
     }
   }
 
-  if (error) return <div className="rounded-xl bg-white p-5 text-sm text-red-600 shadow-sm">{error}</div>;
-  if (!cards) return <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
+  if (error) return <div className="rounded-xl bg-white p-4 sm:p-5 text-sm text-red-600 shadow-sm">{error}</div>;
+  if (!cards) return <div className="rounded-xl bg-white p-4 sm:p-5 text-sm text-gray-500 shadow-sm">{t("载入中...", "Loading...")}</div>;
   if (cards.length === 0) {
     return (
-      <div className="rounded-xl bg-white p-5 text-center text-gray-400 shadow-sm">
+      <div className="rounded-xl bg-white p-4 sm:p-5 text-center text-gray-400 shadow-sm">
         {t("你还没有租约", "You don't have a tenancy yet")}
       </div>
     );
@@ -178,7 +176,7 @@ export default function MyTenancyClient() {
 
         return (
           <div key={c.contractCode} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-br from-brand to-fuchsia-600 px-5 py-4 text-white">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-br from-brand to-fuchsia-600 px-4 py-4 text-white sm:px-5">
               <div>
                 <div className="text-lg font-bold">{c.contractCode}</div>
                 <div className="text-sm opacity-90">🏠 {c.roomCode}</div>
@@ -194,7 +192,7 @@ export default function MyTenancyClient() {
               </div>
             </div>
 
-            <div className="border-b border-gray-50 px-5 py-4">
+            <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
               <b className="mb-2.5 block text-sm text-gray-600">{t("📋 合同 & 付款流程", "📋 Contract & Payment Progress")}</b>
               {flow.nextAction && (
                 <div
@@ -219,14 +217,14 @@ export default function MyTenancyClient() {
               <StepTimeline steps={flow.steps} />
             </div>
 
-            <div className="px-5 py-1">
+            <div className="px-4 py-1 sm:px-5">
               <Row
                 icon="📄"
                 name={t("合同 Agreement", "Agreement")}
                 desc={t("查看完整合同与条款", "View the full agreement and terms")}
                 status={<Pill tone={c.status === "ACTIVE" ? "done" : "wait"}>{contractStatusLabel(c.status, locale)}</Pill>}
                 action={
-                  <Link href={`/agreement/${c.contractCode}`} className="btn-soft px-3.5 py-1.5 text-xs">
+                  <Link href={`/agreement/${c.contractCode}`} className="btn-soft px-3.5 py-2.5 text-xs sm:py-1.5">
                     {t("查看合同", "View Agreement")}
                   </Link>
                 }
@@ -280,7 +278,7 @@ export default function MyTenancyClient() {
                             setRenewingId(c.contractCode);
                             setRenewMonths("12");
                           }}
-                          className="btn-primary px-3.5 py-1.5 text-xs"
+                          className="btn-primary px-3.5 py-2.5 text-xs sm:py-1.5"
                         >
                           {t("🔄 我要续约", "🔄 I Want to Renew")}
                         </button>
@@ -289,7 +287,7 @@ export default function MyTenancyClient() {
                             setMovingOutId(c.contractCode);
                             setMoveOutDate("");
                           }}
-                          className="btn-soft px-3.5 py-1.5 text-xs"
+                          className="btn-soft px-3.5 py-2.5 text-xs sm:py-1.5"
                         >
                           {t("不续约, 我要搬出", "Not Renewing, I'm Moving Out")}
                         </button>
@@ -300,8 +298,8 @@ export default function MyTenancyClient() {
               )}
 
               {renewingId === c.contractCode && (
-                <div className="flex flex-wrap items-end gap-2.5 border-b border-gray-50 px-5 py-3.5">
-                  <div>
+                <div className="flex flex-wrap items-end gap-2.5 border-b border-gray-50 px-1 py-3.5 sm:px-5">
+                  <div className="w-full sm:w-auto">
                     <label className="mb-1.5 block text-sm text-gray-600">{t("要续约几个月？", "How many months?")}</label>
                     <select value={renewMonths} onChange={(e) => setRenewMonths(e.target.value)} className="input">
                       <option value="6">{t("6 个月", "6 months")}</option>
@@ -312,19 +310,19 @@ export default function MyTenancyClient() {
                   <button
                     onClick={() => submitRenewalRequest(c.contractCode)}
                     disabled={renewingSaving}
-                    className="btn-primary px-3.5 py-1.5 text-xs"
+                    className="btn-primary px-3.5 py-2.5 text-xs sm:py-1.5"
                   >
                     {renewingSaving ? t("提交中...", "Submitting...") : t("确认申请续约", "Confirm Renewal Request")}
                   </button>
-                  <button onClick={() => setRenewingId(null)} className="btn-soft px-3.5 py-1.5 text-xs">
+                  <button onClick={() => setRenewingId(null)} className="btn-soft px-3.5 py-2.5 text-xs sm:py-1.5">
                     {t("取消", "Cancel")}
                   </button>
                 </div>
               )}
 
               {movingOutId === c.contractCode && (
-                <div className="flex flex-wrap items-end gap-2.5 border-b border-gray-50 px-5 py-3.5">
-                  <div>
+                <div className="flex flex-wrap items-end gap-2.5 border-b border-gray-50 px-1 py-3.5 sm:px-5">
+                  <div className="w-full sm:w-auto">
                     <label className="mb-1.5 block text-sm text-gray-600">{t("预计搬出日期", "Expected Move-out Date")}</label>
                     <input
                       type="date"
@@ -336,11 +334,11 @@ export default function MyTenancyClient() {
                   <button
                     onClick={() => submitMoveOutNotice(c.contractCode)}
                     disabled={movingOutSaving}
-                    className="btn-primary px-3.5 py-1.5 text-xs"
+                    className="btn-primary px-3.5 py-2.5 text-xs sm:py-1.5"
                   >
                     {movingOutSaving ? t("提交中...", "Submitting...") : t("确认登记", "Confirm")}
                   </button>
-                  <button onClick={() => setMovingOutId(null)} className="btn-soft px-3.5 py-1.5 text-xs">
+                  <button onClick={() => setMovingOutId(null)} className="btn-soft px-3.5 py-2.5 text-xs sm:py-1.5">
                     {t("取消", "Cancel")}
                   </button>
                 </div>
@@ -353,7 +351,7 @@ export default function MyTenancyClient() {
                   desc={t("Admin 上传的签名版扫描件", "Signed scan uploaded by Admin")}
                   status={<Pill tone="done">{t("✅ 已上传", "✅ Uploaded")}</Pill>}
                   action={
-                    <a href={c.pdfLink} target="_blank" rel="noopener noreferrer" className="btn-soft px-3.5 py-1.5 text-xs">
+                    <a href={c.pdfLink} target="_blank" rel="noopener noreferrer" className="btn-soft px-3.5 py-2.5 text-xs sm:py-1.5">
                       {t("查看 / 下载", "View / Download")}
                     </a>
                   }
@@ -378,9 +376,9 @@ export default function MyTenancyClient() {
                 }
                 action={
                   canSign && (
-                    <button onClick={() => setSigning(c.contractCode)} className="btn-primary px-3.5 py-1.5 text-xs">
-                      {t("签名", "Sign")}
-                    </button>
+                    <Link href={`/agreement/${c.contractCode}?sign=1`} className="btn-primary px-3.5 py-2.5 text-xs sm:py-1.5">
+                      {t("阅读并签名", "Read & Sign")}
+                    </Link>
                   )
                 }
               />
@@ -399,7 +397,7 @@ export default function MyTenancyClient() {
                   )
                 }
                 action={
-                  <button onClick={() => setIcUploading(c.contractCode)} className="btn-soft px-3.5 py-1.5 text-xs">
+                  <button onClick={() => setIcUploading(c.contractCode)} className="btn-soft px-3.5 py-2.5 text-xs sm:py-1.5">
                     {icDone ? t("查看", "View") : t("上传", "Upload")}
                   </button>
                 }
@@ -411,7 +409,7 @@ export default function MyTenancyClient() {
                 desc={t("国籍/职业/公司/车牌/紧急联络人", "Nationality/Occupation/Company/Car Plate/Emergency Contact")}
                 status={null}
                 action={
-                  <button onClick={() => setEditingInfo(c)} className="btn-soft px-3.5 py-1.5 text-xs">
+                  <button onClick={() => setEditingInfo(c)} className="btn-soft px-3.5 py-2.5 text-xs sm:py-1.5">
                     {t("✏️ 编辑", "✏️ Edit")}
                   </button>
                 }
@@ -423,7 +421,7 @@ export default function MyTenancyClient() {
                   name={t("警告信 Warning Letter", "Warning Letter")}
                   status={<Pill tone="due">{t(`${c.warningLetterCount} 封`, `${c.warningLetterCount}`)}</Pill>}
                   action={
-                    <button onClick={() => setViewingLetters(c.contractCode)} className="btn-soft px-3.5 py-1.5 text-xs">
+                    <button onClick={() => setViewingLetters(c.contractCode)} className="btn-soft px-3.5 py-2.5 text-xs sm:py-1.5">
                       {t("查看", "View")}
                     </button>
                   }
@@ -434,9 +432,6 @@ export default function MyTenancyClient() {
         );
       })}
 
-      {signing && (
-        <SignatureModal contractCode={signing} who="tenant" onClose={() => setSigning(null)} onSigned={load} />
-      )}
       {icUploading && (
         <ICUploadModal contractCode={icUploading} onClose={() => setIcUploading(null)} onUploaded={load} />
       )}
@@ -474,12 +469,13 @@ function Row({
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-light text-lg">
           {icon}
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="text-sm font-semibold text-gray-800">{name}</div>
           {desc && <div className="text-xs text-gray-400">{desc}</div>}
         </div>
       </div>
-      <div className="flex items-center gap-2.5">
+      {/* Phone: status + buttons drop under the title (indented to line up with it). */}
+      <div className="flex w-full flex-wrap items-center justify-between gap-2.5 pl-12 sm:w-auto sm:justify-end sm:pl-0">
         {status}
         {action}
       </div>

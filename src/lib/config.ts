@@ -46,6 +46,30 @@ export const COMPANY = {
   ACC_NO: "15801018612",
 } as const;
 
+/** 联系客服 — shown on every tenant page (floating button) and the login page.
+ * Change a number here and it updates everywhere. `wa` is the WhatsApp number in
+ * international format without "+" or spaces. */
+export const SUPPORT = [
+  {
+    key: "service",
+    label: "入住 / 客服问题",
+    labelEn: "Move-in / Customer Service",
+    name: "Miss Tan",
+    phone: "011-3654 7863",
+    tel: "+601136547863",
+    wa: "601136547863",
+  },
+  {
+    key: "repair",
+    label: "系统技术 / 屋内维修问题",
+    labelEn: "System / In-house Repairs",
+    name: "Miss Yi Xuan",
+    phone: "012-439 2491",
+    tel: "+60124392491",
+    wa: "60124392491",
+  },
+] as const;
+
 /** Sentinel stored in Contract.agentSignature for a contract whose "Agent" is the company
  * itself (COMPANY.NAME) rather than a real external agent — Admin opened it directly, with no
  * one entitled to commission, so there's nothing for anyone to actually sign: the approve/renew
