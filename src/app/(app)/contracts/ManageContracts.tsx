@@ -12,6 +12,7 @@ import { COMPANY, contractStatusLabel, contractStatusTone } from "@/lib/config";
 import { fmtDate, fmtMoney } from "@/lib/format";
 import { waNumber } from "@/lib/quote";
 import { SIGN_STEP_LABELS, SIGN_STEP_TONE, signStepOf } from "@/lib/signStep";
+import UnitRoomSelect, { EMPTY_PICK, unitsIn, useUnitTree, type UnitRoomValue } from "@/components/UnitRoomSelect";
 import ContractActions from "./ContractActions";
 import { ContractsTable, NOT_SIGNED_STATUSES, type Contract } from "./ContractsClient";
 
@@ -63,8 +64,10 @@ export default function ManageContracts({ role, propertyCode, embedded = false }
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("");
-  /** 楼盘 picked on the stand-alone page ("" = all); fixed to the unit when embedded. */
-  const [unit, setUnit] = useState(propertyCode ?? "");
+  /** 楼盘 → 单位 picked on the stand-alone page (nothing = all); fixed to the unit when embedded. */
+  const tree = useUnitTree();
+  const [pick, setPick] = useState<UnitRoomValue>(EMPTY_PICK);
+  const inPick = useMemo(() => (propertyCode || !tree ? null : unitsIn(tree, pick)), [propertyCode, tree, pick]);
   const [showExpired, setShowExpired] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [busyTool, setBusyTool] = useState<string | null>(null);
@@ -110,19 +113,13 @@ export default function ManageContracts({ role, propertyCode, embedded = false }
   }
 
   // Everything below works on the picked 楼盘's contracts only.
-  const scoped = useMemo(() => (contracts ?? []).filter((c) => !unit || c.room?.propertyCode === unit), [contracts, unit]);
-  const units = useMemo(() => {
-    const m = new Map<string, { name: string; n: number }>();
-    for (const c of contracts ?? []) {
-      const code = c.room?.propertyCode;
-      if (!code || c._expired) continue;
-      const u = m.get(code) ?? { name: c.room?.propertyName ?? code, n: 0 };
-      u.n++;
-      m.set(code, u);
-    }
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [contracts]);
-
+  const scoped = useMemo(
+    () =>
+      (contracts ?? []).filter((c) =>
+        propertyCode ? c.room?.propertyCode === propertyCode : !inPick || inPick.has(c.room?.propertyCode ?? "")
+      ),
+    [contracts, propertyCode, inPick]
+  );
   const counts = useMemo(() => {
     const out: Partial<Record<FilterKey, number>> = {};
     for (const f of FILTERS) out[f.key] = scoped.filter(f.test).length;
@@ -265,24 +262,13 @@ export default function ManageContracts({ role, propertyCode, embedded = false }
           </button>
         )}
       </div>
-      {!embedded && units.length > 1 && (
-        <select
-          value={unit}
-          onChange={(e) => setUnit(e.target.value)}
-          aria-label={t("楼盘", "Property")}
-          className={`h-10 w-[7.5rem] shrink-0 rounded-xl border bg-white px-2.5 text-base shadow-sm focus:border-brand focus:outline-none sm:w-44 sm:text-sm ${
-            unit ? "border-brand font-semibold text-brand" : "border-gray-200 text-gray-700"
-          }`}
-        >
-          <option value="">{t("全部楼盘", "All properties")}</option>
-          {units.map(([code, u]) => (
-            <option key={code} value={code}>
-              {code} · {u.name} ({u.n})
-            </option>
-          ))}
-        </select>
-      )}
       </div>
+
+      {!embedded && tree && tree.length > 1 && (
+        <div className="md:max-w-md">
+          <UnitRoomSelect units={tree} value={pick} onChange={setPick} mode="filter" rooms="none" bare />
+        </div>
+      )}
 
       {/* Only the filters that currently have something in them, so the row stays short. */}
       <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 md:mx-0 md:flex-wrap md:px-0">

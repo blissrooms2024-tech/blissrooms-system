@@ -27,8 +27,8 @@ const schema = z
  * still goes through the normal upload-slip → Admin-review flow individually afterward. */
 async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以开账单" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以开账单" }, { status: 403 });
   }
 
   const parsed = schema.safeParse(await req.json().catch(() => null));

@@ -8,7 +8,7 @@ import { withActivity } from "@/lib/activity";
 
 async function requireAdmin() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") return null;
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) return null;
   return user;
 }
 
@@ -17,7 +17,7 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   if (!(await requireAdmin())) {
-    return NextResponse.json({ success: false, message: "只有 Admin 可看" }, { status: 403 });
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可看" }, { status: 403 });
   }
   const { userId } = await params;
   const u = await prisma.user.findUnique({ where: { userCode: userId } });
@@ -61,7 +61,7 @@ async function handlePATCH(
 ) {
   const admin = await requireAdmin();
   if (!admin) {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以改" }, { status: 403 });
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以改" }, { status: 403 });
   }
   const { userId } = await params;
   const u = await prisma.user.findUnique({ where: { userCode: userId } });
@@ -111,7 +111,7 @@ async function handleDELETE(
 ) {
   const admin = await requireAdmin();
   if (!admin) {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以删除" }, { status: 403 });
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以删除" }, { status: 403 });
   }
   const { userId } = await params;
   const u = await prisma.user.findUnique({ where: { userCode: userId } });

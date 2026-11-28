@@ -8,8 +8,8 @@ import { withActivity } from "@/lib/activity";
  * run it immediately instead of waiting for the daily schedule. */
 async function handlePOST() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以手动执行" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以手动执行" }, { status: 403 });
   }
 
   const result = await runDeactivateExpiredTenants();

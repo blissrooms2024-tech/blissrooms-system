@@ -42,8 +42,8 @@ async function handlePOST(
   { params }: { params: Promise<{ contractId: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以开账单" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以开账单" }, { status: 403 });
   }
   const { contractId } = await params;
   const c = await prisma.contract.findUnique({

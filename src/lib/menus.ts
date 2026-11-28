@@ -15,6 +15,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/vouchers", label: "🎟️ 代金券", labelEn: "🎟️ Vouchers" },
     { href: "/payments/review", label: "🧾 交易单审核", labelEn: "🧾 Payment Review" },
     { href: "/payments/outstanding", label: "📋 未清账单", labelEn: "📋 Outstanding Bills" },
+    { href: "/payments/bulk", label: "📢 批量开账单", labelEn: "📢 Bulk Billing" },
     { href: "/utilities", label: "⚡ 抄表开单", labelEn: "⚡ Meter Billing" },
     { href: "/payments/utility-report", label: "❄️ 水电报表", labelEn: "❄️ Utility Report" },
     { href: "/finance", label: "💰 财务总览", labelEn: "💰 Finance Overview" },
@@ -23,6 +24,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/claims", label: "💸 报销", labelEn: "💸 Expense Claims" },
     { href: "/todos", label: "✅ 待办", labelEn: "✅ To-dos" },
     { href: "/meetings", label: "📝 会议记录", labelEn: "📝 Meetings" },
+    { href: "/users", label: "👥 用户", labelEn: "👥 Users" },
     { href: "/activity", label: "🕘 活动记录", labelEn: "🕘 Activity Log" },
   ],
   ADMIN: [

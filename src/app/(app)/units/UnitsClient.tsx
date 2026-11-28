@@ -6,8 +6,11 @@ import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Sheet from "@/components/Sheet";
 import { useT } from "@/components/LanguageProvider";
-import { IconBuilding, IconChart, IconChevronRight, IconDots, IconPen, IconPlus, IconSearch, IconSliders, IconTrash, IconX } from "@/components/icons";
+import { IconBuilding, IconChart, IconChevronRight, IconDots, IconPen, IconPlus, IconSliders, IconTrash } from "@/components/icons";
+import { EMPTY_PICK, useUnitTree, type UnitRoomValue } from "@/components/UnitRoomSelect";
+import { groupOf } from "@/lib/receiptMatch";
 import PropertyEditModal from "./PropertyEditModal";
+import UnitQuickFind from "./UnitQuickFind";
 
 interface PropertyRow {
   propertyCode: string;
@@ -38,7 +41,9 @@ export default function UnitsClient({ role }: { role: string }) {
   const [deletingProperty, setDeletingProperty] = useState<PropertyRow | null>(null);
   /** The unit whose ⋯ sheet is open (Admin: open, report, edit, delete). */
   const [menuFor, setMenuFor] = useState<PropertyRow | null>(null);
-  const [search, setSearch] = useState("");
+  // 楼盘 → 单位号码 → 房间 at the top; a 楼盘 picked there narrows the list.
+  const tree = useUnitTree();
+  const [pick, setPick] = useState<UnitRoomValue>(EMPTY_PICK);
   const canEdit = role === "ADMIN";
   const [depositCandidates, setDepositCandidates] = useState<
     { propertyCode: string; name: string; notes: string | null; parsedAmount: number }[] | null
@@ -116,17 +121,12 @@ export default function UnitsClient({ role }: { role: string }) {
     }
   }
 
-  const q = search.trim().toLowerCase();
-  const filteredProperties =
-    properties?.filter((p) => {
-      if (!q) return true;
-      return (
-        p.propertyCode.toLowerCase().includes(q) ||
-        p.name.toLowerCase().includes(q) ||
-        (p.building ?? "").toLowerCase().includes(q) ||
-        (p.landlord ?? "").toLowerCase().includes(q)
-      );
-    }) ?? [];
+  const filteredProperties = properties?.filter((p) => !pick.group || groupOf(p) === pick.group) ?? [];
+  const unitNoOf = new Map((tree ?? []).map((u) => [u.propertyCode, u.unitNo]));
+  // The list goes 楼盘 by 楼盘, like the dropdowns.
+  const grouped = [...new Set(filteredProperties.map(groupOf))]
+    .sort((a, b) => a.localeCompare(b))
+    .map((g) => [g, filteredProperties.filter((p) => groupOf(p) === g)] as const);
 
   const total = (properties ?? []).reduce((n, p) => n + p.roomCount, 0);
   const let_ = (properties ?? []).reduce((n, p) => n + p.occupiedCount, 0);
@@ -165,28 +165,7 @@ export default function UnitsClient({ role }: { role: string }) {
         )}
       </div>
 
-      {properties && properties.length > 4 && (
-        <div className="relative md:max-w-md">
-          <IconSearch size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("搜楼盘号 / 名字 / condo / Landlord", "Code, name, building, landlord")}
-            className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-10 text-base shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10 sm:text-sm"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              aria-label={t("清除搜索", "Clear search")}
-              className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-gray-400 hover:bg-gray-100"
-            >
-              <IconX size={16} />
-            </button>
-          )}
-        </div>
-      )}
+      {tree && tree.length > 0 && <UnitQuickFind units={tree} value={pick} onChange={setPick} />}
 
       {error && <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {!properties && !error && (
@@ -196,27 +175,31 @@ export default function UnitsClient({ role }: { role: string }) {
           ))}
         </ul>
       )}
-      {properties && q && (
-        <p className="px-1 text-xs text-gray-500">{t(`显示 ${filteredProperties.length} 个（共 ${properties.length} 个）`, `${filteredProperties.length} of ${properties.length} shown`)}</p>
-      )}
       {properties && filteredProperties.length === 0 && (
-        <p className="rounded-[20px] bg-white px-4 py-8 text-center text-sm text-gray-400">{q ? t("没有符合的楼盘", "No properties match") : t("还没有楼盘", "No properties yet")}</p>
+        <p className="rounded-[20px] bg-white px-4 py-8 text-center text-sm text-gray-400">{t("还没有楼盘", "No properties yet")}</p>
       )}
 
-      {/* One short card per unit; the whole card opens its page (rooms, contracts, bills, info…). */}
+      {/* 楼盘 by 楼盘: one short card per unit; the whole card opens its page. */}
+      {grouped.map(([g, rows]) => (
+      <section key={g} aria-label={g} className="space-y-1.5">
+      <h2 className="flex items-baseline gap-1.5 px-1 pt-1 text-[13px] font-semibold text-gray-700">
+        {g}
+        <span className="text-[11.5px] font-normal text-gray-400">{t(`${rows.length} 个单位`, `${rows.length} unit${rows.length === 1 ? "" : "s"}`)}</span>
+      </h2>
       <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {filteredProperties.map((p) => (
+        {rows.map((p) => (
           <li key={p.propertyCode} className="flex min-w-0 items-center gap-1 rounded-2xl bg-white py-2 pl-3 pr-1.5 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
             <Link href={`/units/${p.propertyCode}`} className="min-w-0 flex-1 py-0.5">
               <p className="flex min-w-0 items-baseline gap-1.5">
-                <b className="truncate text-[15px] font-semibold text-gray-900">{p.name}</b>
-                <span className="shrink-0 text-[12px] text-gray-400">{p.propertyCode}</span>
+                <b className="shrink-0 text-[15px] font-semibold text-gray-900">{unitNoOf.get(p.propertyCode) ?? p.name}</b>
+                <span className="truncate text-[12px] text-gray-400">
+                  {unitNoOf.get(p.propertyCode) ? `${p.name} · ${p.propertyCode}` : p.propertyCode}
+                </span>
               </p>
               <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11.5px] text-gray-400">
                 <span className="shrink-0 tabular-nums text-gray-600">{t(`${p.occupiedCount}/${p.roomCount} 已出租`, `${p.occupiedCount}/${p.roomCount} let`)}</span>
                 {p.vacantCount > 0 && <span className="shrink-0 font-medium text-amber-700">{t(`${p.vacantCount} 空`, `${p.vacantCount} vacant`)}</span>}
                 {p.noteCount > 0 && <span className="shrink-0 font-medium text-amber-700">⚠ {p.noteCount}</span>}
-                {p.building && p.building !== p.name && <span className="truncate">{p.building}</span>}
               </p>
             </Link>
             {canEdit ? (
@@ -234,6 +217,8 @@ export default function UnitsClient({ role }: { role: string }) {
           </li>
         ))}
       </ul>
+      </section>
+      ))}
 
       <Sheet open={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor ? `${menuFor.name} · ${menuFor.propertyCode}` : ""}>
         {menuFor && (

@@ -149,13 +149,13 @@ export function contractStatusLabel(status: string, locale: "zh" | "en"): string
 }
 
 /** One color per contract status (a Pill tone), the same on every page: live = teal, ending
- * soon = amber, waiting on a signature or already over = red, waiting on Admin = violet,
+ * soon = amber, waiting on someone (Admin's approval or a signature) or already over = red,
  * finished = gray. */
 export const CONTRACT_STATUS_TONE: Record<string, "teal" | "amber" | "rose" | "violet" | "gray"> = {
   ACTIVE: "teal",
   EXPIRING: "amber",
   PENDING_SIGN: "rose",
-  PENDING_APPROVE: "violet",
+  PENDING_APPROVE: "rose",
   EXPIRED: "rose",
   TERMINATED: "rose",
   DRAFT: "gray",

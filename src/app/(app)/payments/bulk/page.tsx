@@ -7,7 +7,7 @@ import OpenRentalBillCard from "./OpenRentalBillCard";
 export default async function BulkBillPage() {
   const session = await getCurrentUser();
   if (!session) redirect("/login");
-  if (session.role !== "ADMIN") redirect("/dashboard");
+  if (session.role !== "ADMIN" && session.role !== "BOSS") redirect("/dashboard");
 
   return (
     <div className="space-y-4">

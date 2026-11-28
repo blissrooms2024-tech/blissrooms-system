@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Lightbox from "@/components/Lightbox";
@@ -8,6 +8,7 @@ import Modal from "@/components/Modal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import StepTimeline, { TimelineStep } from "@/components/StepTimeline";
 import { useLanguage } from "@/components/LanguageProvider";
+import UnitRoomSelect, { EMPTY_PICK, pickOf, roomLabel, useUnitTree, type PickRoom, type UnitRoomValue } from "@/components/UnitRoomSelect";
 import { maintenanceStatusLabel } from "@/lib/config";
 import { fmtDate, fmtMoney as fmt, isPdfUrl } from "@/lib/format";
 import { readAsDataURL, isOversized } from "@/lib/imageUpload";
@@ -99,7 +100,11 @@ export default function MaintenanceClient({ canAct, propertyCode }: { canAct: bo
   const [draft, setDraft] = useState<Record<string, AssignDraft>>({});
   const [creating, setCreating] = useState(false);
   const [occupied, setOccupied] = useState<OccupiedContract[]>([]);
-  const [roomSearch, setRoomSearch] = useState("");
+  // 楼盘 → 单位号码 → 房间 (rooms with a tenant; no room = the whole unit / common area).
+  const tree = useUnitTree();
+  const [mtcePick, setMtcePick] = useState<UnitRoomValue>(EMPTY_PICK);
+  const occByRoom = useMemo(() => new Map(occupied.map((o) => [o.roomCode, o])), [occupied]);
+  const isOccupied = useCallback((r: PickRoom) => occByRoom.has(r.roomCode), [occByRoom]);
   // "room:{contractCode}" for a specific room, or "unit:{unitCode}" for a shared-area issue
   // (e.g. the living room) — resolved to an actual contractCode only at submit time, since the
   // API still needs one room to attach the request to even when Admin picked the whole unit.
@@ -151,6 +156,11 @@ export default function MaintenanceClient({ canAct, propertyCode }: { canAct: bo
 
   async function openCreate() {
     setCreating(true);
+    // On a unit's page, start on that unit.
+    if (propertyCode && tree) {
+      setMtcePick(pickOf(tree, propertyCode));
+      setCreateForm((f) => ({ ...f, selection: `unit:${propertyCode}` }));
+    }
     try {
       const res = await fetch("/api/contracts/page-data");
       const data = await res.json();
@@ -222,7 +232,7 @@ export default function MaintenanceClient({ canAct, propertyCode }: { canAct: bo
         setCreating(false);
         setCreateForm({ selection: "", title: "", description: "" });
         setCreatePhotos([]);
-        setRoomSearch("");
+        setMtcePick(EMPTY_PICK);
         load();
       } else {
         toast.danger(data.message);
@@ -767,79 +777,28 @@ export default function MaintenanceClient({ canAct, propertyCode }: { canAct: bo
         <Modal onClose={() => setCreating(false)}>
           <h3 className="mb-3.5 text-lg font-bold text-brand">🔧 {t("开报修", "New Maintenance Request")}</h3>
           <div className="space-y-3">
-            {(() => {
-              const q = roomSearch.trim().toLowerCase();
-              const filtered = q
-                ? occupied.filter(
-                    (o) =>
-                      o.roomCode.toLowerCase().includes(q) ||
-                      o.tenantName.toLowerCase().includes(q) ||
-                      unitCodeOf(o.roomCode).toLowerCase().includes(q)
-                  )
-                : occupied;
-              const groups = new Map<string, OccupiedContract[]>();
-              for (const o of filtered) {
-                const unit = unitCodeOf(o.roomCode);
-                if (!groups.has(unit)) groups.set(unit, []);
-                groups.get(unit)!.push(o);
-              }
-              return (
-                <div>
-                  <label className="mb-1.5 block text-sm text-gray-600">{t("选单位或房间", "Select Unit or Room")}</label>
-                  <p className="mb-1.5 text-xs text-gray-400">
-                    {t(
-                      "修客厅等共用区域就直接选单位；修某间房自己的问题就选那间房",
-                      "Pick the unit directly for a shared area like the living room; pick a specific room for an issue in that room itself"
-                    )}
-                  </p>
-                  <input
-                    className="input mb-1.5"
-                    placeholder={t("🔍 搜单位/房间/租客...", "🔍 Search unit/room/tenant...")}
-                    value={roomSearch}
-                    onChange={(e) => setRoomSearch(e.target.value)}
-                  />
-                  <div className="max-h-[280px] overflow-auto rounded-lg border border-gray-200">
-                    {occupied.length === 0 && (
-                      <div className="p-3 text-center text-xs text-gray-400">{t("载入中...", "Loading...")}</div>
-                    )}
-                    {occupied.length > 0 && filtered.length === 0 && (
-                      <div className="p-3 text-center text-xs text-gray-400">{t("没有符合的房间", "No matching rooms")}</div>
-                    )}
-                    {[...groups.entries()].map(([unit, rooms]) => (
-                      <div key={unit}>
-                        <div className="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-                          🏠 {unit} ({rooms.length})
-                        </div>
-                        <label className="flex cursor-pointer items-center gap-2 border-b border-gray-100 bg-amber-50/50 px-3 py-2 text-sm hover:bg-amber-50">
-                          <input
-                            type="radio"
-                            name="maintenance-room"
-                            checked={createForm.selection === `unit:${unit}`}
-                            onChange={() => setCreateForm({ ...createForm, selection: `unit:${unit}` })}
-                          />
-                          <span className="font-semibold text-amber-700">{t(`${unit} — 整个单位/公共区域`, `${unit} — Whole Unit / Common Area`)}</span>
-                        </label>
-                        {rooms.map((o) => (
-                          <label
-                            key={o.contractCode}
-                            className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50"
-                          >
-                            <input
-                              type="radio"
-                              name="maintenance-room"
-                              checked={createForm.selection === `room:${o.contractCode}`}
-                              onChange={() => setCreateForm({ ...createForm, selection: `room:${o.contractCode}` })}
-                            />
-                            <span className="font-semibold">{o.roomCode}</span>
-                            <span className="text-gray-500">— {o.tenantName}</span>
-                          </label>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
+            <div>
+              <UnitRoomSelect
+                units={tree ?? []}
+                value={mtcePick}
+                onChange={(v) => {
+                  setMtcePick(v);
+                  const o = v.room ? occByRoom.get(v.room) : undefined;
+                  setCreateForm({ ...createForm, selection: o ? `room:${o.contractCode}` : v.unit ? `unit:${v.unit}` : "" });
+                }}
+                rooms="optional"
+                roomFilter={isOccupied}
+                hideEmpty
+                roomLabelText={t("房间（不选 = 整个单位）", "Room (blank = whole unit)")}
+                roomText={(r, u) => `${roomLabel(r.roomCode, u.propertyCode)} · ${occByRoom.get(r.roomCode)?.tenantName ?? ""}`}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                {t(
+                  "修客厅等共用区域就不用选房间；修某间房自己的问题才选那间房",
+                  "Leave the room blank for a shared area like the living room; pick a room for an issue in that room itself"
+                )}
+              </p>
+            </div>
             <div>
               <label className="mb-1.5 block text-sm text-gray-600">{t("标题", "Title")}</label>
               <input

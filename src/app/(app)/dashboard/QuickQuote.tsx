@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Sheet from "@/components/Sheet";
 import { IconChat, IconCopy } from "@/components/icons";
 import { useToast } from "@/components/Toast";
@@ -9,6 +9,7 @@ import { fmtMoney } from "@/lib/format";
 import { COMPANY, roomStatusLabel } from "@/lib/config";
 import { buildQuoteText, computeQuote, defaultCommencement, lineLabel, QUOTE_DEFAULTS, waNumber, type QuoteInput } from "@/lib/quote";
 import type { QuoteOptions } from "@/lib/quoteOptions";
+import UnitRoomSelect, { EMPTY_PICK, pickOfRoom, roomLabel, useUnitTree, type PickRoom, type UnitRoomValue } from "@/components/UnitRoomSelect";
 
 const CUSTOM_CARPARK = "__custom__";
 
@@ -55,6 +56,12 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
   });
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(fresh);
+  // 楼盘 → 单位号码 → 房间. Once a room is chosen the dropdowns follow f.roomCode.
+  const tree = useUnitTree();
+  const [pickPart, setPickPart] = useState<UnitRoomValue>(EMPTY_PICK);
+  const pick = f.roomCode && tree ? pickOfRoom(tree, f.roomCode) : pickPart;
+  const quotable = useMemo(() => new Map(options.rooms.map((r) => [r.roomCode, r])), [options.rooms]);
+  const canQuote = useCallback((r: PickRoom) => quotable.has(r.roomCode), [quotable]);
   const [showFees, setShowFees] = useState(false);
   const [lang, setLang] = useState<"en" | "zh">("en");
   const [agentIdx, setAgentIdx] = useState("");
@@ -150,31 +157,36 @@ export default function QuickQuote({ options, today }: { options: QuoteOptions; 
         <p className="text-xs text-gray-500">
           {t("选房间和入住日期，自动算押金、pro-rata，直接 WhatsApp 给 Agent", "Pick a room and move-in date — deposits and pro-rata are worked out, ready to WhatsApp")}
         </p>
-        <button type="button" onClick={() => setF(fresh())} className="shrink-0 text-xs font-medium text-brand hover:underline">
+        <button
+          type="button"
+          onClick={() => {
+            setF(fresh());
+            setPickPart(EMPTY_PICK);
+          }}
+          className="shrink-0 text-xs font-medium text-brand hover:underline"
+        >
           {t("重新开始", "Start over")}
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label={t("房间", "Room")} className="sm:col-span-2">
-          <select className="input" value={f.roomCode} onChange={(e) => pickRoom(e.target.value)}>
-            <option value="">{t("— 选房间 —", "— Choose a room —")}</option>
-            {["VACANT", "RESERVED", "OCCUPIED", "MAINTENANCE"].map((st) => {
-              const list = options.rooms.filter((r) => r.status === st);
-              if (!list.length) return null;
-              return (
-                <optgroup key={st} label={roomStatusLabel(st, locale)}>
-                  {list.map((r) => (
-                    <option key={r.roomCode} value={r.roomCode}>
-                      {r.roomCode} · {r.propertyName}
-                      {r.rent ? ` · ${fmtMoney(r.rent)}` : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              );
-            })}
-          </select>
-        </Field>
+        <div className="sm:col-span-2">
+          <UnitRoomSelect
+            units={tree ?? []}
+            value={pick}
+            onChange={(v) => {
+              setPickPart(v);
+              pickRoom(v.room);
+            }}
+            rooms="required"
+            roomFilter={canQuote}
+            hideEmpty
+            roomText={(r, u) => {
+              const q = quotable.get(r.roomCode);
+              return `${roomLabel(r.roomCode, u.propertyCode)} · ${roomStatusLabel(q?.status ?? r.status ?? "", locale)}${q?.rent ? ` · ${fmtMoney(q.rent)}` : ""}`;
+            }}
+          />
+        </div>
 
         {room && (
           <>

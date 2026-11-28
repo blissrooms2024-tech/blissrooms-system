@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useT } from "@/components/LanguageProvider";
 import { ROOM_TYPE_OPTIONS } from "@/lib/config";
-
-interface PropertyOption {
-  propertyCode: string;
-  name: string;
-}
+import UnitRoomSelect, { pickOf, useUnitTree } from "@/components/UnitRoomSelect";
 
 export default function NewRoomClient() {
   const router = useRouter();
   const toast = useToast();
   const t = useT();
-  const [properties, setProperties] = useState<PropertyOption[]>([]);
+  // 楼盘 → 单位号码; the unit chosen is form.propertyCode.
+  const units = useUnitTree();
+  const [group, setGroup] = useState("");
   const [form, setForm] = useState({
     roomCode: "",
     propertyCode: "",
@@ -30,14 +28,6 @@ export default function NewRoomClient() {
   const [useCustomType, setUseCustomType] = useState(false);
   const [customType, setCustomType] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const res = await fetch("/api/properties");
-      const data = await res.json();
-      if (data.success) setProperties(data.properties);
-    })();
-  }, []);
 
   async function addRoom(e: FormEvent) {
     e.preventDefault();
@@ -76,7 +66,7 @@ export default function NewRoomClient() {
           </Link>
         </div>
 
-        {properties.length === 0 && (
+        {units?.length === 0 && (
           <div className="mb-3.5 text-sm text-gray-500">
             {t("还没有楼盘, 先去", "No properties yet, go to")}{" "}
             <Link href="/units" className="text-brand underline">
@@ -96,20 +86,17 @@ export default function NewRoomClient() {
                 placeholder={t("例: MMB-01", "e.g. MMB-01")}
               />
             </Field>
-            <Field label={t("楼盘 Unit", "Property")}>
-              <select
-                value={form.propertyCode}
-                onChange={(e) => setForm({ ...form, propertyCode: e.target.value })}
-                className="input"
-              >
-                <option value="">-- {t("选楼盘", "Select Property")} --</option>
-                {properties.map((p) => (
-                  <option key={p.propertyCode} value={p.propertyCode}>
-                    {p.propertyCode} ({p.name})
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <div className="order-first sm:col-span-2">
+              <UnitRoomSelect
+                units={units ?? []}
+                value={form.propertyCode && units ? pickOf(units, form.propertyCode) : { group, unit: "", room: "" }}
+                onChange={(v) => {
+                  setGroup(v.group);
+                  setForm({ ...form, propertyCode: v.unit });
+                }}
+                rooms="none"
+              />
+            </div>
             <Field label={t("类型", "Type")}>
               <select
                 value={useCustomType ? "__custom__" : form.roomType}

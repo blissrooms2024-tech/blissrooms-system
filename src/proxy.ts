@@ -30,7 +30,7 @@ const ROLE_GUARDS: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/utilities", roles: ["BOSS", "ADMIN"] },
   { prefix: "/meetings", roles: ["BOSS", "ADMIN", "AGENT", "WORKER"] },
   { prefix: "/todos", roles: ["BOSS", "ADMIN", "AGENT", "WORKER"] },
-  { prefix: "/users", roles: ["ADMIN"] },
+  { prefix: "/users", roles: ["BOSS", "ADMIN"] },
   { prefix: "/danger-zone", roles: ["ADMIN"] },
   // AGENT included: an Agent can also be the tenant on their own contract.
   { prefix: "/my-tenancy", roles: ["TENANT", "AGENT"] },

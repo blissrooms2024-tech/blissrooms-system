@@ -240,6 +240,8 @@ export default function AppShell({
 
       {appNav && <MobileTabBar alerts={sidebarAlerts} />}
       {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
+      {/* Once per login: "your lease ends in N days — renew or move out?" */}
+      {(user.role === "TENANT" || isAlsoTenant) && <LeaseExpiryReminder />}
     </div>
   );
 }

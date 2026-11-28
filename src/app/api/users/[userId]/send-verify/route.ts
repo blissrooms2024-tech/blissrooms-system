@@ -11,8 +11,8 @@ async function handlePOST(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const admin = await getCurrentUser();
-  if (!admin || admin.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以发" }, { status: 403 });
+  if (!admin || (admin.role !== "ADMIN" && admin.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以发" }, { status: 403 });
   }
   const { userId } = await params;
   const user = await prisma.user.findUnique({ where: { userCode: userId } });
