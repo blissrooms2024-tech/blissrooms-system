@@ -5,6 +5,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { uploadDataUrl } from "@/lib/storage";
 import { newId } from "@/lib/id";
 import { notifyAdminsSlipUploaded } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
+import { airconPlan } from "@/lib/utilityBilling";
 
 const schema = z.object({
   amount: z.coerce.number().positive(),
@@ -15,7 +17,7 @@ const schema = z.object({
  * themselves, then reports the amount + uploads proof here — unlike the other bill types,
  * there's no Admin-issued bill to upload against first. Feeds straight into the same
  * PENDING_REVIEW approve/reject queue Admin already uses for slip review. */
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -30,6 +32,12 @@ export async function POST(
   }
   if (!c.room.hasAircon) {
     return NextResponse.json({ success: false, message: "这间房没有冷气，不能充值" }, { status: 400 });
+  }
+  if ((await airconPlan(c.roomId)).plan === "POSTPAID") {
+    return NextResponse.json(
+      { success: false, message: "这间房的冷气已经改成月结，不用再充值。每个月底抄表，账单会出现在「我的账单」。" },
+      { status: 400 }
+    );
   }
 
   const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -75,3 +83,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withActivity(handlePOST);

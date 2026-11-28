@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { newId } from "@/lib/id";
+import { withActivity } from "@/lib/activity";
 
 /** Admin-only: the ONLY place an Agent's commission actually gets paid out and booked as a
  * real COMMISSION Expense — entering the amount (Edit Contract) only records what's owed,
  * same split as a maintenance job's cost vs its pay-out. Blocked once already Paid so this can
  * never double-book, and if the room has no property to book against, pays it anyway but warns
  * (same convention as the maintenance payout). */
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -62,3 +63,5 @@ export async function POST(
     message: `✅ 佣金已发放: RM${amount.toFixed(2)} (${contract.agent.name})${expenseWarning}`,
   });
 }
+
+export const POST = withActivity(handlePOST);

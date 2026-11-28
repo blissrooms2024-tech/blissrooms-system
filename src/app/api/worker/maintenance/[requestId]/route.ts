@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { notifyAdminsMaintenanceWorkerSubmitted } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 /** Worker marks their own IN_PROGRESS job as done — moves it to PENDING_REVIEW so Admin knows
  * to check the after-photos and close it out with a cost. Requires at least one after-photo,
  * matching the "最少1张" hint already shown on the upload slot. */
-export async function PATCH(
+async function handlePATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ requestId: string }> }
 ) {
@@ -44,3 +45,5 @@ export async function PATCH(
 
   return NextResponse.json({ success: true, message: "✅ 已提交，等待 Admin 确认" });
 }
+
+export const PATCH = withActivity(handlePATCH);
