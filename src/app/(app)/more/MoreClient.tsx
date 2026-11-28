@@ -11,6 +11,7 @@ import { IconBank, IconChevronRight, IconCopy, IconGlobe, IconLock, IconLogout, 
 import { NAV_GROUPS, navMeta, plainLabel, TONE_CLASS, type NavGroup, type NavIcon } from "@/components/navMeta";
 import { MENUS } from "@/lib/menus";
 import { COMPANY, ROLE_LABELS } from "@/lib/config";
+import { SupportList } from "@/components/SupportContact";
 
 type User = { name: string; email: string; role: string; userCode: string };
 
@@ -47,8 +48,30 @@ export default function MoreClient({ user }: { user: User }) {
   const [showPw, setShowPw] = useState(false);
   const [badges, setBadges] = useState<Record<string, number>>({});
 
+  const isTenant = user.role === "TENANT";
+
   useEffect(() => {
     let live = true;
+    if (isTenant) {
+      // Tenant: same red counts as the tab bar.
+      Promise.all([
+        fetch("/api/contracts/my-cards").then((r) => r.json()).catch(() => null),
+        fetch("/api/contracts/warning-summary").then((r) => r.json()).catch(() => null),
+      ]).then(([c, w]) => {
+        if (!live) return;
+        const cards: { unpaidBillCount: number; openMaintenanceCount: number; agentSigned: boolean; tenantSigned: boolean; isLegacy: boolean }[] =
+          c?.success ? c.cards : [];
+        setBadges({
+          "/my-bills": cards.reduce((n, x) => n + x.unpaidBillCount, 0),
+          "/my-maintenance": cards.reduce((n, x) => n + x.openMaintenanceCount, 0),
+          "/my-tenancy": cards.filter((x) => !x.isLegacy && x.agentSigned && !x.tenantSigned).length,
+          "/my-warnings": w?.success ? w.count : 0,
+        });
+      });
+      return () => {
+        live = false;
+      };
+    }
     Promise.all([
       fetch("/api/admin/sidebar-alerts").then((r) => r.json()).catch(() => null),
       fetch("/api/maintenance/summary").then((r) => r.json()).catch(() => null),
@@ -65,9 +88,9 @@ export default function MoreClient({ user }: { user: User }) {
     return () => {
       live = false;
     };
-  }, []);
+  }, [isTenant]);
 
-  const items = (MENUS[user.role] ?? []).filter((m) => m.href !== "/dashboard");
+  const items = (MENUS[user.role] ?? []).filter((m) => m.href !== "/dashboard" && m.href !== "/my-home");
   const groups = NAV_GROUPS.map((g) => ({ ...g, items: items.filter((m) => navMeta(m.href).group === g.key) })).filter((g) => g.items.length);
 
   async function logout() {
@@ -127,6 +150,15 @@ export default function MoreClient({ user }: { user: User }) {
           </div>
         </section>
       ))}
+
+      {isTenant && (
+        <section>
+          <h2 className="mb-1.5 px-1 text-sm font-semibold text-gray-500">{t("联系客服", "Contact support")}</h2>
+          <div className="rounded-3xl bg-white p-3 shadow-sm">
+            <SupportList compact />
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-1.5 px-1 text-sm font-semibold text-gray-500">{t("设置", "Settings")}</h2>

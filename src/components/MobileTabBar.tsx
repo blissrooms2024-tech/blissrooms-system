@@ -3,21 +3,30 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
-import { IconBed, IconContract, IconGrid, IconHome, IconWallet } from "./icons";
+import { IconBed, IconContract, IconGrid, IconHome, IconWallet, IconWrench } from "./icons";
 import type { NavIcon } from "./navMeta";
 
 type Tab = { href: string; zh: string; en: string; icon: NavIcon; match: string[]; badge?: number };
 
 /**
- * Phone-only bottom navigation for Boss/Admin — the four places they go most, plus 更多 for
- * everything else. A page that isn't one of the four (P&L, claims, users…) is reached from 更多,
- * so 更多 stays highlighted while you're there, the way a native app keeps its tab lit.
+ * Phone-only bottom navigation — the four places each role goes most, plus 更多 for everything
+ * else. A page that isn't one of the four (P&L, claims, users… / vouchers, move-in…) is reached
+ * from 更多, so 更多 stays highlighted while you're there, the way a native app keeps its tab lit.
+ * Boss/Admin and Tenant share the same bar; only the tabs differ.
  */
-export default function MobileTabBar({ alerts }: { alerts: Record<string, number> }) {
+export default function MobileTabBar({ alerts, role }: { alerts: Record<string, number>; role?: string }) {
   const pathname = usePathname();
   const { t } = useLanguage();
 
-  const tabs: Tab[] = [
+  const tenantTabs: Tab[] = [
+    { href: "/my-home", zh: "首页", en: "Home", icon: IconHome, match: ["/my-home"] },
+    { href: "/my-bills", zh: "账单", en: "Bills", icon: IconWallet, match: ["/my-bills"], badge: alerts["/my-bills"] },
+    { href: "/my-maintenance", zh: "报修", en: "Repairs", icon: IconWrench, match: ["/my-maintenance"], badge: alerts["/my-maintenance"] },
+    { href: "/my-tenancy", zh: "租约", en: "Tenancy", icon: IconContract, match: ["/my-tenancy", "/agreement"], badge: alerts["/my-tenancy"] },
+    { href: "/more", zh: "更多", en: "More", icon: IconGrid, match: ["/more"], badge: alerts["/my-warnings"] },
+  ];
+
+  const tabs: Tab[] = role === "TENANT" ? tenantTabs : [
     { href: "/dashboard", zh: "首页", en: "Home", icon: IconHome, match: ["/dashboard"] },
     { href: "/contracts", zh: "合同", en: "Contracts", icon: IconContract, match: ["/contracts"], badge: alerts["/contracts"] },
     { href: "/rooms", zh: "房间", en: "Rooms", icon: IconBed, match: ["/rooms", "/units"] },

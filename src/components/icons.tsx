@@ -376,3 +376,38 @@ export const IconMapPin = (p: P) => (
     <circle cx="12" cy="10" r="2.3" />
   </Svg>
 );
+
+// ---- Tenant pages ----
+export const IconBook = (p: P) => (
+  <Svg {...p}>
+    <path d="M4.5 5.5A2 2 0 0 1 6.5 3.5h12v15h-12a2 2 0 0 0-2 2z" />
+    <path d="M4.5 20.5a2 2 0 0 1 2-2h12v2h-12" />
+    <path d="M9 8h6M9 11h4" />
+  </Svg>
+);
+export const IconHeadset = (p: P) => (
+  <Svg {...p}>
+    <path d="M4.5 13.5v-1.5a7.5 7.5 0 0 1 15 0v1.5" />
+    <rect x="3.5" y="13" width="4" height="6" rx="1.5" />
+    <rect x="16.5" y="13" width="4" height="6" rx="1.5" />
+    <path d="M18.5 19a3.5 3.5 0 0 1-3.5 2h-2" />
+  </Svg>
+);
+export const IconSnow = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9" />
+    <path d="M9.5 4.5 12 6l2.5-1.5M9.5 19.5 12 18l2.5 1.5" />
+  </Svg>
+);
+export const IconBox = (p: P) => (
+  <Svg {...p}>
+    <path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z" />
+    <path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9" />
+  </Svg>
+);
+export const IconWifi = (p: P) => (
+  <Svg {...p}>
+    <path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 15.8a5 5 0 0 1 7 0" />
+    <circle cx="12" cy="19" r="1" fill="currentColor" />
+  </Svg>
+);

@@ -11,7 +11,7 @@ import SignatureModal from "../../contracts/SignatureModal";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 
-type LoadedContract = AgreementContract & { _showAppendix?: boolean };
+type LoadedContract = AgreementContract & { _showAppendix?: boolean; renewedFromContractId?: string | null };
 
 export default function AgreementPage({
   params,
@@ -56,7 +56,12 @@ export default function AgreementPage({
   }, [load]);
 
   const signingMode =
-    sign === "1" && !!contract && !contract.tenantSignature && !!contract.agentSignature && !!contract.icFront && !!contract.icBack;
+    sign === "1" &&
+    !!contract &&
+    !contract.tenantSignature &&
+    !!contract.agentSignature &&
+    // A renewal reuses the IC from the contract it replaces — no re-upload needed.
+    (!!contract.renewedFromContractId || (!!contract.icFront && !!contract.icBack));
   const placedCount = TENANT_SIGN_SPOTS.filter((s) => placed[s.id]).length;
   const allPlaced = placedCount === TENANT_SIGN_SPOTS.length;
   const nextSpot = TENANT_SIGN_SPOTS.find((s) => !placed[s.id]);
@@ -136,7 +141,9 @@ export default function AgreementPage({
         <div className="mb-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 no-print">
           {contract.tenantSignature
             ? t("✅ 这张合同你已经签好了。", "✅ You've already signed this agreement.")
-            : t("现在还不能签：要等 Agent 先签，并且 IC 正反面都上传了。", "Not ready to sign yet — the Agent must sign first and both sides of your IC must be uploaded.")}
+            : contract.renewedFromContractId
+              ? t("现在还不能签：要等 Agent 先签。", "Not ready to sign yet — the Agent must sign first.")
+              : t("现在还不能签：要等 Agent 先签，并且 IC 正反面都上传了。", "Not ready to sign yet — the Agent must sign first and both sides of your IC must be uploaded.")}
         </div>
       )}
       {contract && (

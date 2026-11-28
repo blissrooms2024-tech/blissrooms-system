@@ -13,7 +13,7 @@ import { navMeta, TONE_CLASS } from "@/components/navMeta";
  * anyone else. Boss and Admin start from different defaults.
  */
 
-type Action = { id: string; href?: string; meta: string; zh: string; en: string; adminOnly?: boolean };
+export type Action = { id: string; href?: string; meta: string; zh: string; en: string; adminOnly?: boolean };
 
 export const ACTIONS: Action[] = [
   { id: "quote", meta: "/quote", zh: "快速报价", en: "Quick quote" },
@@ -79,18 +79,26 @@ export default function QuickActions({
   userKey,
   badges,
   onQuote,
+  actions,
+  defaultIds,
+  onAction,
 }: {
   role: string;
   userKey: string;
   badges: Record<string, number>;
-  onQuote: () => void;
+  onQuote?: () => void;
+  /** Another role's shortcut set (the tenant home passes its own); defaults to management's. */
+  actions?: Action[];
+  defaultIds?: string[];
+  /** Tapped a shortcut with no href (e.g. tenant 联系客服 opens a sheet). */
+  onAction?: (id: string) => void;
 }) {
   const { t } = useLanguage();
   const [editing, setEditing] = useState(false);
   const storageKey = `bliss.quickActions.v1.${userKey}`;
 
-  const available = useMemo(() => ACTIONS.filter((a) => !a.adminOnly || role === "ADMIN"), [role]);
-  const defaults = DEFAULTS[role] ?? DEFAULTS.BOSS;
+  const available = useMemo(() => (actions ?? ACTIONS).filter((a) => !a.adminOnly || role === "ADMIN"), [role, actions]);
+  const defaults = defaultIds ?? DEFAULTS[role] ?? DEFAULTS.BOSS;
   const raw = useSyncExternalStore(
     subscribe,
     () => read(storageKey),
@@ -134,7 +142,7 @@ export default function QuickActions({
               <ActionTile
                 key={a.id}
                 href={a.href}
-                onClick={a.id === "quote" ? onQuote : undefined}
+                onClick={a.id === "quote" ? onQuote : !a.href ? () => onAction?.(a.id) : undefined}
                 icon={m.icon}
                 tone={m.tone}
                 label={label(a)}

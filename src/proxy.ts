@@ -26,7 +26,8 @@ const GUEST_ONLY_PATHS = ["/login", "/signup", "/reset-password"];
 // for any authenticated role (defense-in-depth role checks also happen per-page/route).
 const ROLE_GUARDS: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/dashboard", roles: ["BOSS", "ADMIN"] },
-  { prefix: "/more", roles: ["BOSS", "ADMIN"] },
+  { prefix: "/more", roles: ["BOSS", "ADMIN", "TENANT"] },
+  { prefix: "/my-home", roles: ["TENANT"] },
   { prefix: "/utilities", roles: ["BOSS", "ADMIN"] },
   { prefix: "/meetings", roles: ["BOSS", "ADMIN", "AGENT", "WORKER"] },
   { prefix: "/todos", roles: ["BOSS", "ADMIN", "AGENT", "WORKER"] },

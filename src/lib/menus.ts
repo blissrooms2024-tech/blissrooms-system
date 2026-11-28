@@ -58,6 +58,7 @@ export const MENUS: Record<string, MenuItem[]> = {
     { href: "/meetings", label: "📝 会议记录", labelEn: "📝 Meetings" },
   ],
   TENANT: [
+    { href: "/my-home", label: "🏠 首页", labelEn: "🏠 Home" },
     { href: "/my-tenancy", label: "📄 我的租约", labelEn: "📄 My Tenancy" },
     { href: "/my-warnings", label: "⚠️ 警告信", labelEn: "⚠️ Warning Letters" },
     { href: "/my-bills", label: "💳 我的账单", labelEn: "💳 My Bills" },

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { MENUS } from "@/lib/menus";
 import { ROLE_LABELS } from "@/lib/config";
+import { ROLE_HOME } from "@/lib/roleHome";
 import ChangePasswordModal from "./ChangePasswordModal";
 import LanguageToggle from "./LanguageToggle";
 import { useLanguage } from "./LanguageProvider";
@@ -49,9 +50,9 @@ export default function AppShell({
   }
 
   const mtceHref = user.role === "TENANT" ? "/my-maintenance" : user.role === "ADMIN" || user.role === "BOSS" ? "/maintenance" : null;
-  // Boss/Admin get the app-style phone layout: bottom tabs instead of the hamburger drawer,
-  // with password/logout moved into 更多. Other roles keep the current layout for now.
-  const appNav = user.role === "ADMIN" || user.role === "BOSS";
+  // Boss/Admin and Tenant get the app-style phone layout: bottom tabs instead of the hamburger
+  // drawer, with password/logout moved into 更多. Agent/Worker keep the current layout for now.
+  const appNav = user.role === "ADMIN" || user.role === "BOSS" || user.role === "TENANT";
 
   useEffect(() => {
     if (!mtceHref) return;
@@ -102,9 +103,34 @@ export default function AppShell({
       });
   }, [user.role, pathname]);
 
+  // Tenant tab-bar counts: unpaid bills, open repairs, a contract step waiting on them.
+  useEffect(() => {
+    if (user.role !== "TENANT") return;
+    fetch("/api/contracts/my-cards")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return;
+        type Card = {
+          unpaidBillCount: number;
+          openMaintenanceCount: number;
+          agentSigned: boolean;
+          tenantSigned: boolean;
+          isLegacy: boolean;
+        };
+        const cards: Card[] = data.cards;
+        setSidebarAlerts({
+          "/my-bills": cards.reduce((n, c) => n + c.unpaidBillCount, 0),
+          "/my-maintenance": cards.reduce((n, c) => n + c.openMaintenanceCount, 0),
+          "/my-tenancy": cards.filter((c) => !c.isLegacy && c.agentSigned && !c.tenantSigned).length,
+        });
+      })
+      .catch(() => {});
+  }, [user.role, pathname]);
+
   const isTenantView = user.role === "TENANT";
   const menu = MENUS[user.role] ?? [];
-  const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT] : menu;
+  // An Agent who also rents a room gets the tenant pages, but not the tenant home.
+  const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT.filter((m) => m.href !== "/my-home")] : menu;
   const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料", labelEn: "👤 My Profile" }];
 
   const sidebarLinks = menuWithProfile.map((m) => {
@@ -161,7 +187,7 @@ export default function AppShell({
             </svg>
           </button>
           {appNav ? (
-            <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+            <Link href={ROLE_HOME[user.role] ?? "/dashboard"} className="flex min-w-0 items-center gap-2">
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/15">
                 <IconHome size={17} />
               </span>
@@ -209,7 +235,7 @@ export default function AppShell({
       <div className="flex min-h-[calc(100vh-48px)]">
         <div className="hidden w-[190px] shrink-0 border-r border-gray-200 bg-white py-3.5 md:block">
           {sidebarLinks}
-          {!isTenantView && <SupportButton variant="inline" />}
+          <SupportButton variant="inline" />
         </div>
 
         {menuOpen && (
@@ -260,10 +286,12 @@ export default function AppShell({
           {children}
         </div>
       </div>
-      {/* Tenants get a floating 联系客服 button on every page; staff get it as a sidebar row. */}
-      {isTenantView && <SupportButton />}
-
-      {appNav && <MobileTabBar alerts={sidebarAlerts} />}
+      {appNav && (
+        <MobileTabBar
+          role={user.role}
+          alerts={isTenantView ? { ...sidebarAlerts, "/my-warnings": warningCount } : sidebarAlerts}
+        />
+      )}
       {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
     </div>
   );
