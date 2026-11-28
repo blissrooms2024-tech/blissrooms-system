@@ -3,7 +3,6 @@ import { readAsDataURL } from "@/lib/imageUpload";
 
 /** Shared by the claims list and the new-claim sheet. */
 
-export const COMPANY = "__COMPANY__";
 export const MAX_RECEIPTS = 6;
 
 export const todayStr = () => {

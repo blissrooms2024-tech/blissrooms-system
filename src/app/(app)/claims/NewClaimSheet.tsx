@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import Sheet from "@/components/Sheet";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Lightbox from "@/components/Lightbox";
@@ -10,7 +10,8 @@ import { fmtDate, fmtMoney } from "@/lib/format";
 import { expenseCategoryLabelLocale, MANUAL_EXPENSE_CATEGORIES, type ManualExpenseCategory } from "@/lib/config";
 import { isOversized } from "@/lib/imageUpload";
 import { groupOf, type Reading, type UnitMatch } from "@/lib/receiptMatch";
-import { COMPANY, FileThumb, MAX_RECEIPTS, todayStr, uploadClaimFile } from "./claimFiles";
+import UnitRoomSelect, { COMPANY_GROUP, pickGroup, unitLabel, type UnitRoomValue } from "@/components/UnitRoomSelect";
+import { FileThumb, MAX_RECEIPTS, todayStr, uploadClaimFile } from "./claimFiles";
 
 export interface ClaimUnit {
   propertyCode: string;
@@ -37,21 +38,6 @@ type ReadState =
 
 const STATUS_ZH: Record<string, string> = { PENDING: "等审批", APPROVED: "已批准", PAID: "已付款" };
 const STATUS_EN: Record<string, string> = { PENDING: "pending", APPROVED: "approved", PAID: "paid" };
-
-function Chip({ on, onClick, children, small }: { on: boolean; onClick: () => void; children: ReactNode; small?: boolean }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className={`${small ? "h-7 px-2.5 text-[12.5px]" : "h-8 px-3 text-[13px]"} max-w-full truncate rounded-full font-medium ${
-        on ? "bg-brand text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 const EMPTY = {
   amount: "",
@@ -88,9 +74,7 @@ export default function NewClaimSheet({
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(0);
   const [read, setRead] = useState<ReadState>({ s: "idle" });
-  const [group, setGroup] = useState("");
-  const [unit, setUnit] = useState("");
-  const [room, setRoom] = useState("");
+  const [pick, setPick] = useState<UnitRoomValue>({ group: "", unit: "", room: "" });
   const [f, setF] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [dupes, setDupes] = useState<SameAs[] | null>(null);
@@ -102,30 +86,11 @@ export default function NewClaimSheet({
   const [byHand, setByHand] = useState(false);
   const readSeq = useRef(0);
 
-  const groups = useMemo(() => {
-    const m = new Map<string, ClaimUnit[]>();
-    for (const u of units) m.set(groupOf(u), [...(m.get(groupOf(u)) ?? []), u]);
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [units]);
-  const groupUnits = useMemo(() => groups.find(([g]) => g === group)?.[1] ?? [], [groups, group]);
-  const rooms = useMemo(() => units.find((u) => u.propertyCode === unit)?.rooms ?? [], [units, unit]);
-
-  function chooseGroup(g: string, manual: boolean) {
-    setGroup(g);
-    const list = groups.find(([k]) => k === g)?.[1] ?? [];
-    setUnit(list.length === 1 ? list[0].propertyCode : "");
-    setRoom("");
-    if (manual) markPicked();
-  }
-  function chooseUnit(u: ClaimUnit, manual: boolean) {
-    setGroup(groupOf(u));
-    setUnit(u.propertyCode);
-    setRoom("");
-    if (manual) markPicked();
-  }
-  function markPicked() {
+  /** A unit or 楼盘 chosen by the person (rather than from the receipt). */
+  function pickByHand(v: UnitRoomValue) {
     pickedByHand.current = true;
     setByHand(true);
+    setPick(v);
   }
 
   function set<K extends keyof typeof EMPTY>(k: K, v: (typeof EMPTY)[K]) {
@@ -153,8 +118,8 @@ export default function NewClaimSheet({
     });
     if (pickedByHand.current) return;
     const u = m.propertyCode ? units.find((x) => x.propertyCode === m.propertyCode) : undefined;
-    if (u) chooseUnit(u, false);
-    else if (m.building && groups.some(([g]) => g === m.building)) chooseGroup(m.building, false);
+    if (u) setPick({ group: groupOf(u), unit: u.propertyCode, room: "" });
+    else if (m.building && units.some((x) => groupOf(x) === m.building)) setPick(pickGroup(units, m.building));
   }
 
   // Read the photos once they're all up (again whenever a page is added or removed).
@@ -221,8 +186,8 @@ export default function NewClaimSheet({
   async function submit(allowDuplicate = false) {
     if (!photos.length) return toast.warning(t("先拍单据（或从相册选）", "Snap the receipt first (or pick one)"));
     if (uploading > 0) return toast.warning(t("单据还在上传，请稍等", "Receipts are still uploading"));
-    if (!group) return toast.warning(t("选哪个单位（或公司开销）", "Choose the unit (or company)"));
-    if (group !== COMPANY && !unit) return toast.warning(t("选单位号码", "Choose the unit number"));
+    if (!pick.group) return toast.warning(t("选楼盘（或公司开销）", "Choose the building (or company)"));
+    if (pick.group !== COMPANY_GROUP && !pick.unit) return toast.warning(t("选单位号码", "Choose the unit number"));
     if (!(Number(f.amount) > 0)) return toast.warning(t("请填金额", "Please enter the amount"));
     if (f.category === "OTHER" && !f.customLabel.trim()) return toast.warning(t("「其他」类型要填支出名称", 'Name the expense for "Other"'));
 
@@ -234,8 +199,8 @@ export default function NewClaimSheet({
         body: JSON.stringify({
           ...f,
           expenseDate: f.date,
-          propertyCode: group === COMPANY ? "" : unit,
-          roomCode: group === COMPANY ? "" : room,
+          propertyCode: pick.group === COMPANY_GROUP ? "" : pick.unit,
+          roomCode: pick.group === COMPANY_GROUP ? "" : pick.room,
           receipts: photos,
           readToken: read.s === "done" ? read.token : "",
           allowDuplicate,
@@ -256,10 +221,10 @@ export default function NewClaimSheet({
   const done = read.s === "done" ? read : null;
   const readAmount = done?.reading.amount ?? null;
   const amountDiffers = readAmount != null && f.amount !== "" && Math.abs(Number(f.amount) - readAmount) >= 0.01;
-  const matched = done && !byHand && done.unit.via && (done.unit.propertyCode ? unit === done.unit.propertyCode : group === done.unit.building);
+  const matched =
+    done && !byHand && done.unit.via && (done.unit.propertyCode ? pick.unit === done.unit.propertyCode : pick.group === done.unit.building);
   const matchedUnit = done?.unit.propertyCode ? units.find((u) => u.propertyCode === done.unit.propertyCode) : undefined;
-  const suggestOther = done && byHand && matchedUnit && unit !== matchedUnit.propertyCode;
-  const unitLabel = (u: ClaimUnit) => u.unitNo ?? u.name;
+  const suggestOther = done && byHand && matchedUnit && pick.unit !== matchedUnit.propertyCode;
   const busy = saving || uploading > 0 || read.s === "reading";
   const dupeLine = (c: SameAs) =>
     `${c.claimCode} · ${c.submittedByName} · ${fmtMoney(c.amount)} · ${fmtDate(c.expenseDate)} · ${
@@ -383,52 +348,16 @@ export default function NewClaimSheet({
             </div>
           )}
 
-          {/* 2 — which unit: condo first, then the unit number */}
+          {/* 2 — which unit: 楼盘, then the unit number, then the room */}
           <div>
-            <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2">
-              <span className="text-sm text-gray-600">{t("哪个单位", "Which unit")}</span>
-              {matched && (
-                <span className="text-xs text-teal-700">
-                  {done!.unit.via === "account"
-                    ? t(`按户口号 ${done!.unit.detail} 选好了`, `Picked from account ${done!.unit.detail}`)
-                    : t("按单据上的地址选好了", "Picked from the address on the receipt")}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {groups.map(([g]) => (
-                <Chip key={g} on={group === g} onClick={() => chooseGroup(g, true)}>
-                  {g}
-                </Chip>
-              ))}
-              <Chip on={group === COMPANY} onClick={() => chooseGroup(COMPANY, true)}>
-                {t("公司开销", "Company")}
-              </Chip>
-            </div>
-
-            {group && group !== COMPANY && (
-              <div className="mt-2 flex flex-wrap gap-1.5 border-t border-gray-100 pt-2">
-                {groupUnits.map((u) => (
-                  <Chip key={u.propertyCode} on={unit === u.propertyCode} onClick={() => chooseUnit(u, true)}>
-                    {unitLabel(u)}
-                    {unitLabel(u) !== u.propertyCode && <span className={unit === u.propertyCode ? "text-white/70" : "text-gray-400"}> {u.propertyCode}</span>}
-                  </Chip>
-                ))}
-              </div>
-            )}
-
-            {unit && group !== COMPANY && rooms.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="mr-0.5 text-xs text-gray-500">{t("房间（可不选）", "Room (optional)")}</span>
-                <Chip small on={!room} onClick={() => setRoom("")}>
-                  {t("整个单位", "Whole unit")}
-                </Chip>
-                {rooms.map((r) => (
-                  <Chip key={r.roomCode} small on={room === r.roomCode} onClick={() => setRoom(r.roomCode)}>
-                    {r.roomCode.startsWith(`${unit}-`) ? r.roomCode.slice(unit.length + 1) : r.roomCode}
-                  </Chip>
-                ))}
-              </div>
+            <UnitRoomSelect units={units} value={pick} onChange={pickByHand} company />
+            {matched && (
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-teal-700">
+                <IconCheck size={14} />
+                {done!.unit.via === "account"
+                  ? t(`按户口号 ${done!.unit.detail} 选好了`, `Picked from account ${done!.unit.detail}`)
+                  : t("按单据上的地址选好了", "Picked from the address on the receipt")}
+              </p>
             )}
 
             {suggestOther && (
@@ -437,7 +366,11 @@ export default function NewClaimSheet({
                   `单据上看起来是 ${groupOf(matchedUnit)} · ${unitLabel(matchedUnit)}`,
                   `The receipt looks like ${groupOf(matchedUnit)} · ${unitLabel(matchedUnit)}`
                 )}
-                <button type="button" onClick={() => chooseUnit(matchedUnit, true)} className="font-semibold text-brand underline">
+                <button
+                  type="button"
+                  onClick={() => pickByHand({ group: groupOf(matchedUnit), unit: matchedUnit.propertyCode, room: "" })}
+                  className="font-semibold text-brand underline"
+                >
                   {t("改成这个", "Use it")}
                 </button>
               </p>
