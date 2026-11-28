@@ -2,7 +2,107 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
-import DashboardClient from "./DashboardClient";
+import { RULES } from "@/lib/config";
+import DashboardClient, { type TodoItem } from "./DashboardClient";
+
+const DAY_MS = 24 * 3600 * 1000;
+
+/** "今日待办" — the action queues Admin/Boss would otherwise only find through the sidebar's
+ * red dots (hidden behind ☰ on a phone). Each item links straight to the page that clears it;
+ * items with a zero count are dropped so the card only ever shows real work. Kept to five
+ * items on purpose, so the dashboard doesn't turn back into a wall of numbers. */
+async function getTodayTodos(role: string): Promise<TodoItem[]> {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  // Same window as the 续约管理 list (renewal-candidates API): inside the notice period, or
+  // already expired but not yet past the point where the tenant is assumed to have left.
+  const expiryCutoff = new Date(startOfToday);
+  expiryCutoff.setMonth(expiryCutoff.getMonth() + RULES.NOTICE_MONTHS);
+  const hideOverdueCutoff = new Date(startOfToday.getTime() - RULES.RENEWAL_LIST_HIDE_AFTER_DAYS * DAY_MS);
+
+  const [pendingReview, pendingApprove, overdue, expiring, openMtce, oldestMtce] = await Promise.all([
+    prisma.payment.count({ where: { status: "PENDING_REVIEW" } }),
+    prisma.contract.count({ where: { status: "PENDING_APPROVE" } }),
+    // Unpaid bills past their due date. PENDING_REVIEW is left out — the tenant has already
+    // paid and uploaded a slip, so it's waiting on us (item 1), not on them.
+    prisma.payment.aggregate({
+      where: { status: { in: ["PENDING", "REJECTED"] }, dueDate: { lt: startOfToday } },
+      _count: true,
+      _sum: { amountDue: true, amountPaid: true },
+    }),
+    prisma.contract.findMany({
+      where: { status: "ACTIVE", expiredDate: { lte: expiryCutoff, gte: hideOverdueCutoff } },
+      select: { contractCode: true },
+    }),
+    prisma.maintenanceRequest.count({ where: { status: { in: ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS"] } } }),
+    prisma.maintenanceRequest.findFirst({
+      where: { status: { in: ["SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS"] } },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  // A contract that already has its renewal contract drafted has nothing left to action.
+  const alreadyRenewed = expiring.length
+    ? await prisma.contract.count({
+        where: { renewedFromContractId: { in: expiring.map((c) => c.contractCode) } },
+      })
+    : 0;
+  const expiringCount = expiring.length - alreadyRenewed;
+
+  const overdueAmount = Number(overdue._sum.amountDue ?? 0) - Number(overdue._sum.amountPaid ?? 0);
+  const oldestDays = oldestMtce ? Math.floor((Date.now() - oldestMtce.createdAt.getTime()) / DAY_MS) : 0;
+
+  const items: TodoItem[] = [
+    {
+      key: "review",
+      count: pendingReview,
+      label: "张交易单等审核",
+      labelEn: pendingReview === 1 ? "payment slip to review" : "payment slips to review",
+      href: "/payments/review",
+      tone: "red",
+    },
+    {
+      key: "approve",
+      count: pendingApprove,
+      label: "份合同等批准",
+      labelEn: pendingApprove === 1 ? "contract to approve" : "contracts to approve",
+      href: "/contracts",
+      tone: "red",
+    },
+    {
+      key: "overdue",
+      count: overdue._count,
+      label: "笔账单已逾期",
+      labelEn: overdue._count === 1 ? "overdue bill" : "overdue bills",
+      sub: fmtMoney(overdueAmount),
+      subEn: fmtMoney(overdueAmount),
+      href: "/payments/outstanding",
+      tone: "red",
+    },
+    {
+      key: "expiring",
+      count: expiringCount,
+      label: `份合同 ${RULES.NOTICE_MONTHS} 个月内到期`,
+      labelEn: `${expiringCount === 1 ? "contract" : "contracts"} expiring within ${RULES.NOTICE_MONTHS} months`,
+      // 续约管理 is Admin-only; Boss gets the contract list, which badges these as 快到期.
+      href: role === "ADMIN" ? "/contracts/renewal" : "/contracts",
+      tone: "amber",
+    },
+    {
+      key: "maintenance",
+      count: openMtce,
+      label: "单报修未完成",
+      labelEn: openMtce === 1 ? "open maintenance request" : "open maintenance requests",
+      sub: oldestDays > 0 ? `最久 ${oldestDays} 天` : undefined,
+      subEn: oldestDays > 0 ? `oldest ${oldestDays} ${oldestDays === 1 ? "day" : "days"}` : undefined,
+      href: "/maintenance",
+      tone: "amber",
+    },
+  ];
+
+  return items.filter((i) => i.count > 0);
+}
 
 export default async function DashboardPage() {
   const session = await getCurrentUser();
@@ -77,8 +177,11 @@ export default async function DashboardPage() {
     { n: fmtRM(revenueAll._sum.amountPaid), l: "累计总营业额", lEn: "All Time", href: "/revenue-report?period=all" },
   ];
 
+  const todos = await getTodayTodos(session.role);
+
   return (
     <DashboardClient
+      todos={todos}
       revBoxes={revBoxes}
       roomBoxes={roomBoxes}
       carparkBoxes={carparkBoxes}
