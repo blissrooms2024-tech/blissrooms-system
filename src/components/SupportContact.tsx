@@ -39,7 +39,14 @@ export function SupportList({ compact = false }: { compact?: boolean }) {
 
 /** "联系客服" button that opens a small sheet with SupportList.
  * floating: round button bottom-right (tenant pages). inline: plain menu-style row (staff sidebar). */
-export default function SupportButton({ variant = "floating" }: { variant?: "floating" | "inline" }) {
+export default function SupportButton({
+  variant = "floating",
+  raised = false,
+}: {
+  variant?: "floating" | "inline";
+  /** Lift the floating button above the phone bottom nav. */
+  raised?: boolean;
+}) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   return (
@@ -47,7 +54,7 @@ export default function SupportButton({ variant = "floating" }: { variant?: "flo
       {variant === "floating" ? (
         <button
           onClick={() => setOpen(true)}
-          className="no-print fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-20 flex items-center gap-1.5 rounded-full bg-brand px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-brand-dark"
+          className={`no-print fixed right-4 z-20 flex ${raised ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-4" : "bottom-[max(1rem,env(safe-area-inset-bottom))]"} items-center gap-1.5 rounded-full bg-brand px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-brand-dark`}
           aria-label={t("联系客服", "Contact Support")}
         >
           🎧 <span>{t("联系客服", "Support")}</span>
@@ -57,7 +64,7 @@ export default function SupportButton({ variant = "floating" }: { variant?: "flo
           onClick={() => setOpen(true)}
           className="flex w-full items-center border-l-[3px] border-transparent px-5 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
         >
-          🎧 {t("联系客服 / 系统问题", "Support / System Issues")}
+          🎧 {t("联系客服", "Contact Support")}
         </button>
       )}
       {open && (
@@ -69,7 +76,7 @@ export default function SupportButton({ variant = "floating" }: { variant?: "flo
             <div className="mx-auto -mt-1 mb-3 h-1.5 w-10 rounded-full bg-gray-300 sm:hidden" />
             <h3 className="text-base font-bold text-brand">🎧 {t("联系客服", "Contact Support")}</h3>
             <p className="mb-3 mt-1 text-xs text-gray-500">
-              {t("房屋问题找 Bliss Rooms，系统用不了或出错找 Yi Xuan。", "Room issues → Bliss Rooms. System not working → Yi Xuan.")}
+              {t("维修问题找 Yi Xuan，其他问题（房屋、租约、系统）找 Bliss Rooms。", "Repairs → Yi Xuan. Everything else (room, tenancy, system) → Bliss Rooms.")}
             </p>
             <SupportList />
             <button

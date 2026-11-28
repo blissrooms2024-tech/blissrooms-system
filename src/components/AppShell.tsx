@@ -21,6 +21,13 @@ export interface CurrentUser {
   verified: boolean;
 }
 
+
+const TENANT_BOTTOM_NAV = [
+  { href: "/my-bills", icon: "💳", label: "账单", labelEn: "Bills" },
+  { href: "/my-maintenance", icon: "🔧", label: "报修", labelEn: "Repairs" },
+  { href: "/my-tenancy", icon: "📄", label: "租约", labelEn: "Tenancy" },
+] as const;
+
 export default function AppShell({
   user,
   isAlsoTenant = false,
@@ -97,6 +104,7 @@ export default function AppShell({
   }, [user.role, pathname]);
 
   const isTenantView = user.role === "TENANT";
+  const showBottomNav = isTenantView && !pathname.startsWith("/agreement/");
   const menu = MENUS[user.role] ?? [];
   const menuWithTenant = isAlsoTenant ? [...menu, ...MENUS.TENANT] : menu;
   const menuWithProfile = [...menuWithTenant, { href: "/profile", label: "👤 我的资料", labelEn: "👤 My Profile" }];
@@ -195,7 +203,7 @@ export default function AppShell({
         </div>
 
         {menuOpen && (
-          <div className="fixed inset-0 z-30 md:hidden">
+          <div className="fixed inset-0 z-40 md:hidden">
             <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
             <div className="absolute inset-y-0 left-0 w-[260px] max-w-[85vw] overflow-y-auto bg-white py-3.5 shadow-xl">
               <div className="flex items-center justify-between px-5 pb-3">
@@ -234,10 +242,37 @@ export default function AppShell({
           </div>
         )}
 
-        <div className={`min-w-0 flex-1 overflow-x-auto p-3 sm:p-5 ${isTenantView ? "pb-24" : ""}`}>{children}</div>
+        <div className={`min-w-0 flex-1 overflow-x-auto p-3 sm:p-5 ${showBottomNav ? "pb-40 md:pb-24" : isTenantView ? "pb-24" : ""}`}>{children}</div>
       </div>
       {/* Tenants get a floating 联系客服 button on every page; staff get it as a sidebar row. */}
-      {isTenantView && <SupportButton />}
+      {isTenantView && <SupportButton raised={showBottomNav} />}
+
+      {/* Phone bottom nav for tenants: the 3 most-used pages one tap away + 更多 opens the full menu.
+          Hidden while signing an agreement (that page has its own bottom bar). */}
+      {showBottomNav && (
+        <nav className="no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+          {TENANT_BOTTOM_NAV.map((n) => {
+            const active = pathname === n.href || pathname.startsWith(n.href + "/");
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${active ? "text-brand" : "text-gray-500"}`}
+              >
+                <span className="text-xl leading-none">{n.icon}</span>
+                {t(n.label, n.labelEn)}
+              </Link>
+            );
+          })}
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold text-gray-500"
+          >
+            <span className="text-xl leading-none">☰</span>
+            {t("更多", "More")}
+          </button>
+        </nav>
+      )}
 
       {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
     </div>
