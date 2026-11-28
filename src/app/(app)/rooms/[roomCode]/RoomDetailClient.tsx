@@ -10,6 +10,7 @@ import { fmtDate, isPdfUrl } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 import UnitNotes from "@/components/UnitNotes";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import RoomFurniture from "./RoomFurniture";
 import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface RoomDetail {
@@ -237,6 +238,8 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
           <div className="mt-3.5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">📝 {room.notes}</div>
         )}
       </div>
+
+      {!room.isCarpark && <RoomFurniture roomCode={room.roomCode} />}
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <h3 className="mb-3.5 text-base font-semibold text-brand">

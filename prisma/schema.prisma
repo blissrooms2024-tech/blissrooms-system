@@ -228,6 +228,12 @@ model Room {
   /// True for a standalone carpark slot (not a livable room) — lets a tenant rent just a
   /// parking spot on its own contract, reusing the same Room/Contract machinery.
   isCarpark      Boolean    @default(false)
+  /// Furniture management confirmed for this room once it was done up: [{ key, qty?, variant?,
+  /// label? }] (see lib/roomFurniture). The move-in checklist asks the tenant to tick these.
+  /// Null = not set up yet.
+  furniture            Json?
+  furnitureConfirmedAt DateTime?
+  furnitureConfirmedBy String?
   status         RoomStatus @default(VACANT)
   currentTenantId String?
   currentTenant   User?      @relation("RoomCurrentTenant", fields: [currentTenantId], references: [id])
