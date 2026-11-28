@@ -12,6 +12,7 @@ import MoveFormModal from "./MoveFormModal";
 import PaymentModal from "./PaymentModal";
 import ContractPdfModal from "./ContractPdfModal";
 import RenewContractModal from "./RenewContractModal";
+import { COMPANY, COMPANY_AUTO_SIGNATURE } from "@/lib/config";
 
 export interface ActionableContract {
   contractCode: string;
@@ -54,6 +55,8 @@ export default function ContractActions({
   const [forceDeletePassword, setForceDeletePassword] = useState("");
   const [forceDeleteSaving, setForceDeleteSaving] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const [settingCompanyAgent, setSettingCompanyAgent] = useState(false);
+  const [savingCompanyAgent, setSavingCompanyAgent] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [terminateReason, setTerminateReason] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
@@ -193,7 +196,28 @@ export default function ContractActions({
     }
   }
 
+  async function confirmSetCompanyAgent() {
+    setSavingCompanyAgent(true);
+    try {
+      const res = await fetch(`/api/contracts/${c.contractCode}/set-company-agent`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setSettingCompanyAgent(false);
+        onChanged();
+      } else {
+        toast.danger(data.message || t("出错，请稍后再试", "Something went wrong — please try again later"));
+      }
+    } catch {
+      toast.danger(t("网络连接失败，请检查网络后重试", "Network connection failed — please check your connection and try again"));
+    } finally {
+      setSavingCompanyAgent(false);
+    }
+  }
+
   const notClosed = c.status !== "TERMINATED" && c.status !== "MOVED_OUT" && c.status !== "RENEWED";
+  const canSetCompanyAgent =
+    c.agentName !== COMPANY.NAME && (!c.agentSignature || c.agentSignature === COMPANY_AUTO_SIGNATURE);
 
   type Item = { key: string; label: string; color: string; onClick?: () => void; href?: string; primary?: boolean };
   const items: Item[] = [];
@@ -229,6 +253,14 @@ export default function ContractActions({
   if (role === "ADMIN") {
     items.push({ key: "ic", label: `🪪 ${t("查看IC", "View IC")}`, color: "bg-violet-600", onClick: () => setIcUploading(true) });
     items.push({ key: "pdf", label: `📎 ${t("旧合同 PDF", "Legacy Contract PDF")}`, color: "bg-teal-600", onClick: () => setUploadingPdf(true) });
+  }
+  if (role === "ADMIN" && canSetCompanyAgent) {
+    items.push({
+      key: "companyAgent",
+      label: `🏢 ${t("Agent 换成公司", "Switch Agent to Company")}`,
+      color: "bg-indigo-700",
+      onClick: () => setSettingCompanyAgent(true),
+    });
   }
   if (role === "ADMIN" && c.status === "ACTIVE" && !c.renewedFromContractId) {
     items.push({ key: "movein", label: "📋 Move-in", color: "bg-cyan-600", onClick: () => setMoveForm(true) });
@@ -287,6 +319,16 @@ export default function ContractActions({
       {renewing && (
         <RenewContractModal contractCode={c.contractCode} onClose={() => setRenewing(false)} onRenewed={onChanged} />
       )}
+      <ConfirmDialog
+        open={settingCompanyAgent}
+        message={t(
+          `确定把 ${c.contractCode} 的 Agent 换成公司 (${COMPANY.NAME}) 吗？这张合同原本的 Agent (${c.agentName}) 将不再是这张合同的 Agent，也不会有佣金。如果这一步还没签名，会自动完成签名。`,
+          `Switch ${c.contractCode}'s Agent to the company (${COMPANY.NAME})? The current Agent (${c.agentName}) will no longer be this contract's Agent and won't earn a commission on it. If the Agent-sign step hasn't happened yet, it'll be auto-completed.`
+        )}
+        confirmLabel={savingCompanyAgent ? t("处理中...", "Processing...") : t("确定换成公司", "Confirm — Switch to Company")}
+        onConfirm={confirmSetCompanyAgent}
+        onCancel={() => setSettingCompanyAgent(false)}
+      />
       <ConfirmDialog
         open={deleting}
         danger
