@@ -6,6 +6,7 @@ import { serialize } from "@/lib/serialize";
 import { newId } from "@/lib/id";
 import { uploadDataUrl } from "@/lib/storage";
 import { notifyAdminsMaintenanceSubmitted } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 function canView(user: SessionPayload, contract: { agentId: string; tenantId: string | null }) {
   if (user.role === "BOSS" || user.role === "ADMIN") return true;
@@ -43,7 +44,7 @@ const createSchema = z.object({
   photos: z.array(z.string().min(1)).max(5).optional().default([]),
 });
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -102,3 +103,5 @@ export async function POST(
 
   return NextResponse.json({ success: true, message: "✅ 报修已提交，Admin 会尽快处理" });
 }
+
+export const POST = withActivity(handlePOST);

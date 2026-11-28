@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { notifyTenantBillReviewed } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
-export async function POST(
+async function handlePOST(
   _req: NextRequest,
   { params }: { params: Promise<{ paymentId: string }> }
 ) {
@@ -35,6 +36,7 @@ export async function POST(
           type: payment.type,
           amountDue: Number(payment.amountDue),
           amountPaid: Number(payment.amountPaid),
+          periodMonth: payment.periodMonth,
         },
         true,
         null,
@@ -43,6 +45,9 @@ export async function POST(
     }
   }
 
-  const label = payment.type === "AC" ? "已充值" : "已批准";
+  // An AC bill without a billing month is a prepaid top-up; a metered monthly AC bill is just paid.
+  const label = payment.type === "AC" && !payment.periodMonth ? "已充值" : "已批准";
   return NextResponse.json({ success: true, message: `✅ ${payment.paymentCode} ${label}` });
 }
+
+export const POST = withActivity(handlePOST);

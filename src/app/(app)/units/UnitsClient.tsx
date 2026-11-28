@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import Sheet from "@/components/Sheet";
 import { useT } from "@/components/LanguageProvider";
-import { fmtMoney } from "@/lib/format";
+import { IconBuilding, IconChart, IconChevronRight, IconDots, IconPen, IconPlus, IconSliders, IconTrash } from "@/components/icons";
+import { EMPTY_PICK, useUnitTree, type UnitRoomValue } from "@/components/UnitRoomSelect";
+import { groupOf } from "@/lib/receiptMatch";
 import PropertyEditModal from "./PropertyEditModal";
+import UnitQuickFind from "./UnitQuickFind";
 
 interface PropertyRow {
   propertyCode: string;
@@ -20,6 +24,11 @@ interface PropertyRow {
   status: string | null;
   notes: string | null;
   roomCount: number;
+  occupiedCount: number;
+  vacantCount: number;
+  /** The condo / apartment it's in, and how many 注意事项 it shows (its own + the building's). */
+  building: string | null;
+  noteCount: number;
   carparkCount: number;
 }
 
@@ -30,7 +39,11 @@ export default function UnitsClient({ role }: { role: string }) {
   const [error, setError] = useState("");
   const [editingProperty, setEditingProperty] = useState<PropertyRow | null>(null);
   const [deletingProperty, setDeletingProperty] = useState<PropertyRow | null>(null);
-  const [search, setSearch] = useState("");
+  /** The unit whose ⋯ sheet is open (Admin: open, report, edit, delete). */
+  const [menuFor, setMenuFor] = useState<PropertyRow | null>(null);
+  // 楼盘 → 单位号码 → 房间 at the top; a 楼盘 picked there narrows the list.
+  const tree = useUnitTree();
+  const [pick, setPick] = useState<UnitRoomValue>(EMPTY_PICK);
   const canEdit = role === "ADMIN";
   const [depositCandidates, setDepositCandidates] = useState<
     { propertyCode: string; name: string; notes: string | null; parsedAmount: number }[] | null
@@ -108,214 +121,148 @@ export default function UnitsClient({ role }: { role: string }) {
     }
   }
 
-  const q = search.trim().toLowerCase();
-  const filteredProperties =
-    properties?.filter((p) => {
-      if (!q) return true;
-      return (
-        p.propertyCode.toLowerCase().includes(q) ||
-        p.name.toLowerCase().includes(q) ||
-        (p.landlord ?? "").toLowerCase().includes(q)
-      );
-    }) ?? [];
+  const filteredProperties = properties?.filter((p) => !pick.group || groupOf(p) === pick.group) ?? [];
+  const unitNoOf = new Map((tree ?? []).map((u) => [u.propertyCode, u.unitNo]));
+  // The list goes 楼盘 by 楼盘, like the dropdowns.
+  const grouped = [...new Set(filteredProperties.map(groupOf))]
+    .sort((a, b) => a.localeCompare(b))
+    .map((g) => [g, filteredProperties.filter((p) => groupOf(p) === g)] as const);
+
+  const total = (properties ?? []).reduce((n, p) => n + p.roomCount, 0);
+  const let_ = (properties ?? []).reduce((n, p) => n + p.occupiedCount, 0);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl bg-white p-5 shadow-sm">
-        <div className="mb-3.5 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-brand">{t("🏢 楼盘清单", "🏢 Property List")}</h3>
-          {canEdit && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={loadDepositCandidates}
-                className="btn-soft text-sm"
-                title={t(
-                  "找出有备注但还没填 Owner 押金的楼盘，从备注里的金额自动填",
-                  "Find properties with notes but no Owner Deposit on file yet, and fill it from the amount in the notes"
-                )}
-              >
-                📋 {t("从备注自动算押金", "Fill Deposit from Notes")}
-              </button>
-              <Link href="/units/new" className="btn-primary text-sm">
-                {t("➕ 加新楼盘", "➕ Add Property")}
-              </Link>
-            </div>
+    <div className="app-type mx-auto max-w-6xl space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-gray-900">
+            {t("楼盘", "Properties")}
+            {properties && <span className="ml-1.5 text-sm font-normal text-gray-400">{properties.length}</span>}
+          </h1>
+          {properties && total > 0 && (
+            <p className="text-xs text-gray-500">{t(`${let_} / ${total} 间已出租 · 点楼盘看房间、合同、账单、资料`, `${let_} of ${total} rooms let · open a unit for its rooms, contracts, bills, info`)}</p>
           )}
         </div>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("🔍 搜楼盘号 / 名字 / Landlord...", "🔍 Search property code / name / Landlord...")}
-          className="input mb-3.5 max-w-xs"
-        />
-        {error && <div className="text-sm text-red-600">{error}</div>}
-        {!properties && !error && <div className="text-sm text-gray-500">{t("载入中...", "Loading...")}</div>}
-        {properties && (
-          <div className="mb-2 text-xs text-gray-500">
-            {filteredProperties.length === properties.length
-              ? t(`共 ${properties.length} 个楼盘`, `${properties.length} properties total`)
-              : t(
-                  `共 ${filteredProperties.length} 个楼盘 (全部 ${properties.length} 个中)`,
-                  `${filteredProperties.length} shown (of ${properties.length} total)`
-                )}
-          </div>
-        )}
-        {properties && (
-          <div className="space-y-2.5 sm:hidden">
-            {filteredProperties.length === 0 && (
-              <div className="py-6 text-center text-sm text-gray-400">
-                {q ? t("没有符合条件的楼盘", "No matching properties") : t("还没有楼盘", "No properties yet")}
-              </div>
-            )}
-            {filteredProperties.map((p) => (
-              <div key={p.propertyCode} className="rounded-lg border border-gray-100 p-3.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <Link href={`/units/${p.propertyCode}`} className="font-semibold text-brand hover:underline">
-                      {p.propertyCode}
-                    </Link>
-                    <div className="text-sm text-gray-700">{p.name}</div>
-                  </div>
-                  <div className="shrink-0 text-right text-xs text-gray-500">
-                    <div>
-                      {p.roomCount} {t("房", "Room(s)")}
-                    </div>
-                    <div>
-                      {p.carparkCount} {t("车位", "Parking")}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-                  {p.landlord ? (
-                    <span className="rounded-full bg-brand-light px-2.5 py-0.5 font-semibold text-brand">
-                      {p.landlord}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">{t("自己名下", "Self-owned")}</span>
-                  )}
-                  {p.managementFeeRate && (
-                    <span className="text-gray-500">
-                      {(p.managementFeeRate * 100).toFixed(1)}% {t("管理费", "Management Fee")}
-                    </span>
-                  )}
-                  {p.ownerRentalAmount !== null && (
-                    <span className="text-gray-500">
-                      {fmtMoney(p.ownerRentalAmount)} {t("租金(付Owner)", "Rent (to Owner)")}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2.5 flex gap-1.5">
-                  <Link href={`/units/${p.propertyCode}`} className="btn-soft flex-1 py-1.5 text-center text-xs">
-                    {t("📊 月报", "📊 Monthly Report")}
-                  </Link>
-                  {canEdit && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setEditingProperty(p)}
-                        className="flex-1 rounded-md bg-gray-100 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
-                      >
-                        {t("✏️ 编辑", "✏️ Edit")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeletingProperty(p)}
-                        className="flex-1 rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-                      >
-                        {t("🗑️ 删除", "🗑️ Delete")}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {properties && (
-          <div className="hidden max-h-[65vh] overflow-auto sm:block">
-            <table className="w-full text-sm">
-              <thead>
-                {/* sticky top-0 keeps the header (and the horizontal scrollbar, which sits right
-                    under this bounded box instead of under however many rows there are) always
-                    reachable without scrolling the whole page down first. */}
-                <tr className="bg-gray-50 text-left text-gray-600">
-                  <Th className="sticky left-0 top-0 z-20 bg-gray-50 shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">
-                    {t("楼盘号", "Property Code")}
-                  </Th>
-                  <Th className="sticky top-0 z-10 bg-gray-50">{t("名字", "Name")}</Th>
-                  <Th className="sticky top-0 z-10 bg-gray-50">{t("房间数", "Rooms")}</Th>
-                  <Th className="sticky top-0 z-10 bg-gray-50">{t("车位数", "Parking")}</Th>
-                  <Th className="sticky top-0 z-10 bg-gray-50">Landlord / Owner</Th>
-                  <Th className="sticky top-0 z-10 bg-gray-50">{t("费用", "Fee")}</Th>
-                  <Th className="sticky top-0 z-10 bg-gray-50">{t("操作", "Actions")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProperties.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-6 text-center text-gray-400">
-                      {q ? t("没有符合条件的楼盘", "No matching properties") : t("还没有楼盘", "No properties yet")}
-                    </td>
-                  </tr>
-                )}
-                {filteredProperties.map((p) => (
-                  <tr key={p.propertyCode} className="border-b border-gray-100">
-                    <Td className="sticky left-0 bg-white shadow-[4px_0_4px_-4px_rgba(0,0,0,0.15)]">
-                      <Link href={`/units/${p.propertyCode}`} className="font-semibold text-brand hover:underline">
-                        {p.propertyCode}
-                      </Link>
-                    </Td>
-                    <Td>{p.name}</Td>
-                    <Td>{p.roomCount}</Td>
-                    <Td>{p.carparkCount}</Td>
-                    <Td>
-                      {p.landlord ? (
-                        <span className="rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-semibold text-brand">
-                          {p.landlord}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">{t("自己名下", "Self-owned")}</span>
-                      )}
-                    </Td>
-                    <Td>
-                      {p.managementFeeRate
-                        ? `${(p.managementFeeRate * 100).toFixed(1)}% ${t("管理费", "Management Fee")}`
-                        : p.ownerRentalAmount !== null
-                          ? `${fmtMoney(p.ownerRentalAmount)} ${t("租金(付Owner)", "Rent (to Owner)")}`
-                          : "-"}
-                    </Td>
-                    <Td>
-                      <div className="flex items-center gap-1.5">
-                        <Link href={`/units/${p.propertyCode}`} className="btn-soft px-2.5 py-1 text-xs">
-                          {t("📊 月报", "📊 Monthly Report")}
-                        </Link>
-                        {canEdit && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setEditingProperty(p)}
-                              className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
-                            >
-                              {t("✏️ 编辑", "✏️ Edit")}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setDeletingProperty(p)}
-                              className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                            >
-                              {t("🗑️ 删除", "🗑️ Delete")}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {canEdit && (
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={loadDepositCandidates}
+              aria-label={t("从备注自动算押金", "Fill deposit from notes")}
+              title={t(
+                "找出有备注但还没填 Owner 押金的楼盘，从备注里的金额自动填",
+                "Find properties with notes but no Owner Deposit on file yet, and fill it from the amount in the notes"
+              )}
+              className="grid h-9 w-9 place-items-center rounded-xl bg-white text-gray-700 shadow-sm hover:bg-gray-50"
+            >
+              <IconSliders size={17} />
+            </button>
+            <Link href="/units/new" className="flex h-9 items-center gap-1 rounded-xl bg-brand px-3 text-[13px] font-semibold text-white hover:bg-brand-dark">
+              <IconPlus size={16} />
+              {t("新楼盘", "New")}
+            </Link>
           </div>
         )}
       </div>
+
+      {tree && tree.length > 0 && <UnitQuickFind units={tree} value={pick} onChange={setPick} />}
+
+      {error && <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {!properties && !error && (
+        <ul className="space-y-2" aria-label={t("载入中", "Loading")}>
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="h-16 animate-pulse rounded-2xl bg-white/80 motion-reduce:animate-none" />
+          ))}
+        </ul>
+      )}
+      {properties && filteredProperties.length === 0 && (
+        <p className="rounded-[20px] bg-white px-4 py-8 text-center text-sm text-gray-400">{t("还没有楼盘", "No properties yet")}</p>
+      )}
+
+      {/* 楼盘 by 楼盘: one short card per unit; the whole card opens its page. */}
+      {grouped.map(([g, rows]) => (
+      <section key={g} aria-label={g} className="space-y-1.5">
+      <h2 className="flex items-baseline gap-1.5 px-1 pt-1 text-[13px] font-semibold text-gray-700">
+        {g}
+        <span className="text-[11.5px] font-normal text-gray-400">{t(`${rows.length} 个单位`, `${rows.length} unit${rows.length === 1 ? "" : "s"}`)}</span>
+      </h2>
+      <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {rows.map((p) => (
+          <li key={p.propertyCode} className="flex min-w-0 items-center gap-1 rounded-2xl bg-white py-2 pl-3 pr-1.5 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
+            <Link href={`/units/${p.propertyCode}`} className="min-w-0 flex-1 py-0.5">
+              <p className="flex min-w-0 items-baseline gap-1.5">
+                <b className="shrink-0 text-[15px] font-semibold text-gray-900">{unitNoOf.get(p.propertyCode) ?? p.name}</b>
+                <span className="truncate text-[12px] text-gray-400">
+                  {unitNoOf.get(p.propertyCode) ? `${p.name} · ${p.propertyCode}` : p.propertyCode}
+                </span>
+              </p>
+              <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11.5px] text-gray-400">
+                <span className="shrink-0 tabular-nums text-gray-600">{t(`${p.occupiedCount}/${p.roomCount} 已出租`, `${p.occupiedCount}/${p.roomCount} let`)}</span>
+                {p.vacantCount > 0 && <span className="shrink-0 font-medium text-amber-700">{t(`${p.vacantCount} 空`, `${p.vacantCount} vacant`)}</span>}
+                {p.noteCount > 0 && <span className="shrink-0 font-medium text-amber-700">⚠ {p.noteCount}</span>}
+              </p>
+            </Link>
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() => setMenuFor(p)}
+                aria-label={t(`${p.propertyCode} 更多操作`, `More for ${p.propertyCode}`)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-gray-500 hover:bg-gray-100"
+              >
+                <IconDots size={18} />
+              </button>
+            ) : (
+              <IconChevronRight size={16} className="mr-1.5 shrink-0 text-gray-300" />
+            )}
+          </li>
+        ))}
+      </ul>
+      </section>
+      ))}
+
+      <Sheet open={!!menuFor} onClose={() => setMenuFor(null)} title={menuFor ? `${menuFor.name} · ${menuFor.propertyCode}` : ""}>
+        {menuFor && (
+          <ul className="-mx-2">
+            {[
+              { key: "open", icon: IconBuilding, l: t("打开楼盘", "Open"), href: `/units/${menuFor.propertyCode}` },
+              { key: "report", icon: IconChart, l: t("月报", "Monthly report"), href: `/units/${menuFor.propertyCode}?tab=report` },
+              { key: "edit", icon: IconPen, l: t("编辑基本资料", "Edit basics"), run: () => setEditingProperty(menuFor) },
+              { key: "delete", icon: IconTrash, l: t("删除楼盘", "Delete property"), run: () => setDeletingProperty(menuFor), danger: true },
+            ].map((i) => {
+              const body = (
+                <>
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${i.danger ? "bg-rose-50 text-rose-600" : "bg-gray-100 text-gray-600"}`}>
+                    <i.icon size={18} />
+                  </span>
+                  <span className={`min-w-0 flex-1 truncate text-sm ${i.danger ? "text-rose-600" : "text-gray-800"}`}>{i.l}</span>
+                  <IconChevronRight size={16} className="shrink-0 text-gray-300" />
+                </>
+              );
+              const cls = "flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-gray-50";
+              return (
+                <li key={i.key}>
+                  {i.href ? (
+                    <Link href={i.href} onClick={() => setMenuFor(null)} className={cls}>
+                      {body}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuFor(null);
+                        i.run?.();
+                      }}
+                      className={cls}
+                    >
+                      {body}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Sheet>
 
       {editingProperty && (
         <PropertyEditModal property={editingProperty} onClose={() => setEditingProperty(null)} onSaved={load} />
@@ -362,11 +309,4 @@ export default function UnitsClient({ role }: { role: string }) {
       />
     </div>
   );
-}
-
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <th className={`whitespace-nowrap px-2.5 py-2 font-semibold ${className}`}>{children}</th>;
-}
-function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`whitespace-nowrap px-2.5 py-2.5 ${className}`}>{children}</td>;
 }

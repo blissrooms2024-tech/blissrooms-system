@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
+import TenantContact from "@/components/TenantContact";
+import UnitRoomSelect, { EMPTY_PICK, pickOfRoom, roomLabel, useUnitTree, type PickRoom, type UnitRoomValue } from "@/components/UnitRoomSelect";
 
 type BillType = "RENTAL" | "CARPARK";
 
@@ -10,6 +12,7 @@ interface ActiveContract {
   contractCode: string;
   roomCode: string;
   tenantName: string;
+  phone: string | null;
   roomRental: number;
   carparkRental: number;
 }
@@ -56,6 +59,7 @@ export default function OpenRentalBillCard() {
         status: string;
         contractCode: string;
         tenantName: string;
+        contactNumber: string | null;
         roomRental: number;
         carparkRental: number;
         expiredDate: string | null;
@@ -67,6 +71,7 @@ export default function OpenRentalBillCard() {
         contractCode: c.contractCode,
         roomCode: c.room.roomCode,
         tenantName: c.tenantName,
+        phone: c.contactNumber,
         roomRental: Number(c.roomRental),
         carparkRental: Number(c.carparkRental),
       }))
@@ -88,6 +93,14 @@ export default function OpenRentalBillCard() {
     loadContracts();
     loadGaps();
   }, [loadContracts, loadGaps]);
+
+  // 楼盘 → 单位号码 → 房间 (only rooms with an active contract); the room picks the contract.
+  const tree = useUnitTree();
+  const byRoom = useMemo(() => new Map(contracts.map((c) => [c.roomCode, c])), [contracts]);
+  const hasContract = useCallback((r: PickRoom) => byRoom.has(r.roomCode), [byRoom]);
+  const [pickPart, setPickPart] = useState<UnitRoomValue>(EMPTY_PICK);
+  const chosen = contracts.find((x) => x.contractCode === contractCode) ?? null;
+  const pick = chosen && tree ? pickOfRoom(tree, chosen.roomCode) : pickPart;
 
   function selectContract(code: string) {
     setContractCode(code);
@@ -182,16 +195,23 @@ export default function OpenRentalBillCard() {
       )}
 
       <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[220px] flex-1">
-          <label className="mb-1.5 block text-sm text-gray-600">{t("房间", "Room")}</label>
-          <select value={contractCode} onChange={(e) => selectContract(e.target.value)} className="input">
-            <option value="">{t("-- 选房间 --", "-- Select Room --")}</option>
-            {contracts.map((c) => (
-              <option key={c.contractCode} value={c.contractCode}>
-                {c.roomCode} · {c.tenantName}
-              </option>
-            ))}
-          </select>
+        <div className="w-full space-y-2">
+          <UnitRoomSelect
+            units={tree ?? []}
+            value={pick}
+            onChange={(v) => {
+              setPickPart(v);
+              selectContract(byRoom.get(v.room)?.contractCode ?? "");
+            }}
+            rooms="required"
+            roomFilter={hasContract}
+            hideEmpty
+            roomText={(r, u) => {
+              const c = byRoom.get(r.roomCode);
+              return [roomLabel(r.roomCode, u.propertyCode), c?.tenantName, c?.phone].filter(Boolean).join(" · ");
+            }}
+          />
+          {chosen && <TenantContact name={chosen.tenantName} phone={chosen.phone} note={chosen.contractCode} />}
         </div>
         <div className="min-w-[110px] flex-1">
           <label className="mb-1.5 block text-sm text-gray-600">{t("项目", "Item")}</label>

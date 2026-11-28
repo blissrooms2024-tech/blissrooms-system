@@ -38,7 +38,7 @@ interface Transaction {
 }
 interface ExpenseTransaction {
   expenseDate: string;
-  propertyCode: string;
+  propertyCode: string | null;
   propertyName: string;
   category: string;
   label: string;
@@ -440,9 +440,9 @@ export default function FinanceOverviewClient() {
                             <b>{fmtDate(e.expenseDate)}</b>
                           </td>
                           <td>
-                            <b>{e.propertyCode}</b>
+                            <b>{e.propertyCode ?? "-"}</b>
                           </td>
-                          <td>{e.propertyName}</td>
+                          <td>{e.propertyCode ? e.propertyName : tt("公司开销", "Company overhead")}</td>
                           <td>{e.label}</td>
                           <td>{e.notes || "-"}</td>
                           <td className="num">{fmtMoney(e.amount)}</td>

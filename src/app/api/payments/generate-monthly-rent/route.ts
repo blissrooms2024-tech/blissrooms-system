@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { runMonthlyRentJob } from "@/lib/monthlyRentJob";
+import { withActivity } from "@/lib/activity";
 
 /** Admin-triggered catch-up for the scheduled monthly-rent cron — same job, same idempotency
  * (safe to click even if the cron already ran this month, it just creates nothing new), for
  * whenever the automatic run was missed or Admin wants this month's bills out immediately. */
-export async function POST() {
+async function handlePOST() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以手动生成" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以手动生成" }, { status: 403 });
   }
 
   const result = await runMonthlyRentJob(`Admin (${user.name}) - 手动生成`);
@@ -20,3 +21,5 @@ export async function POST() {
 
   return NextResponse.json({ success: true, message, ...result });
 }
+
+export const POST = withActivity(handlePOST);

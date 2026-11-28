@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { notifyAgentApproved } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 async function requireAdmin() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") return null;
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) return null;
   return user;
 }
 
@@ -16,7 +17,7 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   if (!(await requireAdmin())) {
-    return NextResponse.json({ success: false, message: "只有 Admin 可看" }, { status: 403 });
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可看" }, { status: 403 });
   }
   const { userId } = await params;
   const u = await prisma.user.findUnique({ where: { userCode: userId } });
@@ -54,13 +55,13 @@ const editSchema = z.object({
   newPassword: z.string().trim().min(4).optional().or(z.literal("")),
 });
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以改" }, { status: 403 });
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以改" }, { status: 403 });
   }
   const { userId } = await params;
   const u = await prisma.user.findUnique({ where: { userCode: userId } });
@@ -104,13 +105,13 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: `✅ 用户已更新: ${updated.name}` });
 }
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) {
-    return NextResponse.json({ success: false, message: "只有 Admin 可以删除" }, { status: 403 });
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可以删除" }, { status: 403 });
   }
   const { userId } = await params;
   const u = await prisma.user.findUnique({ where: { userCode: userId } });
@@ -120,14 +121,16 @@ export async function DELETE(
     return NextResponse.json({ success: false, message: "不能删除自己的账号" }, { status: 400 });
   }
 
-  const [contractCount, roomCount, moveFormCount, commissionCount, maintenanceCount] = await Promise.all([
+  const [contractCount, roomCount, moveFormCount, commissionCount, maintenanceCount, meetingCount] = await Promise.all([
     prisma.contract.count({ where: { OR: [{ tenantId: u.id }, { agentId: u.id }] } }),
     prisma.room.count({ where: { currentTenantId: u.id } }),
     prisma.moveInOutForm.count({ where: { tenantId: u.id } }),
     prisma.commission.count({ where: { agentId: u.id } }),
     prisma.maintenanceRequest.count({ where: { OR: [{ tenantId: u.id }, { assignedWorkerId: u.id }] } }),
+    // Meeting records keep who was there and who wrote what.
+    prisma.meetingAttendee.count({ where: { userId: u.id } }),
   ]);
-  if (contractCount + roomCount + moveFormCount + commissionCount + maintenanceCount > 0) {
+  if (contractCount + roomCount + moveFormCount + commissionCount + maintenanceCount + meetingCount > 0) {
     return NextResponse.json(
       { success: false, message: "这个用户有关联的合同/房间/记录，不能删除，请改用「停用」" },
       { status: 409 }
@@ -138,3 +141,6 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: `✅ 用户已删除: ${u.name}` });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);

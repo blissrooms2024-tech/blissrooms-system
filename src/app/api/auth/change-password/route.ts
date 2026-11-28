@@ -3,13 +3,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { withActivity } from "@/lib/activity";
 
 const schema = z.object({
   oldPassword: z.string().min(1),
   newPassword: z.string().min(4),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getCurrentUser();
   if (!session) {
     return NextResponse.json({ success: false, message: "请重新登录" }, { status: 401 });
@@ -32,3 +33,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: "✅ 密码已更改" });
 }
+
+export const POST = withActivity(handlePOST);

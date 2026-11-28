@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { contractStatusLabel } from "@/lib/config";
+import { contractStatusLabel, contractStatusTone } from "@/lib/config";
+import { PILL } from "@/components/Pill";
 import { fmtDate, fmtMoney as fmt } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
+import UnitNotes from "@/components/UnitNotes";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import ContractActions, { type ActionableContract } from "../ContractActions";
 import StepTimeline from "@/components/StepTimeline";
 import { buildContractSteps } from "@/lib/contractSteps";
@@ -102,6 +105,19 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
+      <Breadcrumbs
+        items={[
+          { label: t("楼盘", "Properties"), href: "/units" },
+          ...(contract.room.propertyCode
+            ? [
+                { label: contract.room.propertyName, href: `/units/${contract.room.propertyCode}?tab=contracts` },
+                { label: contract.room.roomCode, href: `/rooms/${contract.room.roomCode}` },
+              ]
+            : [{ label: contract.room.roomCode, href: `/rooms/${contract.room.roomCode}` }]),
+          { label: c.contractCode },
+        ]}
+      />
+      {contract.room.propertyCode && <UnitNotes propertyCode={contract.room.propertyCode} variant="compact" />}
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-base font-semibold text-brand">
@@ -111,14 +127,11 @@ export default function ContractDetailClient({ contractId, role }: { contractId:
                 ⛔ {t("已过期", "Expired")}
               </span>
             ) : (
-              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 align-middle">
+              <span className={`rounded-full px-2.5 py-0.5 align-middle text-xs font-semibold ${PILL[contractStatusTone(c.status)]}`}>
                 {contractStatusLabel(c.status, locale)}
               </span>
             )}
           </h3>
-          <Link href="/contracts" className="text-sm text-gray-500 hover:underline">
-            ← {t("返回合同清单", "Back to Contracts")}
-          </Link>
         </div>
 
         {c._rentEscalated && (

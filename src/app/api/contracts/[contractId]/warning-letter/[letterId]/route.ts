@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withActivity } from "@/lib/activity";
 
 /** Admin retracts a warning letter record (sent by mistake, situation resolved, etc.).
  * This only removes the record — it does not (and cannot) un-send the email already sent. */
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ contractId: string; letterId: string }> }
 ) {
@@ -25,3 +26,5 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: "✅ 警告信记录已撤销" });
 }
+
+export const DELETE = withActivity(handleDELETE);

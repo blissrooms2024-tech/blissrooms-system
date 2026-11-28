@@ -5,12 +5,13 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { newId } from "@/lib/id";
 import { RULES } from "@/lib/config";
+import { withActivity } from "@/lib/activity";
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "请重新登录" }, { status: 401 });
-  if (user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可看用户" }, { status: 403 });
+  if (user.role !== "ADMIN" && user.role !== "BOSS") {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可看用户" }, { status: 403 });
   }
 
   const [users, rooms, contracts] = await Promise.all([
@@ -95,10 +96,10 @@ const createSchema = z.object({
   bankAccountNumber: z.string().trim().optional().default(""),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "只有 Admin 可建用户" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "BOSS")) {
+    return NextResponse.json({ success: false, message: "只有 Boss / Admin 可建用户" }, { status: 403 });
   }
   const parsed = createSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -131,3 +132,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: `✅ 用户已建: ${d.name} (密码: ${pw})` });
 }
+
+export const POST = withActivity(handlePOST);

@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/components/LanguageProvider";
 import { paymentTypeLabelLocale } from "@/lib/config";
+import UnitRoomSelect, { EMPTY_PICK, useUnitTree, type UnitRoomValue } from "@/components/UnitRoomSelect";
 
-interface PropertyOption {
-  propertyCode: string;
-  name: string;
-}
 interface TenantOption {
   contractCode: string;
   roomCode: string;
@@ -21,8 +18,10 @@ const BULK_TYPES = ["ELECTRIC", "UTILITIES", "AC", "DRYER", "OTHER"] as const;
 export default function BulkBillClient() {
   const toast = useToast();
   const { locale, t } = useLanguage();
-  const [properties, setProperties] = useState<PropertyOption[]>([]);
-  const [propertyCode, setPropertyCode] = useState("");
+  // 楼盘 → 单位号码; the unit chosen is propertyCode.
+  const units = useUnitTree();
+  const [pick, setPick] = useState<UnitRoomValue>(EMPTY_PICK);
+  const propertyCode = pick.unit;
   const [tenants, setTenants] = useState<TenantOption[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({
@@ -34,14 +33,6 @@ export default function BulkBillClient() {
     notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const res = await fetch("/api/properties");
-      const data = await res.json();
-      if (data.success) setProperties(data.properties);
-    })();
-  }, []);
 
   const loadTenants = useCallback(async (code: string) => {
     setTenants(null);
@@ -121,23 +112,16 @@ export default function BulkBillClient() {
         )}
       </p>
 
-      <div className="mb-3.5">
-        <label className="mb-1.5 block text-sm text-gray-600">{t("楼盘 Unit", "Unit")}</label>
-        <select
-          value={propertyCode}
-          onChange={(e) => {
-            setPropertyCode(e.target.value);
-            loadTenants(e.target.value);
+      <div className="mb-3.5 max-w-md">
+        <UnitRoomSelect
+          units={units ?? []}
+          value={pick}
+          onChange={(v) => {
+            setPick(v);
+            if (v.unit !== pick.unit) loadTenants(v.unit);
           }}
-          className="input max-w-xs"
-        >
-          <option value="">{t("-- 选楼盘 --", "-- Select Unit --")}</option>
-          {properties.map((p) => (
-            <option key={p.propertyCode} value={p.propertyCode}>
-              {p.propertyCode} ({p.name})
-            </option>
-          ))}
-        </select>
+          rooms="none"
+        />
       </div>
 
       {propertyCode && (

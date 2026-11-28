@@ -7,6 +7,7 @@ import { RENT_ARREARS } from "@/lib/config";
 import { computeBillBreakdown } from "@/lib/billBreakdown";
 import { newId } from "@/lib/id";
 import { notifyTenantBillCreated } from "@/lib/mail";
+import { withActivity } from "@/lib/activity";
 
 const PRORATA_NOTE = "Pro-rata 租金 (提前入住)";
 
@@ -28,7 +29,11 @@ export async function GET(
   const { contractId } = await params;
   const contract = await prisma.contract.findUnique({
     where: { contractCode: contractId },
-    include: { room: true, carparkRoom: { select: { roomCode: true, propertyName: true, carparkLotNumber: true } }, agent: { select: { ic: true } } },
+    include: {
+      room: { include: { property: { select: { propertyCode: true } } } },
+      carparkRoom: { select: { roomCode: true, propertyName: true, carparkLotNumber: true } },
+      agent: { select: { ic: true } },
+    },
   });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (!canView(user, contract)) {
@@ -68,11 +73,15 @@ export async function GET(
   // this route alone still used the static move-in-time totalOutstanding snapshot).
   const { totalDue, totalPaid, totalOutstanding } = computeBillBreakdown(contract, payments, contract.room.isCarpark);
 
-  const { agent, ...rest } = contract;
+  const { agent, room: roomWithProperty, ...rest } = contract;
+  // The page links back to the unit (楼盘 › unit › room breadcrumb) and shows the unit's
+  // 注意事项, both keyed by the unit's code, so it rides along flat on the room.
+  const { property, ...room } = roomWithProperty;
   return NextResponse.json({
     success: true,
     contract: serialize({
       ...rest,
+      room: { ...room, propertyCode: property?.propertyCode ?? null },
       agentIc: agent.ic,
       _due: totalDue,
       _paid: totalPaid,
@@ -91,7 +100,7 @@ export async function GET(
   });
 }
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -263,7 +272,7 @@ export async function PATCH(
   return NextResponse.json({ success: true, message: `✅ 合同已更新: ${contractId}${prorataMsg}` });
 }
 
-export async function DELETE(
+async function handleDELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> }
 ) {
@@ -308,3 +317,6 @@ export async function DELETE(
 
   return NextResponse.json({ success: true, message: "✅ 合同已删, 房间放回空房" });
 }
+
+export const PATCH = withActivity(handlePATCH);
+export const DELETE = withActivity(handleDELETE);
