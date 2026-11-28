@@ -58,6 +58,35 @@ export async function buildingChoices() {
   return rows.map((b) => ({ id: b.id, name: b.name, units: b._count.units }));
 }
 
+/**
+ * Put a unit in the condo / apartment with this name (made if nobody uses the name yet).
+ * The only unit in its building, given a name nobody uses, just renames that building; a
+ * building left with no units hands its notes to the new one, so nothing written down is lost.
+ */
+export async function setUnitBuilding(propertyId: string, rawName: string): Promise<{ name: string; changed: boolean; movedNotes: number }> {
+  const name = cleanName(rawName);
+  const p = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: { id: true, buildingId: true, building: { select: { id: true, _count: { select: { units: true } } } } },
+  });
+  if (!p) throw new Error("unit not found");
+  const existing = await prisma.building.findFirst({ where: { name: { equals: name, mode: "insensitive" } }, select: { id: true, name: true } });
+  if (existing && existing.id === p.buildingId) return { name: existing.name, changed: false, movedNotes: 0 };
+  if (!existing && p.building && p.building._count.units === 1) {
+    await prisma.building.update({ where: { id: p.building.id }, data: { name } });
+    return { name, changed: true, movedNotes: 0 };
+  }
+  const to = existing ?? (await prisma.building.create({ data: { name }, select: { id: true, name: true } }));
+  const movedNotes = await prisma.$transaction(async (tx) => {
+    await tx.property.update({ where: { id: p.id }, data: { buildingId: to.id } });
+    if (!p.buildingId || (await tx.property.count({ where: { buildingId: p.buildingId } })) > 0) return 0;
+    const { count } = await tx.propertyNote.updateMany({ where: { buildingId: p.buildingId }, data: { buildingId: to.id } });
+    await tx.building.delete({ where: { id: p.buildingId } });
+    return count;
+  });
+  return { name: to.name, changed: true, movedNotes };
+}
+
 /** The building with this name (ignoring case and extra spaces), made if there isn't one. */
 export async function buildingByName(name: string) {
   const clean = cleanName(name);

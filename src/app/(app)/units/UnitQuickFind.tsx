@@ -16,7 +16,7 @@ export default function UnitQuickFind({ units, value, onChange }: { units: PickU
   const room = unit?.rooms?.find((r) => r.roomCode === value.room);
 
   return (
-    <section aria-label={t("快速找", "Quick find")} className="space-y-2.5 rounded-2xl bg-white p-3 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
+    <section aria-label={t("快速找", "Quick find")} className="space-y-2.5 rounded-2xl bg-white p-3 shadow-[0_1px_2px_rgba(30,27,46,0.05)] md:max-w-2xl">
       <UnitRoomSelect
         units={units}
         value={value}

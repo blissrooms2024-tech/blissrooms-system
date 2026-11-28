@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { MENUS } from "@/lib/menus";
+import { NAV_GROUPS, navMeta } from "./navMeta";
 import { ROLE_LABELS } from "@/lib/config";
 import ChangePasswordModal from "./ChangePasswordModal";
 import LanguageToggle from "./LanguageToggle";
@@ -142,6 +143,29 @@ export default function AppShell({
     );
   });
 
+  // Boss / Admin: the side menu in labelled groups (the same groups as 更多 on the phone).
+  // Everyone else keeps their short flat list.
+  const sidebarNav = (() => {
+    if (user.role !== "BOSS" && user.role !== "ADMIN") return sidebarLinks;
+    const linkFor = new Map(menuWithProfile.map((m, i) => [m.href, sidebarLinks[i]]));
+    const used = new Set(["/dashboard"]);
+    const out = [linkFor.get("/dashboard")];
+    for (const g of NAV_GROUPS) {
+      const hrefs = menu.map((m) => m.href).filter((h) => !used.has(h) && navMeta(h).group === g.key);
+      if (!hrefs.length) continue;
+      hrefs.forEach((h) => used.add(h));
+      out.push(
+        <p key={`group-${g.key}`} className="px-5 pb-1 pt-4 text-[11.5px] font-semibold text-gray-400">
+          {locale === "en" ? g.en : g.zh}
+        </p>,
+        ...hrefs.map((h) => linkFor.get(h))
+      );
+    }
+    const rest = menuWithProfile.filter((m) => !used.has(m.href));
+    if (rest.length) out.push(<div key="group-rest" className="mt-3 border-t border-gray-100" />, ...rest.map((m) => linkFor.get(m.href)));
+    return out;
+  })();
+
   return (
     <div className="min-h-screen">
       <div
@@ -205,7 +229,7 @@ export default function AppShell({
 
       <div className="flex min-h-[calc(100vh-48px)]">
         <div className="hidden w-[190px] shrink-0 border-r border-gray-200 bg-white py-3.5 md:block">
-          {sidebarLinks}
+          {sidebarNav}
         </div>
 
         {menuOpen && (
@@ -224,7 +248,7 @@ export default function AppShell({
                   </svg>
                 </button>
               </div>
-              {sidebarLinks}
+              {sidebarNav}
             </div>
           </div>
         )}

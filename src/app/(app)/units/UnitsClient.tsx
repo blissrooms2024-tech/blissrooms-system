@@ -7,10 +7,11 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import Sheet from "@/components/Sheet";
 import { useT } from "@/components/LanguageProvider";
 import { IconBuilding, IconChart, IconChevronRight, IconDots, IconPen, IconPlus, IconSliders, IconTrash } from "@/components/icons";
-import { EMPTY_PICK, useUnitTree, type UnitRoomValue } from "@/components/UnitRoomSelect";
+import { EMPTY_PICK, invalidateUnitTree, useUnitTree, type UnitRoomValue } from "@/components/UnitRoomSelect";
 import { groupOf } from "@/lib/receiptMatch";
 import PropertyEditModal from "./PropertyEditModal";
 import UnitQuickFind from "./UnitQuickFind";
+import PlacementSheet from "./PlacementSheet";
 
 interface PropertyRow {
   propertyCode: string;
@@ -44,6 +45,10 @@ export default function UnitsClient({ role }: { role: string }) {
   // 楼盘 → 单位号码 → 房间 at the top; a 楼盘 picked there narrows the list.
   const tree = useUnitTree();
   const [pick, setPick] = useState<UnitRoomValue>(EMPTY_PICK);
+  // 设定楼盘 / 单位号码 for every unit at once (Boss / Admin).
+  const canPlace = role === "ADMIN" || role === "BOSS";
+  const [placing, setPlacing] = useState(false);
+  const unplaced = (tree ?? []).filter((u) => !u.unitNo || !u.building || u.building === u.name).length;
   const canEdit = role === "ADMIN";
   const [depositCandidates, setDepositCandidates] = useState<
     { propertyCode: string; name: string; notes: string | null; parsedAmount: number }[] | null
@@ -166,6 +171,33 @@ export default function UnitsClient({ role }: { role: string }) {
       </div>
 
       {tree && tree.length > 0 && <UnitQuickFind units={tree} value={pick} onChange={setPick} />}
+      {canPlace && tree && tree.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setPlacing(true)}
+          className={`block w-full rounded-xl px-3 py-2 text-left text-[13px] md:max-w-2xl ${
+            unplaced ? "bg-amber-50 text-amber-900 hover:bg-amber-100" : "text-brand hover:bg-brand-light/50"
+          }`}
+        >
+          {unplaced
+            ? t(
+                `${unplaced} 个单位还没填楼盘或单位号码，下拉选单会先显示单位名字。点这里一次填好 →`,
+                `${unplaced} unit(s) still need a building or unit number; the dropdowns show their names for now. Fill them all in here →`
+              )
+            : t("改楼盘 / 单位号码", "Edit buildings & unit numbers")}
+        </button>
+      )}
+      {placing && tree && (
+        <PlacementSheet
+          units={tree}
+          onClose={() => setPlacing(false)}
+          onSaved={() => {
+            setPlacing(false);
+            invalidateUnitTree();
+            load();
+          }}
+        />
+      )}
 
       {error && <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {!properties && !error && (

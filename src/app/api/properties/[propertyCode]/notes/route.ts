@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { withActivity } from "@/lib/activity";
-import { buildingChoices, canEditNotes, canReadNotes, cleanName, notesForUnit } from "@/lib/propertyNotes";
+import { buildingChoices, canEditNotes, canReadNotes, notesForUnit, setUnitBuilding } from "@/lib/propertyNotes";
 
 type Ctx = { params: Promise<{ propertyCode: string }> };
 
@@ -66,39 +66,23 @@ async function handlePUT(req: NextRequest, { params }: Ctx) {
   const { propertyCode } = await params;
   const parsed = buildingSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message ?? "资料不对" }, { status: 400 });
-  const p = await prisma.property.findUnique({
-    where: { propertyCode },
-    select: { id: true, buildingId: true, building: { select: { id: true, _count: { select: { units: true } } } } },
-  });
+  const p = await prisma.property.findUnique({ where: { propertyCode }, select: { id: true } });
   if (!p) return NextResponse.json({ success: false, message: "找不到这个楼盘" }, { status: 404 });
 
-  let target: { id: string; name: string } | null;
+  let name: string;
   if ("buildingId" in parsed.data) {
-    target = await prisma.building.findUnique({ where: { id: parsed.data.buildingId }, select: { id: true, name: true } });
-    if (!target) return NextResponse.json({ success: false, message: "找不到这栋 condo / apartment" }, { status: 404 });
-  } else {
-    const name = cleanName(parsed.data.name);
-    const existing = await prisma.building.findFirst({ where: { name: { equals: name, mode: "insensitive" } }, select: { id: true, name: true } });
-    // The only unit in its building, given a name nobody uses: that's just a rename.
-    if (!existing && p.building && p.building._count.units === 1) {
-      await prisma.building.update({ where: { id: p.building.id }, data: { name } });
-      return NextResponse.json({ success: true, message: `${propertyCode} 现在属于 ${name}` });
-    }
-    target = existing ?? (await prisma.building.create({ data: { name }, select: { id: true, name: true } }));
-  }
-  if (target.id === p.buildingId) return NextResponse.json({ success: true, message: "没有改变" });
+    const b = await prisma.building.findUnique({ where: { id: parsed.data.buildingId }, select: { name: true } });
+    if (!b) return NextResponse.json({ success: false, message: "找不到这栋 condo / apartment" }, { status: 404 });
+    name = b.name;
+  } else name = parsed.data.name;
 
-  const to = target;
-  const moved = await prisma.$transaction(async (tx) => {
-    await tx.property.update({ where: { id: p.id }, data: { buildingId: to.id } });
-    if (!p.buildingId || (await tx.property.count({ where: { buildingId: p.buildingId } })) > 0) return 0;
-    const { count } = await tx.propertyNote.updateMany({ where: { buildingId: p.buildingId }, data: { buildingId: to.id } });
-    await tx.building.delete({ where: { id: p.buildingId } });
-    return count;
-  });
+  const r = await setUnitBuilding(p.id, name);
+  if (!r.changed) return NextResponse.json({ success: true, message: "没有改变" });
   return NextResponse.json({
     success: true,
-    message: moved ? `${propertyCode} 现在属于 ${to.name}（原本那栋的 ${moved} 条注意事项也搬过去了）` : `${propertyCode} 现在属于 ${to.name}`,
+    message: r.movedNotes
+      ? `${propertyCode} 现在属于 ${r.name}（原本那栋的 ${r.movedNotes} 条注意事项也搬过去了）`
+      : `${propertyCode} 现在属于 ${r.name}`,
   });
 }
 

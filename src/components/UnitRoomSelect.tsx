@@ -73,25 +73,39 @@ export function unitsIn(units: PickUnit[], v: UnitRoomValue): Set<string> | null
 // One fetch per page (refreshed after a minute), shared by every picker on it.
 let treeCache: Promise<PickUnit[]> | null = null;
 let treeAt = 0;
+const treeListeners = new Set<() => void>();
+
+function loadTree(): Promise<PickUnit[]> {
+  if (!treeCache || Date.now() - treeAt > 60_000) {
+    treeAt = Date.now();
+    treeCache = fetch("/api/properties/tree")
+      .then((r) => r.json())
+      .then((d) => (d.success ? (d.units as PickUnit[]) : []))
+      .catch(() => {
+        treeCache = null;
+        return [];
+      });
+  }
+  return treeCache;
+}
+
+/** After changing units (楼盘, unit numbers, rooms): every picker on the page fetches again. */
+export function invalidateUnitTree() {
+  treeCache = null;
+  treeListeners.forEach((f) => f());
+}
 
 /** Every live unit with its 楼盘, unit number, rooms and who's in them (/api/properties/tree). */
 export function useUnitTree(): PickUnit[] | null {
   const [units, setUnits] = useState<PickUnit[] | null>(null);
   useEffect(() => {
-    if (!treeCache || Date.now() - treeAt > 60_000) {
-      treeAt = Date.now();
-      treeCache = fetch("/api/properties/tree")
-        .then((r) => r.json())
-        .then((d) => (d.success ? (d.units as PickUnit[]) : []))
-        .catch(() => {
-          treeCache = null;
-          return [];
-        });
-    }
     let live = true;
-    treeCache.then((u) => live && setUnits(u));
+    const get = () => loadTree().then((u) => live && setUnits(u));
+    get();
+    treeListeners.add(get);
     return () => {
       live = false;
+      treeListeners.delete(get);
     };
   }, []);
   return units;
