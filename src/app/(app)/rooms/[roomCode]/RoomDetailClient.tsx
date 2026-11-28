@@ -9,6 +9,7 @@ import { PILL } from "@/components/Pill";
 import { fmtDate, isPdfUrl } from "@/lib/format";
 import { useLanguage } from "@/components/LanguageProvider";
 import UnitNotes from "@/components/UnitNotes";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import { readAsDataURL, isOversized } from "@/lib/imageUpload";
 
 interface RoomDetail {
@@ -117,15 +118,19 @@ export default function RoomDetailClient({ roomCode, role }: { roomCode: string;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
+      <Breadcrumbs
+        items={[
+          { label: t("楼盘", "Properties"), href: "/units" },
+          ...(room.propertyCode ? [{ label: room.propertyName, href: `/units/${room.propertyCode}?tab=rooms` }] : []),
+          { label: room.roomCode },
+        ]}
+      />
       {room.propertyCode && <UnitNotes propertyCode={room.propertyCode} variant="compact" />}
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-3.5 flex items-center justify-between">
           <h3 className="text-base font-semibold text-brand">
             {room.isCarpark ? "🅿️" : "🏠"} {room.roomCode}
           </h3>
-          <Link href="/rooms" className="text-sm text-gray-500 hover:underline">
-            ← {t("返回房间清单", "Back to Room List")}
-          </Link>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">

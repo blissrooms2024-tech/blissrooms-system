@@ -22,11 +22,11 @@ type Data = {
 
 /** 注意事项 for one unit: its building's (shared by every unit in that condo / apartment) and
  * its own.
- *  - "embedded": the full list on the unit page, where Boss / Admin add, change and delete them
- *    and set which building the unit is in.
+ *  - "full": the list as its own card on the unit's 概况 tab, where Boss / Admin add, change and
+ *    delete them and set which building the unit is in.
  *  - "compact": a short amber box on room and contract pages, so they're seen while working on
  *    that room; nothing shows when there are none. */
-export default function UnitNotes({ propertyCode, variant }: { propertyCode: string; variant: "embedded" | "compact" }) {
+export default function UnitNotes({ propertyCode, variant }: { propertyCode: string; variant: "full" | "compact" }) {
   const { t } = useLanguage();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
@@ -81,7 +81,7 @@ export default function UnitNotes({ propertyCode, variant }: { propertyCode: str
   }
 
   return (
-    <section className="mt-4 border-t border-gray-100 pt-3.5">
+    <section className="rounded-2xl bg-white p-3.5 shadow-[0_1px_2px_rgba(30,27,46,0.05)]">
       <div className="flex items-center justify-between gap-2">
         <h4 className="flex items-center gap-1.5 text-sm font-semibold text-brand">
           <IconAlert size={16} className="text-amber-600" />

@@ -30,7 +30,9 @@ interface Room {
   expiringSoonDate: string | null;
 }
 
-export default function RoomsClient({ role }: { role: string }) {
+/** The room list. On a unit's page (`propertyCode`, `embedded`) it shows only that unit's rooms,
+ * without the page title and buttons. */
+export default function RoomsClient({ role, propertyCode, embedded = false }: { role: string; propertyCode?: string; embedded?: boolean }) {
   const toast = useToast();
   const { locale, t } = useLanguage();
   const [rooms, setRooms] = useState<Room[] | null>(null);
@@ -55,7 +57,7 @@ export default function RoomsClient({ role }: { role: string }) {
         setError(data.message);
         return;
       }
-      setRooms(data.rooms);
+      setRooms(propertyCode ? data.rooms.filter((r: Room) => r.propertyCode === propertyCode) : data.rooms);
     } catch {
       setError(t("出错，请稍后再试", "Something went wrong — please try again later"));
     }
@@ -169,6 +171,7 @@ export default function RoomsClient({ role }: { role: string }) {
 
   return (
     <div className="app-type mx-auto max-w-6xl space-y-3">
+      {!embedded && (
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold text-gray-900">
@@ -200,7 +203,10 @@ export default function RoomsClient({ role }: { role: string }) {
           </div>
         )}
       </div>
+      )}
 
+      {/* A unit has a handful of rooms: no need to search them. */}
+      {!embedded && (
       <div className="relative md:max-w-md">
         <IconSearch size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
@@ -221,6 +227,7 @@ export default function RoomsClient({ role }: { role: string }) {
           </button>
         )}
       </div>
+      )}
 
       {rooms && (
         <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 md:mx-0 md:flex-wrap md:px-0">

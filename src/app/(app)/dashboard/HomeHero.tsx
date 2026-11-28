@@ -1,5 +1,6 @@
 "use client";
 
+import GlobalSearch from "@/components/GlobalSearch";
 import { useLanguage } from "@/components/LanguageProvider";
 import { IconBell } from "@/components/icons";
 
@@ -98,7 +99,12 @@ export default function HomeHero({
         </button>
       </div>
 
-      <div className="relative mt-6">
+      {/* One box to jump to any room, tenant, phone or contract. */}
+      <div className="relative mt-3.5">
+        <GlobalSearch />
+      </div>
+
+      <div className="relative mt-5">
         <p className="text-xs text-white/70">{t("整体入住率", "Overall occupancy")}</p>
         <div className="mt-1 flex items-end gap-4">
           <span className="text-[64px] font-semibold leading-[0.85] tracking-[-0.03em]">

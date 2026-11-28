@@ -35,6 +35,9 @@ const STATUS_BADGE: Record<string, { zh: string; en: string; tone: PillTone }> =
 };
 type StatusKey = "" | "OVERDUE" | "PENDING" | "PENDING_REVIEW" | "REJECTED";
 
+/** Room codes are "{unit}-01", "{unit}-CP01"…, so a unit's bills are the ones whose room starts with its code. */
+const inUnit = (roomCode: string, unit: string) => roomCode === unit || roomCode.startsWith(`${unit}-`);
+
 // Malaysia's calendar day whatever the device is set to. Overdue = still on the tenant
 // (not uploaded, or rejected) after the due date — the same rule as the home page's count.
 const todayMY = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
@@ -45,7 +48,17 @@ const overdueDays = (p: Bill, today: string) =>
 // A/C top-ups are their own thing to the tenant, so they get their own filter.
 const typeKey = (p: Bill) => (p.type === "AC" && !p.periodMonth ? "AC_TOPUP" : p.type);
 
-export default function OutstandingBillsClient({ initialShow }: { initialShow?: "overdue" }) {
+/** `propertyCode` + `embedded`: the 账单 tab on a unit's page — that unit's bills only, without the
+ * 待审核 / 未清账单 switch (the tab has its own). */
+export default function OutstandingBillsClient({
+  initialShow,
+  propertyCode,
+  embedded = false,
+}: {
+  initialShow?: "overdue";
+  propertyCode?: string;
+  embedded?: boolean;
+}) {
   const { locale, t } = useLanguage();
   const toast = useToast();
   const [items, setItems] = useState<Bill[] | null>(null);
@@ -68,11 +81,11 @@ export default function OutstandingBillsClient({ initialShow }: { initialShow?: 
         setError(data.message);
         return;
       }
-      setItems(data.payments);
+      setItems(propertyCode ? data.payments.filter((b: Bill) => inUnit(b.roomCode, propertyCode)) : data.payments);
     } catch {
       setError(t("出错，请稍后再试", "Error — please try again later"));
     }
-  }, [t]);
+  }, [t, propertyCode]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -166,9 +179,9 @@ export default function OutstandingBillsClient({ initialShow }: { initialShow?: 
   return (
     <div className="app-type mx-auto max-w-6xl space-y-3">
       {/* The 待审核 / 未清账单 switch doubles as the page title, so the list starts higher. */}
-      <h1 className="sr-only">{t("未清账单", "Unpaid bills")}</h1>
+      {!embedded && <h1 className="sr-only">{t("未清账单", "Unpaid bills")}</h1>}
       <div className="space-y-1.5">
-        <PaymentsTabs current="unpaid" reviewCount={items ? reviewCount : undefined} unpaidCount={items?.length} />
+        {!embedded && <PaymentsTabs current="unpaid" reviewCount={items ? reviewCount : undefined} unpaidCount={items?.length} />}
         {items && items.length > 0 && (
           <p className="px-1 text-xs text-gray-500">
             {t(`合计 ${fmt(totalDue)}`, `${fmt(totalDue)} in total`)}

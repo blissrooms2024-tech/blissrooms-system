@@ -43,7 +43,12 @@ const myTime = (iso: string) => {
 };
 const dayDiff = (later: string, earlier: string) => Math.round((Date.parse(later.slice(0, 10)) - Date.parse(earlier.slice(0, 10))) / 86_400_000);
 
-export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
+/** Room codes are "{unit}-01", "{unit}-CP01"…, so a unit's bills are the ones whose room starts with its code. */
+const inUnit = (roomCode: string, unit: string) => roomCode === unit || roomCode.startsWith(`${unit}-`);
+
+/** `propertyCode` + `embedded`: the 账单 tab on a unit's page — that unit's slips only, without the
+ * 待审核 / 未清账单 switch (the tab has its own). */
+export default function ReviewQueueClient({ canAct, propertyCode, embedded = false }: { canAct: boolean; propertyCode?: string; embedded?: boolean }) {
   const toast = useToast();
   const { locale, t } = useLanguage();
   const [items, setItems] = useState<PendingPayment[] | null>(null);
@@ -61,11 +66,11 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
       const data = await res.json();
       if (!data.success) return setError(data.message);
       setError("");
-      setItems(data.payments);
+      setItems(propertyCode ? data.payments.filter((x: PendingPayment) => inUnit(x.roomCode, propertyCode)) : data.payments);
     } catch {
       setError(t("出错，请稍后再试", "Error — please try again later"));
     }
-  }, [t]);
+  }, [t, propertyCode]);
 
   useEffect(() => {
     // setState happens after the fetch's await, not synchronously in the effect body.
@@ -151,9 +156,9 @@ export default function ReviewQueueClient({ canAct }: { canAct: boolean }) {
   return (
     <div className="app-type mx-auto max-w-6xl space-y-3">
       {/* The 待审核 / 未清账单 switch doubles as the page title, so the list starts higher. */}
-      <h1 className="sr-only">{t("交易单审核", "Payment slips")}</h1>
+      {!embedded && <h1 className="sr-only">{t("交易单审核", "Payment slips")}</h1>}
       <div className="space-y-1.5">
-        <PaymentsTabs current="review" reviewCount={items?.length} />
+        {!embedded && <PaymentsTabs current="review" reviewCount={items?.length} />}
         {items && items.length > 0 && (
           <p className="px-1 text-xs text-gray-500">
             {t(`合计 ${fmtMoney(total)}`, `${fmtMoney(total)} in total`)}

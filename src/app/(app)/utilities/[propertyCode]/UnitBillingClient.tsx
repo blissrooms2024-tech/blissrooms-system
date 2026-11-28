@@ -37,6 +37,7 @@ export default function UnitBillingClient({
   openSetup,
   setupKind,
   isAdmin,
+  embedded = false,
 }: {
   propertyCode: string;
   initialPeriod: string | null;
@@ -44,6 +45,8 @@ export default function UnitBillingClient({
   /** Open the meter setup on this kind (from the "still on top-up" aircon list). */
   setupKind?: UtilityKind;
   isAdmin: boolean;
+  /** The 水电 tab on the unit's page: no back link or title, and the URL keeps its ?tab=. */
+  embedded?: boolean;
 }) {
   const { t } = useLanguage();
   const toast = useToast();
@@ -99,14 +102,14 @@ export default function UnitBillingClient({
           setOverrides({});
           setSkip([]);
         }
-        if (p) window.history.replaceState(null, "", `/utilities/${propertyCode}?period=${p}`);
+        if (p) window.history.replaceState(null, "", embedded ? `/units/${propertyCode}?tab=utilities&period=${p}` : `/utilities/${propertyCode}?period=${p}`);
       } catch {
         setError(t("网络连接失败，请检查网络后重试", "Network connection failed — please try again"));
       } finally {
         setLoading(false);
       }
     },
-    [propertyCode, t]
+    [propertyCode, t, embedded]
   );
 
   useEffect(() => {
@@ -279,15 +282,21 @@ export default function UnitBillingClient({
   return (
     <div className="app-type mx-auto max-w-3xl space-y-4">
       <div>
-        <Link href={data ? `/utilities?period=${data.period}` : "/utilities"} className="mb-1 inline-flex items-center gap-0.5 text-sm text-gray-500 hover:text-brand">
-          <IconChevronLeft size={16} />
-          {t("抄表开单", "Meter billing")}
-        </Link>
+        {!embedded && (
+          <Link href={data ? `/utilities?period=${data.period}` : "/utilities"} className="mb-1 inline-flex items-center gap-0.5 text-sm text-gray-500 hover:text-brand">
+            <IconChevronLeft size={16} />
+            {t("抄表开单", "Meter billing")}
+          </Link>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-gray-900">
-            {propertyCode}
-            {data && <span className="ml-1.5 text-base font-normal text-gray-500">{data.unit.name}</span>}
-          </h1>
+          {embedded ? (
+            <h2 className="text-[15px] font-semibold text-gray-900">{t("抄表开单", "Meter billing")}</h2>
+          ) : (
+            <h1 className="text-xl font-semibold text-gray-900">
+              {propertyCode}
+              {data && <span className="ml-1.5 text-base font-normal text-gray-500">{data.unit.name}</span>}
+            </h1>
+          )}
           <div className="flex items-center gap-2">
             {data && <MonthSwitcher value={data.period} max={todayMY().slice(0, 7)} onChange={(p) => load(p, true)} />}
             {isAdmin && data && (

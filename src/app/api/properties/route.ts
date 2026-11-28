@@ -29,6 +29,9 @@ export async function GET() {
     _count: { _all: true },
   });
   const roomCountByPropertyId = new Map(roomGroups.map((g) => [g.propertyId, g._count._all]));
+  // How full each unit is, for the 楼盘 list (rooms only, not carpark slots).
+  const statusGroups = await prisma.room.groupBy({ by: ["propertyId", "status"], where: { isCarpark: false }, _count: { _all: true } });
+  const roomsIn = (id: string, status: string) => statusGroups.find((g) => g.propertyId === id && g.status === status)?._count._all ?? 0;
   const carparkCountByPropertyId = new Map(carparkGroups.map((g) => [g.propertyId, g._count._all]));
 
   return NextResponse.json({
@@ -48,6 +51,8 @@ export async function GET() {
       /** 注意事项 this unit shows: its own plus its building's. */
       noteCount: p._count.propertyNotes + (p.building?._count.notes ?? 0),
       roomCount: roomCountByPropertyId.get(p.id) ?? 0,
+      occupiedCount: roomsIn(p.id, "OCCUPIED"),
+      vacantCount: roomsIn(p.id, "VACANT"),
       carparkCount: carparkCountByPropertyId.get(p.id) ?? 0,
     })),
   });

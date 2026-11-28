@@ -56,7 +56,9 @@ export default function Sheet({
         className={`sheet-up relative flex w-full flex-col rounded-t-3xl bg-white shadow-2xl outline-none sm:max-w-lg sm:rounded-3xl ${
           tall ? "h-[92dvh] sm:h-auto sm:max-h-[88vh]" : "max-h-[88dvh] sm:max-h-[88vh]"
         }`}
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        // The page's normal ink, not whatever the opener sits in — a sheet opened from the purple
+        // home header would otherwise inherit its white text (typed search words went invisible).
+        style={{ paddingBottom: "env(safe-area-inset-bottom)", color: "var(--foreground)" }}
       >
         <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-gray-200 sm:hidden" />
         {title !== undefined && (

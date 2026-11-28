@@ -29,7 +29,11 @@ export async function GET(
   const { contractId } = await params;
   const contract = await prisma.contract.findUnique({
     where: { contractCode: contractId },
-    include: { room: true, carparkRoom: { select: { roomCode: true, propertyName: true, carparkLotNumber: true } }, agent: { select: { ic: true } } },
+    include: {
+      room: { include: { property: { select: { propertyCode: true } } } },
+      carparkRoom: { select: { roomCode: true, propertyName: true, carparkLotNumber: true } },
+      agent: { select: { ic: true } },
+    },
   });
   if (!contract) return NextResponse.json({ success: false, message: "找不到合同" }, { status: 404 });
   if (!canView(user, contract)) {
@@ -69,11 +73,15 @@ export async function GET(
   // this route alone still used the static move-in-time totalOutstanding snapshot).
   const { totalDue, totalPaid, totalOutstanding } = computeBillBreakdown(contract, payments, contract.room.isCarpark);
 
-  const { agent, ...rest } = contract;
+  const { agent, room: roomWithProperty, ...rest } = contract;
+  // The page links back to the unit (楼盘 › unit › room breadcrumb) and shows the unit's
+  // 注意事项, both keyed by the unit's code, so it rides along flat on the room.
+  const { property, ...room } = roomWithProperty;
   return NextResponse.json({
     success: true,
     contract: serialize({
       ...rest,
+      room: { ...room, propertyCode: property?.propertyCode ?? null },
       agentIc: agent.ic,
       _due: totalDue,
       _paid: totalPaid,

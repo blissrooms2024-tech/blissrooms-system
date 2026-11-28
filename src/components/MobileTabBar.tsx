@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
-import { IconBed, IconContract, IconGrid, IconHome, IconWallet } from "./icons";
+import { IconBuilding, IconContract, IconGrid, IconHome, IconWallet } from "./icons";
 import type { NavIcon } from "./navMeta";
 
 type Tab = { href: string; zh: string; en: string; icon: NavIcon; match: string[]; badge?: number };
 
 /**
- * Phone-only bottom navigation for Boss/Admin — the four places they go most, plus 更多 for
+ * Phone-only bottom navigation for Boss/Admin — 首页 · 楼盘 · 合同 · 收款, plus 更多 for
  * everything else. A page that isn't one of the four (P&L, claims, users…) is reached from 更多,
  * so 更多 stays highlighted while you're there, the way a native app keeps its tab lit.
  */
@@ -19,9 +19,10 @@ export default function MobileTabBar({ alerts }: { alerts: Record<string, number
 
   const tabs: Tab[] = [
     { href: "/dashboard", zh: "首页", en: "Home", icon: IconHome, match: ["/dashboard"] },
+    // Rooms live inside their unit now: the tab opens the unit list, and a room page keeps it lit.
+    { href: "/units", zh: "楼盘", en: "Properties", icon: IconBuilding, match: ["/units", "/rooms"] },
     { href: "/contracts", zh: "合同", en: "Contracts", icon: IconContract, match: ["/contracts"], badge: alerts["/contracts"] },
-    { href: "/rooms", zh: "房间", en: "Rooms", icon: IconBed, match: ["/rooms", "/units"] },
-    { href: "/payments/review", zh: "收款", en: "Payments", icon: IconWallet, match: ["/payments"], badge: alerts["/payments/review"] },
+    { href: "/payments/review", zh: "收款", en: "Payments", icon: IconWallet, match: ["/payments", "/utilities"], badge: alerts["/payments/review"] },
     {
       href: "/more",
       zh: "更多",

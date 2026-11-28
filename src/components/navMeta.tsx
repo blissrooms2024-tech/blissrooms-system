@@ -33,7 +33,7 @@ import {
 
 export type NavIcon = ComponentType<{ size?: number; className?: string }>;
 export type Tone = "violet" | "teal" | "amber" | "rose" | "slate";
-export type NavGroup = "tenancy" | "money" | "team";
+export type NavGroup = "property" | "tenancy" | "payments" | "money" | "team";
 
 export const TONE_CLASS: Record<Tone, string> = {
   violet: "bg-brand-light text-brand",
@@ -43,20 +43,23 @@ export const TONE_CLASS: Record<Tone, string> = {
   slate: "bg-slate-100 text-slate-600",
 };
 
-const GROUP_TONE: Record<NavGroup, Tone> = { tenancy: "violet", money: "teal", team: "slate" };
+const GROUP_TONE: Record<NavGroup, Tone> = { property: "amber", tenancy: "violet", payments: "teal", money: "teal", team: "slate" };
 
+/** How 更多 (and the menus) are grouped: the place first, then the work. */
 export const NAV_GROUPS: { key: NavGroup; zh: string; en: string }[] = [
+  { key: "property", zh: "楼盘", en: "Properties" },
   { key: "tenancy", zh: "租务", en: "Tenancy" },
-  { key: "money", zh: "财务", en: "Money" },
-  { key: "team", zh: "团队与系统", en: "Team & system" },
+  { key: "payments", zh: "收款", en: "Payments" },
+  { key: "money", zh: "财务", en: "Finance" },
+  { key: "team", zh: "团队", en: "Team" },
 ];
 
 const meta = (icon: NavIcon, group: NavGroup) => ({ icon, group, tone: GROUP_TONE[group] });
 
 export const NAV_META: Record<string, { icon: NavIcon; group: NavGroup; tone: Tone }> = {
   "/dashboard": meta(IconHome, "tenancy"),
-  "/units": meta(IconBuilding, "tenancy"),
-  "/rooms": meta(IconBed, "tenancy"),
+  "/units": meta(IconBuilding, "property"),
+  "/rooms": meta(IconBed, "property"),
   "/contracts": meta(IconContract, "tenancy"),
   "/contracts/new": meta(IconSignature, "tenancy"),
   "/contracts/renewal": meta(IconRefresh, "tenancy"),
@@ -65,11 +68,11 @@ export const NAV_META: Record<string, { icon: NavIcon; group: NavGroup; tone: To
   "/vouchers": meta(IconTicket, "tenancy"),
   "/finance": meta(IconPie, "money"),
   "/pnl": meta(IconTrend, "money"),
-  "/payments/review": meta(IconWallet, "money"),
-  "/payments/outstanding": meta(IconReceipt, "money"),
-  "/payments/bulk": meta(IconMegaphone, "money"),
-  "/payments/utility-report": meta(IconChart, "money"),
-  "/utilities": meta(IconBolt, "money"),
+  "/payments/review": meta(IconWallet, "payments"),
+  "/payments/outstanding": meta(IconReceipt, "payments"),
+  "/payments/bulk": meta(IconMegaphone, "payments"),
+  "/payments/utility-report": meta(IconChart, "payments"),
+  "/utilities": meta(IconBolt, "payments"),
   "/agent-commissions": meta(IconCash, "money"),
   "/claims": meta(IconReceiptCheck, "money"),
   "/quote": meta(IconCalculator, "money"),

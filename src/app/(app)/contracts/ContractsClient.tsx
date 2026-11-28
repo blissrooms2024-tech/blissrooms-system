@@ -20,7 +20,7 @@ export interface Contract extends ActionableContract {
   _creditBalance: number;
   _expiringSoon?: boolean;
   _expired?: boolean;
-  room?: { roomCode: string };
+  room?: { roomCode: string; propertyCode?: string | null; propertyName?: string | null };
 }
 
 export const NOT_SIGNED_STATUSES = ["DRAFT", "PENDING_APPROVE", "PENDING_SIGN"];

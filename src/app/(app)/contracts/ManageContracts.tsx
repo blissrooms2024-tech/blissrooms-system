@@ -52,7 +52,9 @@ function useIsPhone() {
 const todayMY = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
 const daysFromToday = (iso: string) => Math.round((Date.parse(iso.slice(0, 10)) - Date.parse(todayMY())) / 86_400_000);
 
-export default function ManageContracts({ role }: { role: string }) {
+/** `propertyCode` + `embedded`: the 合同 tab on a unit's page — only that unit's contracts, without
+ * the page title, tools and 楼盘 picker. */
+export default function ManageContracts({ role, propertyCode, embedded = false }: { role: string; propertyCode?: string; embedded?: boolean }) {
   const { t, locale } = useLanguage();
   const toast = useToast();
   const isPhone = useIsPhone();
@@ -61,6 +63,8 @@ export default function ManageContracts({ role }: { role: string }) {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("");
+  /** 楼盘 picked on the stand-alone page ("" = all); fixed to the unit when embedded. */
+  const [unit, setUnit] = useState(propertyCode ?? "");
   const [showExpired, setShowExpired] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [busyTool, setBusyTool] = useState<string | null>(null);
@@ -105,15 +109,29 @@ export default function ManageContracts({ role }: { role: string }) {
     }
   }
 
+  // Everything below works on the picked 楼盘's contracts only.
+  const scoped = useMemo(() => (contracts ?? []).filter((c) => !unit || c.room?.propertyCode === unit), [contracts, unit]);
+  const units = useMemo(() => {
+    const m = new Map<string, { name: string; n: number }>();
+    for (const c of contracts ?? []) {
+      const code = c.room?.propertyCode;
+      if (!code || c._expired) continue;
+      const u = m.get(code) ?? { name: c.room?.propertyName ?? code, n: 0 };
+      u.n++;
+      m.set(code, u);
+    }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [contracts]);
+
   const counts = useMemo(() => {
     const out: Partial<Record<FilterKey, number>> = {};
-    for (const f of FILTERS) out[f.key] = contracts?.filter(f.test).length ?? 0;
+    for (const f of FILTERS) out[f.key] = scoped.filter(f.test).length;
     return out;
-  }, [contracts]);
+  }, [scoped]);
 
   const q = search.trim().toLowerCase();
   const active = FILTERS.find((f) => f.key === filter)!;
-  const matched = (contracts ?? [])
+  const matched = scoped
     .filter((c) => active.test(c))
     .filter(
       (c) =>
@@ -129,7 +147,7 @@ export default function ManageContracts({ role }: { role: string }) {
   // folded section so they don't bury the contracts that still need attention.
   const live = matched.filter((c) => !c._expired);
   const expired = matched.filter((c) => c._expired);
-  const liveTotal = contracts?.filter((c) => !c._expired).length ?? 0;
+  const liveTotal = scoped.filter((c) => !c._expired).length;
 
   const tools: { key: string; icon: NavIcon; zh: string; en: string; descZh?: string; descEn?: string; href?: string; run?: string }[] = [
     { key: "renewal", icon: IconRefresh, zh: "续约管理", en: "Renewals", href: "/contracts/renewal" },
@@ -174,6 +192,7 @@ export default function ManageContracts({ role }: { role: string }) {
 
   return (
     <div className="app-type mx-auto max-w-6xl space-y-3">
+      {!embedded && (
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-lg font-semibold text-gray-900">
           {t("合同", "Contracts")}
@@ -198,8 +217,9 @@ export default function ManageContracts({ role }: { role: string }) {
           )}
         </div>
       </div>
+      )}
 
-      {isAdmin && !isPhone && (
+      {isAdmin && !isPhone && !embedded && (
         <div className="flex flex-wrap gap-2">
           {tools.map((tool) =>
             tool.href ? (
@@ -224,13 +244,14 @@ export default function ManageContracts({ role }: { role: string }) {
         </div>
       )}
 
-      <div className="relative md:max-w-md">
+      <div className="flex gap-2 md:max-w-xl">
+      <div className="relative min-w-0 flex-1">
         <IconSearch size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("搜房间 / 租客 / 合同号 / 电话", "Room, tenant, contract #, phone")}
+          placeholder={embedded ? t("搜房间 / 租客 / 合同号", "Room, tenant, contract #") : t("搜房间 / 租客 / 合同号 / 电话", "Room, tenant, contract #, phone")}
           className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-10 text-base shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10 sm:text-sm"
         />
         {search && (
@@ -243,6 +264,24 @@ export default function ManageContracts({ role }: { role: string }) {
             <IconX size={16} />
           </button>
         )}
+      </div>
+      {!embedded && units.length > 1 && (
+        <select
+          value={unit}
+          onChange={(e) => setUnit(e.target.value)}
+          aria-label={t("楼盘", "Property")}
+          className={`h-10 w-[7.5rem] shrink-0 rounded-xl border bg-white px-2.5 text-base shadow-sm focus:border-brand focus:outline-none sm:w-44 sm:text-sm ${
+            unit ? "border-brand font-semibold text-brand" : "border-gray-200 text-gray-700"
+          }`}
+        >
+          <option value="">{t("全部楼盘", "All properties")}</option>
+          {units.map(([code, u]) => (
+            <option key={code} value={code}>
+              {code} · {u.name} ({u.n})
+            </option>
+          ))}
+        </select>
+      )}
       </div>
 
       {/* Only the filters that currently have something in them, so the row stays short. */}
