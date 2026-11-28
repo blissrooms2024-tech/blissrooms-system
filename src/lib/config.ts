@@ -52,17 +52,17 @@ export const COMPANY = {
 export const SUPPORT = [
   {
     key: "house",
-    label: "房屋 / 租约问题",
-    labelEn: "Room / Tenancy",
+    label: "房屋 / 租约 / 系统问题",
+    labelEn: "Room / Tenancy / System",
     name: "Bliss Rooms",
     phone: "011-3654 7863",
     tel: "+601136547863",
     wa: "601136547863",
   },
   {
-    key: "system",
-    label: "系统 / 技术问题",
-    labelEn: "System / Technical",
+    key: "repair",
+    label: "维修问题",
+    labelEn: "Repairs / Maintenance",
     name: "Yi Xuan",
     phone: "012-439 2491",
     tel: "+60124392491",
