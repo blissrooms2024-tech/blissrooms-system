@@ -13,7 +13,9 @@ import { cleanReading, sameReceipt, type Reading, type ReceiptKey, type UnitRef 
  * it the claim form simply stays a form to fill in.
  */
 
-const MODEL = process.env.RECEIPT_MODEL || "claude-sonnet-5-5";
+// Haiku: about RM0.003 a receipt. If handwritten receipts get misread often, set
+// RECEIPT_MODEL=claude-sonnet-5-5 in Vercel (about RM0.05 a receipt).
+const MODEL = process.env.RECEIPT_MODEL || "claude-haiku-5-5";
 const API_URL = `${process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com"}/v1/messages`;
 /** Local testing only: a JSON file that stands in for the model's answer. */
 const FAKE = process.env.NODE_ENV !== "production" ? process.env.RECEIPT_READER_FAKE : undefined;
